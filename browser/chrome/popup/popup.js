@@ -208,7 +208,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentMetadata = cachedData.metadata;
         populateFields(currentMetadata);
         showState('ready');
-        showHint('info', 'Restored from previous session on this page.');
+        showHint('info', 'Restored from previous session. Click "Rescan Page" for fresh extraction.');
       } else {
         // Fresh extraction
         chrome.tabs.sendMessage(tab.id, { action: 'extractMetadata' }, (response) => {
