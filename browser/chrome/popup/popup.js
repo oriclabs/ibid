@@ -20,7 +20,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Get version and WASM status from background
   chrome.runtime.sendMessage({ action: 'getVersion' }, (res) => {
     if (res?.version) {
-      $('#engine-version').textContent = `v${res.version}`;
+      const vEl = $('#engine-version');
+      if (vEl) vEl.textContent = `v${res.version}`;
     }
     if (res?.wasmError) {
       showHint('restricted', `Citation engine failed to load. Citations will use basic formatting. Try reloading the extension.`);
