@@ -228,6 +228,9 @@ function renderCitationRow(item) {
               ${(item._tags && item._tags.length) ? `<div class="flex gap-0.5 mt-0.5 flex-wrap">${getCitationTags(item)}</div>` : ''}
             </div>
             <div class="flex items-center gap-0.5 shrink-0">
+              <button class="btn-copy-cite p-1 rounded text-zinc-300 dark:text-zinc-600 hover:text-saffron-500 transition-colors" data-id="${item.id}" title="Copy formatted citation">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+              </button>
               <button class="btn-star p-1 rounded transition-colors ${isStarred ? 'text-saffron-500' : 'text-zinc-300 dark:text-zinc-600 hover:text-saffron-400'}" data-id="${item.id}" title="${isStarred ? 'Unstar' : 'Star'}">
                 <svg class="w-4 h-4" fill="${isStarred ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"/></svg>
               </button>
@@ -251,6 +254,26 @@ function bindCitationEvents() {
         await chrome.storage.local.set({ citations: allCitations });
         applyFiltersAndRender();
       }
+    });
+  }
+
+  // Copy formatted citation
+  for (const btn of $$('.btn-copy-cite')) {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const item = allCitations.find((c) => c.id === id);
+      if (!item) return;
+
+      const formatted = formatCitationForCopy(item);
+      try {
+        await navigator.clipboard.writeText(formatted);
+        // Flash the button
+        btn.innerHTML = '<svg class="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>';
+        setTimeout(() => {
+          btn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>';
+        }, 1500);
+      } catch {}
     });
   }
 
@@ -1066,6 +1089,53 @@ function scanDuplicates() {
 }
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Format citation for copy (uses default style)
+// ---------------------------------------------------------------------------
+
+function formatCitationForCopy(item) {
+  const authors = (item.author || [])
+    .map(a => {
+      if (a.literal) return a.literal;
+      const f = a.family || '';
+      const g = a.given || '';
+      const initials = g.split(/[\s.]/).filter(Boolean).map(p => p[0] + '.').join(' ');
+      return `${f}, ${initials}`.trim();
+    });
+  const authorStr = authors.length === 0 ? '' :
+    authors.length === 1 ? authors[0] :
+    authors.length === 2 ? `${authors[0]} & ${authors[1]}` :
+    authors.slice(0, -1).join(', ') + ', & ' + authors[authors.length - 1];
+
+  const year = item.issued?.['date-parts']?.[0]?.[0] || 'n.d.';
+  const title = item.title || 'Untitled';
+  const container = item['container-title'] || '';
+  const vol = item.volume || '';
+  const iss = item.issue || '';
+  const pg = item.page || '';
+  const doi = item.DOI ? `https://doi.org/${item.DOI}` : '';
+  const url = item.URL || '';
+  const pub = item.publisher || '';
+
+  // APA-like format (default)
+  let parts = [authorStr || title, `(${year})`];
+  if (authorStr) {
+    const isBook = item.type === 'book' || item.type === 'report' || item.type === 'thesis';
+    parts.push(isBook ? title : title);
+  }
+  if (container) {
+    let c = container;
+    if (vol) c += `, ${vol}`;
+    if (iss) c += `(${iss})`;
+    if (pg) c += `, ${pg}`;
+    parts.push(c);
+  }
+  if (pub) parts.push(pub);
+  const access = doi || url;
+  if (access) parts.push(access);
+  return parts.filter(Boolean).join('. ').replace(/\.\./g, '.') + '.';
+}
+
 // Init
 // ---------------------------------------------------------------------------
 
