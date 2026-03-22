@@ -1,0 +1,719 @@
+[
+  {
+    "id": "apa",
+    "name": "APA 7th Edition",
+    "group": "APA",
+    "field": "psychology",
+    "bundled": true
+  },
+  {
+    "id": "apa-6th-edition",
+    "name": "APA 6th Edition",
+    "group": "APA",
+    "field": "psychology",
+    "bundled": true
+  },
+  {
+    "id": "apa-5th-edition",
+    "name": "APA 5th Edition",
+    "group": "APA",
+    "field": "psychology",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/apa-5th-edition.csl"
+  },
+  {
+    "id": "apa-cv",
+    "name": "APA (Curriculum Vitae)",
+    "group": "APA",
+    "field": "psychology",
+    "bundled": true
+  },
+  {
+    "id": "apa-no-doi-no-issue",
+    "name": "APA (No DOI, No Issue)",
+    "group": "APA",
+    "field": "psychology",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/apa-no-doi-no-issue.csl"
+  },
+  {
+    "id": "modern-language-association",
+    "name": "MLA 9th Edition",
+    "group": "MLA",
+    "field": "humanities",
+    "bundled": true
+  },
+  {
+    "id": "modern-language-association-8th-edition",
+    "name": "MLA 8th Edition",
+    "group": "MLA",
+    "field": "humanities",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/modern-language-association-8th-edition.csl"
+  },
+  {
+    "id": "modern-language-association-7th-edition",
+    "name": "MLA 7th Edition",
+    "group": "MLA",
+    "field": "humanities",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/modern-language-association-7th-edition.csl"
+  },
+  {
+    "id": "chicago-author-date",
+    "name": "Chicago 17th (Author-Date)",
+    "group": "Chicago",
+    "field": "generic",
+    "bundled": true
+  },
+  {
+    "id": "chicago-fullnote-bibliography",
+    "name": "Chicago 17th (Full Note)",
+    "group": "Chicago",
+    "field": "generic",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/chicago-fullnote-bibliography.csl"
+  },
+  {
+    "id": "chicago-note-bibliography",
+    "name": "Chicago 17th (Note)",
+    "group": "Chicago",
+    "field": "generic",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/chicago-note-bibliography.csl"
+  },
+  {
+    "id": "chicago-author-date-16th-edition",
+    "name": "Chicago 16th (Author-Date)",
+    "group": "Chicago",
+    "field": "generic",
+    "bundled": true
+  },
+  {
+    "id": "harvard-cite-them-right",
+    "name": "Harvard - Cite Them Right",
+    "group": "Harvard",
+    "field": "generic",
+    "bundled": true
+  },
+  {
+    "id": "elsevier-harvard",
+    "name": "Elsevier Harvard",
+    "group": "Harvard",
+    "field": "generic",
+    "bundled": true
+  },
+  {
+    "id": "harvard-anglia-ruskin-university",
+    "name": "Harvard - Anglia Ruskin",
+    "group": "Harvard",
+    "field": "generic",
+    "bundled": true
+  },
+  {
+    "id": "harvard-university-of-technology-sydney",
+    "name": "Harvard - UTS",
+    "group": "Harvard",
+    "field": "generic",
+    "bundled": true
+  },
+  {
+    "id": "harvard-imperial-college-london",
+    "name": "Harvard - Imperial College",
+    "group": "Harvard",
+    "field": "generic",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/harvard-imperial-college-london.csl"
+  },
+  {
+    "id": "ieee",
+    "name": "IEEE",
+    "group": "IEEE",
+    "field": "engineering",
+    "bundled": true
+  },
+  {
+    "id": "ieee-with-url",
+    "name": "IEEE (with URL)",
+    "group": "IEEE",
+    "field": "engineering",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/ieee-with-url.csl"
+  },
+  {
+    "id": "vancouver",
+    "name": "Vancouver",
+    "group": "Vancouver",
+    "field": "medicine",
+    "bundled": true
+  },
+  {
+    "id": "vancouver-superscript",
+    "name": "Vancouver (Superscript)",
+    "group": "Vancouver",
+    "field": "medicine",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/vancouver-superscript.csl"
+  },
+  {
+    "id": "american-medical-association",
+    "name": "AMA 11th Edition",
+    "group": "AMA",
+    "field": "medicine",
+    "bundled": true
+  },
+  {
+    "id": "american-medical-association-10th-edition",
+    "name": "AMA 10th Edition",
+    "group": "AMA",
+    "field": "medicine",
+    "bundled": true
+  },
+  {
+    "id": "turabian-fullnote-bibliography",
+    "name": "Turabian 9th (Full Note)",
+    "group": "Turabian",
+    "field": "humanities",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/turabian-fullnote-bibliography.csl"
+  },
+  {
+    "id": "turabian-author-date",
+    "name": "Turabian 9th (Author-Date)",
+    "group": "Turabian",
+    "field": "humanities",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/turabian-author-date.csl"
+  },
+  {
+    "id": "nature",
+    "name": "Nature",
+    "group": "Nature",
+    "field": "science",
+    "bundled": true
+  },
+  {
+    "id": "science",
+    "name": "Science (AAAS)",
+    "group": "Science",
+    "field": "science",
+    "bundled": true
+  },
+  {
+    "id": "cell",
+    "name": "Cell",
+    "group": "Cell",
+    "field": "biology",
+    "bundled": true
+  },
+  {
+    "id": "plos-one",
+    "name": "PLOS ONE",
+    "group": "PLOS",
+    "field": "science",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/plos-one.csl"
+  },
+  {
+    "id": "plos-biology",
+    "name": "PLOS Biology",
+    "group": "PLOS",
+    "field": "biology",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/plos-biology.csl"
+  },
+  {
+    "id": "proceedings-of-the-national-academy-of-sciences",
+    "name": "PNAS",
+    "group": "PNAS",
+    "field": "science",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/proceedings-of-the-national-academy-of-sciences.csl"
+  },
+  {
+    "id": "the-lancet",
+    "name": "The Lancet",
+    "group": "Lancet",
+    "field": "medicine",
+    "bundled": true
+  },
+  {
+    "id": "the-bmj",
+    "name": "The BMJ",
+    "group": "BMJ",
+    "field": "medicine",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/the-bmj.csl"
+  },
+  {
+    "id": "the-new-england-journal-of-medicine",
+    "name": "NEJM",
+    "group": "NEJM",
+    "field": "medicine",
+    "bundled": true
+  },
+  {
+    "id": "jama",
+    "name": "JAMA",
+    "group": "JAMA",
+    "field": "medicine",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/jama.csl"
+  },
+  {
+    "id": "national-library-of-medicine",
+    "name": "NLM",
+    "group": "NLM",
+    "field": "medicine",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/national-library-of-medicine.csl"
+  },
+  {
+    "id": "american-chemical-society",
+    "name": "ACS",
+    "group": "ACS",
+    "field": "chemistry",
+    "bundled": true
+  },
+  {
+    "id": "royal-society-of-chemistry",
+    "name": "RSC",
+    "group": "RSC",
+    "field": "chemistry",
+    "bundled": true
+  },
+  {
+    "id": "angewandte-chemie",
+    "name": "Angewandte Chemie",
+    "group": "Chemistry",
+    "field": "chemistry",
+    "bundled": true
+  },
+  {
+    "id": "acm-sig-proceedings",
+    "name": "ACM SIG Proceedings",
+    "group": "ACM",
+    "field": "computer science",
+    "bundled": true
+  },
+  {
+    "id": "acm-computing-surveys",
+    "name": "ACM Computing Surveys",
+    "group": "ACM",
+    "field": "computer science",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/acm-computing-surveys.csl"
+  },
+  {
+    "id": "association-for-computing-machinery",
+    "name": "ACM (General)",
+    "group": "ACM",
+    "field": "computer science",
+    "bundled": true
+  },
+  {
+    "id": "springer-lecture-notes-in-computer-science",
+    "name": "Springer LNCS",
+    "group": "Springer",
+    "field": "computer science",
+    "bundled": true
+  },
+  {
+    "id": "springer-basic-author-date",
+    "name": "Springer (Author-Date)",
+    "group": "Springer",
+    "field": "science",
+    "bundled": true
+  },
+  {
+    "id": "springer-basic-brackets",
+    "name": "Springer (Brackets)",
+    "group": "Springer",
+    "field": "science",
+    "bundled": true
+  },
+  {
+    "id": "springer-vancouver",
+    "name": "Springer Vancouver",
+    "group": "Springer",
+    "field": "science",
+    "bundled": true
+  },
+  {
+    "id": "elsevier-with-titles",
+    "name": "Elsevier (with Titles)",
+    "group": "Elsevier",
+    "field": "science",
+    "bundled": true
+  },
+  {
+    "id": "elsevier-vancouver",
+    "name": "Elsevier Vancouver",
+    "group": "Elsevier",
+    "field": "science",
+    "bundled": true
+  },
+  {
+    "id": "taylor-and-francis-harvard-x",
+    "name": "Taylor & Francis Harvard",
+    "group": "T&F",
+    "field": "generic",
+    "bundled": true
+  },
+  {
+    "id": "taylor-and-francis-chicago-author-date",
+    "name": "Taylor & Francis Chicago",
+    "group": "T&F",
+    "field": "generic",
+    "bundled": true
+  },
+  {
+    "id": "oscola",
+    "name": "OSCOLA",
+    "group": "Law",
+    "field": "law",
+    "bundled": true
+  },
+  {
+    "id": "bluebook-law-review",
+    "name": "Bluebook (Law Review)",
+    "group": "Law",
+    "field": "law",
+    "bundled": true
+  },
+  {
+    "id": "bluebook-inline",
+    "name": "Bluebook (Inline)",
+    "group": "Law",
+    "field": "law",
+    "bundled": true
+  },
+  {
+    "id": "mcgill-en",
+    "name": "McGill (English)",
+    "group": "Law",
+    "field": "law",
+    "bundled": true
+  },
+  {
+    "id": "american-sociological-association",
+    "name": "ASA",
+    "group": "ASA",
+    "field": "sociology",
+    "bundled": true
+  },
+  {
+    "id": "american-political-science-association",
+    "name": "APSA",
+    "group": "APSA",
+    "field": "politics",
+    "bundled": true
+  },
+  {
+    "id": "council-of-science-editors",
+    "name": "CSE (Name-Year)",
+    "group": "CSE",
+    "field": "science",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/council-of-science-editors.csl"
+  },
+  {
+    "id": "council-of-science-editors-author-date",
+    "name": "CSE (Author-Date)",
+    "group": "CSE",
+    "field": "science",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/council-of-science-editors-author-date.csl"
+  },
+  {
+    "id": "annual-reviews",
+    "name": "Annual Reviews",
+    "group": "Annual Reviews",
+    "field": "science",
+    "bundled": true
+  },
+  {
+    "id": "sage-harvard",
+    "name": "SAGE Harvard",
+    "group": "SAGE",
+    "field": "social science",
+    "bundled": true
+  },
+  {
+    "id": "sage-vancouver",
+    "name": "SAGE Vancouver",
+    "group": "SAGE",
+    "field": "social science",
+    "bundled": true
+  },
+  {
+    "id": "harvard-business-school",
+    "name": "Harvard Business School",
+    "group": "Harvard",
+    "field": "business",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/harvard-business-school.csl"
+  },
+  {
+    "id": "modern-humanities-research-association",
+    "name": "MHRA",
+    "group": "MHRA",
+    "field": "humanities",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/modern-humanities-research-association.csl"
+  },
+  {
+    "id": "society-of-biblical-literature-fullnote-bibliography",
+    "name": "SBL (Full Note)",
+    "group": "SBL",
+    "field": "humanities",
+    "bundled": true
+  },
+  {
+    "id": "american-geophysical-union",
+    "name": "AGU",
+    "group": "AGU",
+    "field": "earth science",
+    "bundled": true
+  },
+  {
+    "id": "ecological-society-of-america",
+    "name": "ESA",
+    "group": "ESA",
+    "field": "ecology",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/ecological-society-of-america.csl"
+  },
+  {
+    "id": "american-institute-of-physics",
+    "name": "AIP",
+    "group": "AIP",
+    "field": "physics",
+    "bundled": true
+  },
+  {
+    "id": "american-physical-society",
+    "name": "APS",
+    "group": "APS",
+    "field": "physics",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/american-physical-society.csl"
+  },
+  {
+    "id": "american-mathematical-society",
+    "name": "AMS",
+    "group": "AMS",
+    "field": "mathematics",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/american-mathematical-society.csl"
+  },
+  {
+    "id": "iso690-author-date-en",
+    "name": "ISO 690 (Author-Date, EN)",
+    "group": "ISO",
+    "field": "generic",
+    "bundled": true
+  },
+  {
+    "id": "iso690-numeric-en",
+    "name": "ISO 690 (Numeric, EN)",
+    "group": "ISO",
+    "field": "generic",
+    "bundled": true
+  },
+  {
+    "id": "associacao-brasileira-de-normas-tecnicas",
+    "name": "ABNT (Brazil)",
+    "group": "Regional",
+    "field": "generic",
+    "bundled": true
+  },
+  {
+    "id": "gost-r-7-0-5-2008",
+    "name": "GOST R 7.0.5 (Russia)",
+    "group": "Regional",
+    "field": "generic",
+    "bundled": true
+  },
+  {
+    "id": "din-1505-2",
+    "name": "DIN 1505-2 (Germany)",
+    "group": "Regional",
+    "field": "generic",
+    "bundled": true
+  },
+  {
+    "id": "norma-portuguesa-405",
+    "name": "NP 405 (Portugal)",
+    "group": "Regional",
+    "field": "generic",
+    "bundled": true
+  },
+  {
+    "id": "infoclio-fr",
+    "name": "Infoclio (Switzerland, FR)",
+    "group": "Regional",
+    "field": "generic",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/infoclio-fr.csl"
+  },
+  {
+    "id": "nursing-standard",
+    "name": "Nursing Standard",
+    "group": "Nursing",
+    "field": "nursing",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/nursing-standard.csl"
+  },
+  {
+    "id": "american-society-of-civil-engineers",
+    "name": "ASCE",
+    "group": "ASCE",
+    "field": "engineering",
+    "bundled": true
+  },
+  {
+    "id": "american-society-of-mechanical-engineers",
+    "name": "ASME",
+    "group": "ASME",
+    "field": "engineering",
+    "bundled": true
+  },
+  {
+    "id": "apa-annotated-bibliography",
+    "name": "APA (Annotated Bibliography)",
+    "group": "APA",
+    "field": "psychology",
+    "bundled": true
+  },
+  {
+    "id": "bibtex",
+    "name": "BibTeX Standard",
+    "group": "BibTeX",
+    "field": "generic",
+    "bundled": true
+  },
+  {
+    "id": "vancouver-brackets",
+    "name": "Vancouver (Brackets)",
+    "group": "Vancouver",
+    "field": "medicine",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/vancouver-brackets.csl"
+  },
+  {
+    "id": "elsevier-with-titles-alphabetical",
+    "name": "Elsevier (Alphabetical)",
+    "group": "Elsevier",
+    "field": "science",
+    "bundled": true
+  },
+  {
+    "id": "multidisciplinary-digital-publishing-institute",
+    "name": "MDPI",
+    "group": "MDPI",
+    "field": "science",
+    "bundled": true
+  },
+  {
+    "id": "frontiers",
+    "name": "Frontiers",
+    "group": "Frontiers",
+    "field": "science",
+    "bundled": true
+  },
+  {
+    "id": "copernicus-publications",
+    "name": "Copernicus",
+    "group": "Copernicus",
+    "field": "earth science",
+    "bundled": true
+  },
+  {
+    "id": "mary-ann-liebert-vancouver",
+    "name": "Mary Ann Liebert",
+    "group": "Liebert",
+    "field": "medicine",
+    "bundled": true
+  },
+  {
+    "id": "taylor-and-francis-national-library-of-medicine",
+    "name": "T&F NLM",
+    "group": "T&F",
+    "field": "medicine",
+    "bundled": true
+  },
+  {
+    "id": "unified-style-sheet-for-linguistics",
+    "name": "Unified Linguistics",
+    "group": "Linguistics",
+    "field": "linguistics",
+    "bundled": true
+  },
+  {
+    "id": "the-journal-of-finance",
+    "name": "Journal of Finance",
+    "group": "Finance",
+    "field": "finance",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/the-journal-of-finance.csl"
+  },
+  {
+    "id": "oxford-university-press-note",
+    "name": "Oxford University Press (Note)",
+    "group": "OUP",
+    "field": "humanities",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/oxford-university-press-note.csl"
+  },
+  {
+    "id": "cambridge-university-press-numeric",
+    "name": "Cambridge UP (Numeric)",
+    "group": "CUP",
+    "field": "generic",
+    "bundled": true
+  },
+  {
+    "id": "wiley-vch-books",
+    "name": "Wiley-VCH Books",
+    "group": "Wiley",
+    "field": "science",
+    "bundled": true
+  },
+  {
+    "id": "pensoft-journals",
+    "name": "Pensoft",
+    "group": "Pensoft",
+    "field": "biology",
+    "bundled": true
+  },
+  {
+    "id": "journal-of-clinical-epidemiology",
+    "name": "J Clinical Epidemiology",
+    "group": "Epidemiology",
+    "field": "medicine",
+    "bundled": false,
+    "error": "HTTP 404 for https://raw.githubusercontent.com/citation-style-language/styles/master/journal-of-clinical-epidemiology.csl"
+  },
+  {
+    "id": "current-opinion",
+    "name": "Current Opinion",
+    "group": "Current Opinion",
+    "field": "science",
+    "bundled": true
+  },
+  {
+    "id": "trends-journals",
+    "name": "Trends Journals",
+    "group": "Trends",
+    "field": "science",
+    "bundled": true
+  },
+  {
+    "id": "sist02",
+    "name": "SIST02 (Japan)",
+    "group": "Regional",
+    "field": "generic",
+    "bundled": true
+  }
+]

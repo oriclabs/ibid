@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ibid — Settings</title>
+  <link rel="stylesheet" href="../styles/ibid.css">
+</head>
+<body class="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans">
+
+  <div class="max-w-2xl mx-auto py-8 px-6">
+    <!-- Header -->
+    <div class="flex items-center gap-3 mb-8">
+      <img src="../icons/icon-128.png" alt="Ibid" class="w-10 h-10 rounded-lg">
+      <div>
+        <h1 class="text-xl font-bold text-saffron-700 dark:text-saffron-400">Ibid Settings</h1>
+        <p id="version" class="text-xs text-zinc-400">Citation Manager</p>
+      </div>
+    </div>
+
+    <!-- Sections -->
+    <div class="space-y-6">
+
+      <!-- Citation Defaults -->
+      <section class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-sm font-semibold mb-3">Citation Defaults</h2>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs text-zinc-500 mb-1">Default Citation Style</label>
+            <select id="opt-style" class="w-full px-3 py-2 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm">
+              <option value="apa7">APA 7th Edition</option>
+              <option value="mla9">MLA 9th Edition</option>
+              <option value="chicago17-author-date">Chicago 17th (Author-Date)</option>
+              <option value="harvard">Harvard</option>
+              <option value="ieee">IEEE</option>
+              <option value="vancouver">Vancouver</option>
+            </select>
+            <a href="style-editor.html" target="_blank" class="inline-block mt-2 text-xs text-saffron-600 dark:text-saffron-400 hover:text-saffron-800 font-medium">Create custom style &rarr;</a>
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-500 mb-1">Default Locale</label>
+            <select id="opt-locale" class="w-full px-3 py-2 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm">
+              <option value="en-US">English (US)</option>
+              <option value="en-GB">English (UK)</option>
+              <option value="es-ES">Spanish</option>
+              <option value="fr-FR">French</option>
+              <option value="de-DE">German</option>
+              <option value="pt-BR">Portuguese (Brazil)</option>
+              <option value="zh-CN">Chinese (Simplified)</option>
+              <option value="ja-JP">Japanese</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- UI Preferences -->
+      <section class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-sm font-semibold mb-3">Interface</h2>
+        <div class="space-y-3">
+          <label class="flex items-center justify-between">
+            <span class="text-sm">Show floating cite button on pages</span>
+            <input type="checkbox" id="opt-float" class="rounded text-saffron-500 focus:ring-saffron-500">
+          </label>
+          <label class="flex items-center justify-between">
+            <span class="text-sm">Auto-add citation to last project</span>
+            <input type="checkbox" id="opt-autoadd" class="rounded text-saffron-500 focus:ring-saffron-500">
+          </label>
+        </div>
+      </section>
+
+      <!-- Cloud Sync -->
+      <section class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-sm font-semibold mb-3">Cloud Sync</h2>
+        <p class="text-xs text-zinc-500 dark:text-zinc-400 mb-3">Sync your citation library across devices. Your data is encrypted and only accessible by you.</p>
+
+        <div class="space-y-2">
+          <!-- Provider buttons -->
+          <div class="grid grid-cols-3 gap-2">
+            <button class="sync-provider px-3 py-3 rounded-lg border border-zinc-200 dark:border-zinc-700 text-center hover:border-saffron-400 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors" data-provider="gdrive" disabled>
+              <p class="text-xs font-medium">Google Drive</p>
+              <p class="text-[9px] text-zinc-400 mt-0.5">Coming soon</p>
+            </button>
+            <button class="sync-provider px-3 py-3 rounded-lg border border-zinc-200 dark:border-zinc-700 text-center hover:border-saffron-400 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors" data-provider="dropbox" disabled>
+              <p class="text-xs font-medium">Dropbox</p>
+              <p class="text-[9px] text-zinc-400 mt-0.5">Coming soon</p>
+            </button>
+            <button class="sync-provider px-3 py-3 rounded-lg border border-zinc-200 dark:border-zinc-700 text-center hover:border-saffron-400 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors" data-provider="onedrive" disabled>
+              <p class="text-xs font-medium">OneDrive</p>
+              <p class="text-[9px] text-zinc-400 mt-0.5">Coming soon</p>
+            </button>
+            <button class="sync-provider px-3 py-3 rounded-lg border border-zinc-200 dark:border-zinc-700 text-center hover:border-saffron-400 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors" data-provider="webdav" disabled>
+              <p class="text-xs font-medium">WebDAV</p>
+              <p class="text-[9px] text-zinc-400 mt-0.5">Coming soon</p>
+            </button>
+            <button class="sync-provider px-3 py-3 rounded-lg border border-zinc-200 dark:border-zinc-700 text-center hover:border-saffron-400 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors" data-provider="ftp" disabled>
+              <p class="text-xs font-medium">FTP/SFTP</p>
+              <p class="text-[9px] text-zinc-400 mt-0.5">Coming soon</p>
+            </button>
+            <button class="sync-provider px-3 py-3 rounded-lg border border-zinc-200 dark:border-zinc-700 text-center hover:border-saffron-400 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors" data-provider="s3" disabled>
+              <p class="text-xs font-medium">S3</p>
+              <p class="text-[9px] text-zinc-400 mt-0.5">Coming soon</p>
+            </button>
+          </div>
+
+          <!-- Sync settings (shown when provider connected) -->
+          <div id="sync-settings" class="hidden space-y-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+            <div class="flex items-center justify-between">
+              <span class="text-xs">Sync interval</span>
+              <select id="sync-interval" class="px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-xs">
+                <option value="5">Every 5 min</option>
+                <option value="15" selected>Every 15 min</option>
+                <option value="30">Every 30 min</option>
+                <option value="60">Every hour</option>
+                <option value="manual">Manual only</option>
+              </select>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs">Conflict resolution</span>
+              <select id="sync-conflict" class="px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-xs">
+                <option value="local">Local wins</option>
+                <option value="remote">Remote wins</option>
+                <option value="ask" selected>Ask me</option>
+              </select>
+            </div>
+            <div class="flex gap-2">
+              <button id="btn-sync-now" class="px-3 py-1.5 rounded bg-saffron-500 text-white text-xs font-medium hover:bg-saffron-600 transition-colors">Sync Now</button>
+              <button id="btn-disconnect" class="px-3 py-1.5 rounded border border-red-200 text-red-600 text-xs hover:bg-red-50 transition-colors">Disconnect</button>
+            </div>
+          </div>
+
+          <p class="text-[10px] text-zinc-400">Cloud sync requires the <code class="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">identity</code> permission, which will be requested when you connect a provider.</p>
+        </div>
+      </section>
+
+      <!-- Data Management -->
+      <section class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-sm font-semibold mb-3">Data Management</h2>
+        <div class="flex gap-2">
+          <button id="btn-backup" class="px-3 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">Backup Library</button>
+          <button id="btn-restore" class="px-3 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">Restore</button>
+          <button id="btn-clear" class="px-3 py-1.5 rounded border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">Clear All Data</button>
+        </div>
+      </section>
+
+      <!-- About -->
+      <section class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-sm font-semibold mb-1">About Ibid</h2>
+        <p class="text-xs text-zinc-400">Privacy-first citation manager. No telemetry. No ads. No bandwidth abuse.</p>
+        <p class="text-xs text-zinc-400 mt-1">Core engine: Rust/WASM. UI: Tailwind + Vanilla JS.</p>
+        <a href="../help/help.html" target="_blank" class="inline-block mt-3 text-xs text-saffron-600 dark:text-saffron-400 hover:text-saffron-800 font-medium">View Help &amp; Documentation &rarr;</a>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="../shared/dialog.js"></script>
+  <script src="options.js" type="module"></script>
+</body>
+</html>

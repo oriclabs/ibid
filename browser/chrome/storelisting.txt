@@ -1,0 +1,49 @@
+CHROME WEB STORE LISTING
+========================
+
+Name: Ibid — Citation Manager
+
+Short Description (132 chars max):
+Privacy-first citation manager. One-click accurate citations in APA, MLA, Chicago, Harvard, IEEE, Vancouver & 10,000+ styles.
+
+Category: Productivity / Education
+
+Language: English
+
+Detailed Description:
+Ibid is a fast, accurate, and privacy-first citation manager built for students, researchers, and academics.
+
+Unlike other citation tools, Ibid runs a full CSL (Citation Style Language) engine powered by Rust/WebAssembly — the same standard used by Zotero and Mendeley — directly in your browser. No server roundtrips, no data collection, no bandwidth hijacking.
+
+FEATURES:
+- One-click cite any webpage, journal article, or PDF
+- Accurate formatting in APA 7, MLA 9, Chicago 17, Harvard, IEEE, Vancouver, AMA, and 10,000+ citation styles
+- Smart metadata extraction from structured data (Schema.org, Highwire, Dublin Core, OpenGraph)
+- Editable fields — fix any auto-detected metadata before copying
+- Both bibliography entry and in-text citation (parenthetical & narrative)
+- Organize citations into projects and folders
+- Tag, star, and color-code your references
+- Search and filter your entire library
+- Import from BibTeX, RIS, CSL-JSON, DOI, ISBN, PMID
+- Export to BibTeX, RIS, CSL-JSON, formatted text, HTML, Markdown, Word XML, CSV
+- Selective export by project, tag, type, year, or manual selection
+- Sync via Google Drive, Dropbox, OneDrive, WebDAV, FTP, or S3
+- Side panel for managing your bibliography while researching
+- Context menu: right-click to cite pages, links, and save quotes
+- Keyboard shortcuts for power users
+- Dark mode
+- 100% free, no ads, no account required
+- Open source
+
+PRIVACY:
+- Zero telemetry
+- Zero data collection
+- All citation processing happens locally in your browser via WebAssembly
+- Cloud sync is optional and user-initiated
+- No third-party analytics or tracking scripts
+
+Ibid was built because every existing citation extension gets citations wrong, abuses your bandwidth, or locks features behind paywalls. We built the citation manager we wish existed.
+
+Website: https://ibid.tools
+Support: support@ibid.tools
+Privacy Policy: https://ibid.tools/privacy.html

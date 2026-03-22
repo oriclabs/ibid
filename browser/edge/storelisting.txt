@@ -1,0 +1,12 @@
+MICROSOFT EDGE ADD-ONS LISTING
+==============================
+
+Name: Ibid — Citation Manager
+
+Short Description:
+Privacy-first citation manager. Accurate citations in APA, MLA, Chicago, Harvard, IEEE, Vancouver & 10,000+ styles. Powered by Rust/WASM.
+
+Category: Education
+
+Note: Edge uses Chromium and can load the Chrome extension with minimal changes.
+Copy manifest.json and adjust any Chrome-specific APIs (e.g., sidePanel availability).

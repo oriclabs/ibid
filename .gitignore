@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build artifacts
+browser/dist/
+browser/shared/wasm/
+browser/chrome/wasm/
+crates/ibid-core/target/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Tailwind output (rebuilt from source)
+browser/chrome/styles/ibid.css
+
+# Package lock
+package-lock.json

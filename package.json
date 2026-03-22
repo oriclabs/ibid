@@ -1,0 +1,23 @@
+{
+  "name": "ibid",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Privacy-first citation manager browser extension",
+  "scripts": {
+    "css:build": "npx tailwindcss -i ./browser/shared/css/input.css -o ./browser/chrome/styles/ibid.css --minify",
+    "css:watch": "npx tailwindcss -i ./browser/shared/css/input.css -o ./browser/chrome/styles/ibid.css --watch",
+    "wasm:build": "cd crates/ibid-core && wasm-pack build --target web --out-dir ../../browser/shared/wasm --no-opt",
+    "chrome:build": "npm run wasm:build && npm run css:build && node scripts/build-chrome.js",
+    "dev": "npm run css:watch",
+    "test:rust": "cd crates/ibid-core && cargo test",
+    "test:js": "node tests/extension/run-all.js",
+    "test:styles": "node tests/real-world/test-all-styles.js",
+    "test:urls": "node tests/real-world/test-real-urls.js",
+    "test": "npm run test:rust && npm run test:js && npm run test:styles",
+    "test:all": "npm run test:rust && npm run test:js && npm run test:styles && npm run test:urls"
+  },
+  "devDependencies": {
+    "sharp": "^0.34.5",
+    "tailwindcss": "^3.4.0"
+  }
+}

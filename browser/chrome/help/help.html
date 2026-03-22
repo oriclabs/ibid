@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ibid — Help & Documentation</title>
+  <link rel="stylesheet" href="../styles/ibid.css">
+  <style>
+    .sidebar-link.active { color: #d87102; font-weight: 600; border-left-color: #f49707; }
+    .sidebar-link { border-left: 2px solid transparent; }
+    section:target { scroll-margin-top: 2rem; }
+  </style>
+</head>
+<body class="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans">
+
+  <!-- Sticky top bar -->
+  <header class="sticky top-0 z-40 bg-white/90 dark:bg-zinc-900/90 backdrop-blur border-b border-zinc-200 dark:border-zinc-700">
+    <div class="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <img src="../icons/icon-128.png" alt="Ibid" class="w-7 h-7 rounded">
+        <h1 class="text-base font-bold text-saffron-700 dark:text-saffron-400">Ibid Help</h1>
+      </div>
+      <!-- Mobile TOC toggle -->
+      <button id="toc-toggle" class="lg:hidden p-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="max-w-5xl mx-auto flex">
+
+    <!-- Sidebar nav -->
+    <nav id="sidebar" class="hidden lg:block sticky top-14 self-start w-56 shrink-0 py-6 pr-4 max-h-[calc(100vh-3.5rem)] overflow-y-auto">
+      <ul class="space-y-0.5 text-[13px]">
+        <li><a href="#getting-started" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Getting Started</a></li>
+        <li><a href="#citing-pages" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Citing a Webpage</a></li>
+        <li><a href="#auto-enhance" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Auto-Enhance</a></li>
+        <li><a href="#type-validation" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Type Validation</a></li>
+        <li><a href="#styles" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Citation Styles</a></li>
+        <li><a href="#projects" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Projects</a></li>
+        <li><a href="#library" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Library</a></li>
+        <li><a href="#editing" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Editing</a></li>
+        <li><a href="#import" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Importing</a></li>
+        <li><a href="#export" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Exporting</a></li>
+        <li><a href="#duplicates" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Duplicates</a></li>
+        <li><a href="#quick-settings" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Quick Settings</a></li>
+        <li><a href="#keyboard" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Shortcuts</a></li>
+        <li><a href="#context-menu" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Context Menu</a></li>
+        <li><a href="#backup" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Backup</a></li>
+        <li><a href="#privacy" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Privacy</a></li>
+        <li><a href="#troubleshooting" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Troubleshooting</a></li>
+        <li><a href="#formats" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Formats Reference</a></li>
+      </ul>
+    </nav>
+
+    <!-- Main content -->
+    <main class="flex-1 min-w-0 py-6 px-6 lg:pl-8 space-y-6">
+
+      <section id="getting-started" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-base font-semibold mb-3">Getting Started</h2>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-3">Ibid is a citation manager that runs entirely in your browser. All processing happens locally via a Rust/WebAssembly engine &mdash; no data is sent to any server.</p>
+        <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside">
+          <li><strong>Popup</strong> &mdash; Click the Ibid icon on any page to cite it</li>
+          <li><strong>Side Panel</strong> &mdash; Click "Library" for full citation management</li>
+          <li><strong>Context Menu</strong> &mdash; Right-click for quick cite options</li>
+          <li><strong>Settings</strong> &mdash; Gear icon for style, locale, theme</li>
+        </ul>
+      </section>
+
+      <section id="citing-pages" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-base font-semibold mb-3">Citing a Webpage</h2>
+        <ol class="text-sm text-zinc-600 dark:text-zinc-400 space-y-2 list-decimal list-inside">
+          <li>Navigate to the page you want to cite.</li>
+          <li>Click the <strong>Ibid icon</strong> (or <kbd class="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-xs font-mono">Ctrl+Shift+C</kbd>).</li>
+          <li>Fields auto-fill from structured data (JSON-LD, Highwire Press, Dublin Core, OpenGraph). If a DOI is found and fields are missing, <strong>auto-enhance</strong> fills them.</li>
+          <li>Review, edit fields, choose citation style.</li>
+          <li>Click <strong>Copy</strong> for bibliography or in-text citation.</li>
+          <li>Click <strong>Add to Project</strong> to save.</li>
+        </ol>
+        <div class="mt-3 p-3 bg-saffron-50 dark:bg-saffron-900/10 rounded text-xs text-saffron-800 dark:text-saffron-300">
+          <strong>Tip:</strong> On restricted pages (chrome://), the form opens empty for manual entry. Paste a DOI and click Enhance.
+        </div>
+      </section>
+
+      <section id="auto-enhance" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-base font-semibold mb-3">Auto-Enhance &amp; Identifier Lookup</h2>
+        <h3 class="text-sm font-medium mb-1">Automatic</h3>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">When a DOI/PMID/arXiv ID is found and key fields are empty, Ibid silently resolves via API and fills them. Enhanced fields flash saffron.</p>
+        <h3 class="text-sm font-medium mb-1">Manual (Enhance button)</h3>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">Paste any identifier and click <strong>Enhance</strong>:</p>
+        <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside">
+          <li><strong>DOI</strong> &mdash; <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">10.1038/nature12373</code> &rarr; CrossRef</li>
+          <li><strong>ISBN</strong> &mdash; <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">978-0-13-468599-1</code> &rarr; Open Library</li>
+          <li><strong>PMID</strong> &mdash; <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">PMID:12345678</code> &rarr; NCBI/PubMed</li>
+          <li><strong>arXiv</strong> &mdash; <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">arxiv:2301.07041</code> &rarr; arXiv API</li>
+        </ul>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mt-2">Enhance <strong>never overwrites</strong> fields you've already filled.</p>
+      </section>
+
+      <section id="type-validation" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-base font-semibold mb-3">Source Type Validation</h2>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-3">Ibid validates your selected source type against the available metadata and warns if something looks wrong:</p>
+        <table class="w-full text-sm text-left mb-3">
+          <thead><tr class="text-[10px] uppercase text-zinc-400 border-b border-zinc-200 dark:border-zinc-700">
+            <th class="py-1.5">Selected Type</th><th class="py-1.5">Warning When</th><th class="py-1.5">Suggestion</th>
+          </tr></thead>
+          <tbody class="text-zinc-600 dark:text-zinc-400">
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1.5">Journal Article</td><td>No journal name, volume, DOI</td><td>&rarr; Webpage</td></tr>
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1.5">Book</td><td>No publisher, has volume+issue</td><td>&rarr; Journal Article</td></tr>
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1.5">Webpage</td><td>Has DOI + journal + volume</td><td>&rarr; Journal Article</td></tr>
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1.5">News/Magazine</td><td>Has DOI + volume + issue</td><td>&rarr; Journal Article</td></tr>
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1.5">Thesis</td><td>No university, has container</td><td>&mdash;</td></tr>
+            <tr><td class="py-1.5">Chapter</td><td>No book title, no publisher</td><td>&mdash;</td></tr>
+          </tbody>
+        </table>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400">Warnings include a clickable <strong>"Switch to X?"</strong> link. A green <strong>"auto-detected"</strong> badge shows when the type matches metadata signals; gray <strong>"manual"</strong> when you overrode it.</p>
+      </section>
+
+      <section id="styles" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-base font-semibold mb-3">Citation Styles</h2>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-3">9 styles bundled (grouped by edition), plus 10,000+ downloadable from the CSL repository:</p>
+        <div class="grid grid-cols-3 gap-2 text-xs mb-3">
+          <div class="px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800">APA 7th</div>
+          <div class="px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800">APA 6th</div>
+          <div class="px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800">MLA 9th</div>
+          <div class="px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800">MLA 8th</div>
+          <div class="px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800">Chicago 17th</div>
+          <div class="px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800">Chicago 16th</div>
+          <div class="px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800">Harvard</div>
+          <div class="px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800">IEEE</div>
+          <div class="px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800">Vancouver</div>
+        </div>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400">Click <strong>"Search 10,000+ styles..."</strong> below the selector to find any journal or institutional style (Nature, Lancet, OSCOLA, Bluebook, etc.). Downloaded styles are cached locally.</p>
+      </section>
+
+      <section id="projects" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-base font-semibold mb-3">Projects &amp; Per-Project Styles</h2>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">Click <strong>+</strong> next to the project selector to create a project with its own citation style.</p>
+        <div class="text-sm text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800 rounded px-3 py-2 font-mono text-xs mb-2">
+          Manual override &gt; Project style &gt; Global default
+        </div>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400">A badge shows <span class="px-1 py-0.5 rounded bg-saffron-100 text-saffron-600 text-xs">Project</span> or <span class="px-1 py-0.5 rounded bg-zinc-100 text-zinc-500 text-xs">Global</span> to indicate which style is active. Switching projects auto-switches the style.</p>
+      </section>
+
+      <section id="library" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-base font-semibold mb-3">Library Management</h2>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">Click <strong>Library</strong> in the popup header to open the side panel:</p>
+        <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside">
+          <li><strong>Search</strong> &mdash; by title, author, DOI, type, journal, keyword</li>
+          <li><strong>Star</strong> &mdash; click star icon to mark favorites</li>
+          <li><strong>Select</strong> &mdash; checkboxes for bulk operations (Star, Unstar, Delete)</li>
+          <li><strong>Edit</strong> &mdash; click any citation to open edit panel</li>
+          <li><strong>Delete</strong> &mdash; X icon or bulk delete</li>
+        </ul>
+      </section>
+
+      <section id="editing" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-base font-semibold mb-3">Editing Citations</h2>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">Click a citation in the library to edit all fields. Author format: <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">Last, First; Last, First</code>. Date format: <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">YYYY-MM-DD</code> or <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">YYYY</code>.</p>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400">Edits are permanent and never revert to auto-extracted values.</p>
+      </section>
+
+      <section id="import" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-base font-semibold mb-3">Importing Citations</h2>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">Side panel &rarr; Import tab. Three methods:</p>
+        <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside">
+          <li><strong>Drag &amp; drop</strong> .bib, .ris, or .json files</li>
+          <li><strong>Browse files</strong> via file picker</li>
+          <li><strong>Paste</strong> BibTeX, RIS, or CSL-JSON (format auto-detected)</li>
+        </ul>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mt-2">Preview shows parsed entries with checkboxes for selective import. Duplicates auto-skipped.</p>
+      </section>
+
+      <section id="export" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-base font-semibold mb-3">Exporting Citations</h2>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">Side panel &rarr; Export tab. Formats:</p>
+        <div class="grid grid-cols-3 gap-2 text-xs mb-2">
+          <div class="px-2 py-1.5 bg-zinc-50 dark:bg-zinc-800 rounded">BibTeX (.bib)</div>
+          <div class="px-2 py-1.5 bg-zinc-50 dark:bg-zinc-800 rounded">RIS (.ris)</div>
+          <div class="px-2 py-1.5 bg-zinc-50 dark:bg-zinc-800 rounded">CSL-JSON (.json)</div>
+          <div class="px-2 py-1.5 bg-zinc-50 dark:bg-zinc-800 rounded">Text (.txt)</div>
+          <div class="px-2 py-1.5 bg-zinc-50 dark:bg-zinc-800 rounded">HTML (.html)</div>
+          <div class="px-2 py-1.5 bg-zinc-50 dark:bg-zinc-800 rounded">Markdown (.md)</div>
+        </div>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400">Scope: All or Starred. BibTeX: toggle abstract/keywords. Text/HTML/Markdown: choose citation style. Download or copy to clipboard.</p>
+      </section>
+
+      <section id="duplicates" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-base font-semibold mb-3">Duplicate Detection</h2>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">Checks on add and import. Match criteria:</p>
+        <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside">
+          <li>DOI (case-insensitive)</li>
+          <li>ISBN (ignoring hyphens/spaces)</li>
+          <li>URL (exact, excluding search engines)</li>
+          <li>Normalized title (letters+digits only, &gt;10 chars)</li>
+        </ul>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mt-2"><strong>Popup:</strong> confirm dialog. <strong>Import:</strong> silently skipped with count.</p>
+      </section>
+
+      <section id="quick-settings" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-base font-semibold mb-3">Quick Settings</h2>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">Click the <strong>gear icon</strong> in the popup header:</p>
+        <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside">
+          <li><strong>Default Style</strong> &mdash; global fallback (all 9 bundled editions)</li>
+          <li><strong>Locale</strong> &mdash; language for terms (English, Spanish, French, etc.)</li>
+          <li><strong>Theme</strong> &mdash; Light / System / Dark</li>
+          <li><strong>Help</strong> &mdash; opens this page</li>
+          <li><strong>Advanced Settings</strong> &mdash; full options page</li>
+        </ul>
+      </section>
+
+      <section id="keyboard" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-base font-semibold mb-3">Keyboard Shortcuts</h2>
+        <div class="space-y-2">
+          <div class="flex justify-between text-sm"><span class="text-zinc-600 dark:text-zinc-400">Cite current page</span><kbd class="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-xs font-mono">Ctrl+Shift+C</kbd></div>
+          <div class="flex justify-between text-sm"><span class="text-zinc-600 dark:text-zinc-400">Open side panel</span><kbd class="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-xs font-mono">Ctrl+Shift+S</kbd></div>
+        </div>
+        <p class="text-xs text-zinc-400 mt-3">Customize at <code class="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">chrome://extensions/shortcuts</code></p>
+      </section>
+
+      <section id="context-menu" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-base font-semibold mb-3">Context Menu</h2>
+        <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside">
+          <li><strong>Cite this page</strong> &mdash; extract metadata</li>
+          <li><strong>Cite linked page</strong> &mdash; right-click a link</li>
+          <li><strong>Save quote with citation</strong> &mdash; select text, right-click</li>
+        </ul>
+      </section>
+
+      <section id="backup" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-base font-semibold mb-3">Backup &amp; Restore</h2>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">From Advanced Settings:</p>
+        <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside">
+          <li><strong>Backup</strong> &mdash; downloads JSON with all data</li>
+          <li><strong>Restore</strong> &mdash; upload a backup file</li>
+          <li><strong>Clear All</strong> &mdash; deletes everything (irreversible)</li>
+        </ul>
+      </section>
+
+      <section id="privacy" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-base font-semibold mb-3">Privacy</h2>
+        <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside">
+          <li>Zero telemetry, zero tracking</li>
+          <li>All processing local (Rust/WASM)</li>
+          <li>No bandwidth abuse</li>
+          <li>Minimal permissions: activeTab, storage, sidePanel, contextMenus</li>
+          <li>Network calls only when you trigger Enhance</li>
+          <li>No account required</li>
+        </ul>
+      </section>
+
+      <section id="troubleshooting" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-base font-semibold mb-3">Troubleshooting</h2>
+        <div class="space-y-3 text-sm">
+          <div>
+            <h3 class="font-medium">Empty form on page open</h3>
+            <p class="text-zinc-600 dark:text-zinc-400">Content script can't inject on chrome://, extension pages, or some restricted sites. Use manual entry or paste a DOI.</p>
+          </div>
+          <div>
+            <h3 class="font-medium">Author missing</h3>
+            <p class="text-zinc-600 dark:text-zinc-400">Paste the DOI and click Enhance. CrossRef usually has the correct author list.</p>
+          </div>
+          <div>
+            <h3 class="font-medium">Fallback citation format</h3>
+            <p class="text-zinc-600 dark:text-zinc-400">WASM may still be loading. Wait a moment and change the style to re-render.</p>
+          </div>
+          <div>
+            <h3 class="font-medium">Extension not working after update</h3>
+            <p class="text-zinc-600 dark:text-zinc-400">Go to chrome://extensions/ and click the reload icon on Ibid.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="formats" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-base font-semibold mb-3">Supported Formats Reference</h2>
+        <h3 class="text-sm font-medium mb-2">Import</h3>
+        <table class="w-full text-sm text-left mb-4">
+          <thead><tr class="text-[10px] uppercase text-zinc-400 border-b border-zinc-200 dark:border-zinc-700"><th class="py-1">Format</th><th class="py-1">Extension</th><th class="py-1">Auto-detect</th></tr></thead>
+          <tbody class="text-zinc-600 dark:text-zinc-400">
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1">BibTeX / BibLaTeX</td><td>.bib</td><td>Starts with @</td></tr>
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1">RIS</td><td>.ris</td><td>Starts with TY  -</td></tr>
+            <tr><td class="py-1">CSL-JSON</td><td>.json</td><td>Starts with [ or {</td></tr>
+          </tbody>
+        </table>
+        <h3 class="text-sm font-medium mb-2">Export</h3>
+        <table class="w-full text-sm text-left mb-4">
+          <thead><tr class="text-[10px] uppercase text-zinc-400 border-b border-zinc-200 dark:border-zinc-700"><th class="py-1">Format</th><th class="py-1">Extension</th><th class="py-1">Notes</th></tr></thead>
+          <tbody class="text-zinc-600 dark:text-zinc-400">
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1">BibTeX</td><td>.bib</td><td>Optional abstract/keywords</td></tr>
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1">RIS</td><td>.ris</td><td>Universal exchange</td></tr>
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1">CSL-JSON</td><td>.json</td><td>Native, lossless</td></tr>
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1">Text</td><td>.txt</td><td>Rendered via CSL engine</td></tr>
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1">HTML</td><td>.html</td><td>Styled document</td></tr>
+            <tr><td class="py-1">Markdown</td><td>.md</td><td>Numbered list</td></tr>
+          </tbody>
+        </table>
+        <h3 class="text-sm font-medium mb-2">Source types</h3>
+        <div class="flex flex-wrap gap-1">
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">Webpage</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">Journal Article</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">News Article</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">Magazine</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">Book</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">Chapter</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">Conference</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">Thesis</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">Report</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">Blog Post</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">Legislation</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">Legal Case</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">Patent</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">Dataset</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">Software</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">Film/Video</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">Broadcast</span>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <div class="text-center text-xs text-zinc-400 py-4">
+        <p>Ibid Citation Manager &mdash; Privacy-first. No telemetry. No ads.</p>
+        <p class="mt-1">Core engine: Rust/WebAssembly &bull; UI: Tailwind + Vanilla JS</p>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Floating back-to-top button -->
+  <button id="btn-top" class="fixed bottom-6 right-6 hidden w-10 h-10 rounded-full bg-saffron-500 hover:bg-saffron-600 text-white shadow-lg transition-all hover:scale-110 flex items-center justify-center z-50" title="Back to top">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 15l7-7 7 7"/></svg>
+  </button>
+
+  <script>
+    // Back to top
+    const btnTop = document.getElementById('btn-top');
+    window.addEventListener('scroll', () => {
+      btnTop.classList.toggle('hidden', window.scrollY < 300);
+      btnTop.classList.toggle('flex', window.scrollY >= 300);
+    });
+    btnTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+    // Active sidebar link tracking
+    const sections = document.querySelectorAll('section[id]');
+    const links = document.querySelectorAll('.sidebar-link');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          links.forEach((link) => link.classList.remove('active'));
+          const active = document.querySelector(`.sidebar-link[href="#${entry.target.id}"]`);
+          if (active) active.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-20% 0px -70% 0px' });
+    sections.forEach((s) => observer.observe(s));
+
+    // Mobile TOC toggle
+    document.getElementById('toc-toggle').addEventListener('click', () => {
+      const sidebar = document.getElementById('sidebar');
+      sidebar.classList.toggle('hidden');
+      sidebar.classList.toggle('fixed');
+      sidebar.classList.toggle('left-0');
+      sidebar.classList.toggle('top-14');
+      sidebar.classList.toggle('bg-white');
+      sidebar.classList.toggle('dark:bg-zinc-900');
+      sidebar.classList.toggle('z-50');
+      sidebar.classList.toggle('border-r');
+      sidebar.classList.toggle('border-zinc-200');
+      sidebar.classList.toggle('shadow-lg');
+    });
+  </script>
+</body>
+</html>

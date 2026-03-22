@@ -1,0 +1,809 @@
+================================================================================
+CITE — Citation Manager Browser Extension
+Requirements Specification v1.0
+================================================================================
+
+PROJECT OVERVIEW
+================================================================================
+A privacy-first, high-performance citation manager Chrome extension built with
+Rust/WASM (core engine), Tailwind CSS, and Vanilla JS. Designed to address
+every major pain point found in existing citation managers (Scribbr, MyBib,
+Cite This For Me, etc.) while adding powerful features no competitor offers.
+
+Target users: students, researchers, academics, journalists, legal professionals.
+
+Tech stack:
+  - Core engine:    Rust compiled to WebAssembly
+  - UI:             Vanilla JS + Tailwind CSS
+  - Storage:        IndexedDB (local), Chrome Storage Sync (sync)
+  - Extension:      Chrome Manifest V3 (service worker, content scripts, side panel)
+  - Build:          wasm-pack, esbuild/vite, tailwindcss CLI
+
+
+================================================================================
+1. CORE ENGINE (Rust/WASM)
+================================================================================
+
+1.1 CSL (Citation Style Language) Processor
+    - Full CSL 1.0.2 specification implementation
+    - Load and process CSL style XML definitions
+    - Load and process CSL locale XML files (50+ languages)
+    - Render bibliography entries from structured citation data
+    - Render in-text citations (parenthetical AND narrative variants)
+    - Support all CSL variable types: names, dates, numbers, strings
+    - Support all CSL formatting: font-style, font-weight, text-decoration,
+      vertical-align, text-case (sentence, title, capitalize-first, uppercase,
+      lowercase)
+    - Support CSL grouping, conditionals, macros, sorting, disambiguation
+    - Support CSL second-field-align, hanging-indent, line-spacing,
+      entry-spacing
+    - Output formats: plain text, HTML, RTF, Markdown
+    - Performance target: <5ms per citation render, <50ms for 500-entry
+      bibliography
+
+1.2 CSL Style Repository
+    - Bundle top 20 styles (APA 7, MLA 9, Chicago 17 author-date,
+      Chicago 17 notes-bibliography, Harvard, IEEE, Vancouver, AMA,
+      Turabian 9, ACS, ACM, Nature, Science, Cell, Lancet, BMJ, OSCOLA,
+      Bluebook, AGLC4, NLM)
+    - Lazy-load additional styles from CSL GitHub repository (10,000+ styles)
+    - Search styles by name, field, journal, publisher
+    - Cache downloaded styles in IndexedDB
+    - Pin/favorite frequently used styles
+    - Custom style creation (see 1.3)
+
+1.3 Custom Citation Style Editor
+    - Visual editor for creating/modifying CSL styles
+    - Preview changes in real-time against sample data
+    - Import existing CSL as starting template
+    - Export custom styles as .csl files
+    - Share custom styles (export/import as file)
+
+1.4 Metadata Extraction Engine
+    - Parse HTML structured data:
+        - OpenGraph meta tags (og:title, og:author, og:type, etc.)
+        - Dublin Core meta tags (DC.creator, DC.date, DC.title, etc.)
+        - Schema.org JSON-LD and microdata
+        - Highwire Press tags (citation_author, citation_date, citation_doi, etc.)
+        - PRISM (Publisher Requirements for Industry Standard Metadata)
+        - Twitter Card meta tags
+        - <meta name="author">, <meta name="date">, etc.
+        - COinS (ContextObjects in Spans) embedded in pages
+    - Fallback heuristic extraction:
+        - Detect author bylines via common patterns and selectors
+        - Detect publication dates from common patterns, <time> elements
+        - Detect article titles from <h1>, <title>, og:title hierarchy
+        - Detect publisher/site name from structured data or domain
+    - Source type auto-detection with confidence scoring:
+        - Journal article, book, book chapter, conference paper, thesis,
+          report, webpage, blog post, news article, video, podcast,
+          social media post, legislation, legal case, patent, dataset,
+          software, map, image, interview, personal communication,
+          encyclopedia entry, dictionary entry
+    - Return structured CSL-JSON data
+
+1.5 PDF Metadata Extraction
+    - Parse PDF Info Dictionary (Title, Author, Subject, Keywords, Creator,
+      Producer, CreationDate, ModDate)
+    - Parse XMP metadata packets embedded in PDFs
+    - Extract DOI from PDF text (regex patterns on first 2 pages)
+    - Extract arXiv ID from PDF text
+    - Handle encrypted/protected PDFs gracefully (extract what's available)
+
+1.6 Identifier Resolution
+    - DOI resolution via CrossRef API → CSL-JSON
+    - ISBN resolution via Open Library API + Google Books API
+    - PMID/PMCID resolution via NCBI E-utilities API
+    - arXiv ID resolution via arXiv API
+    - ISSN lookup for journal metadata
+    - URL resolution (follow redirects, extract canonical URL)
+    - Batch resolution (multiple identifiers at once)
+
+1.7 Format Parsers (Import)
+    - BibTeX (.bib) — full parser with field mapping to CSL-JSON
+    - BibLaTeX (.bib) — extended field support
+    - RIS (.ris) — Research Information Systems format
+    - EndNote XML (.xml)
+    - EndNote Import (.enw)
+    - CSL-JSON (.json) — native format
+    - MEDLINE/PubMed (.nbib)
+    - MODS XML (.xml) — Metadata Object Description Schema
+    - Zotero RDF (.rdf)
+    - Refer/BibIX (.refer)
+    - ISI/Web of Science (.ciw)
+    - MARC XML (.xml) — library catalog format
+    - CSV/TSV with configurable column mapping
+    - Copac (.txt)
+    - All parsers:
+        - Validate and report errors/warnings per entry
+        - Handle malformed input gracefully (partial parse)
+        - Preserve original fields that don't map to CSL-JSON as "custom-" fields
+        - Support character encoding detection (UTF-8, Latin-1, etc.)
+
+1.8 Format Serializers (Export)
+    - BibTeX (.bib)
+    - BibLaTeX (.bib)
+    - RIS (.ris)
+    - EndNote XML (.xml)
+    - CSL-JSON (.json)
+    - MEDLINE (.nbib)
+    - MODS XML (.xml)
+    - Zotero RDF (.rdf)
+    - Refer (.refer)
+    - Word XML Bibliography (.xml) — for MS Word's built-in citation manager
+    - Formatted text (plain text, via CSL processor)
+    - Formatted HTML (via CSL processor)
+    - Formatted RTF (.rtf)
+    - Formatted Markdown (.md)
+    - Google Docs compatible HTML (clipboard format)
+    - LaTeX \bibitem format
+    - YAML (.yaml) — for static site generators (Hugo, Jekyll, etc.)
+    - CSV/TSV with configurable columns
+    - JSON-LD (Schema.org ScholarlyArticle)
+    - All serializers:
+        - Selective export (choose specific entries, projects, tags, date ranges)
+        - Filter by source type, author, year, tag, project
+        - Sort options (author, year, title, date added, custom)
+        - Include/exclude specific fields
+        - Character encoding options (UTF-8, ASCII with transliteration)
+        - Batch export (entire library or filtered subset)
+
+1.9 Text/String Utilities (Rust)
+    - Unicode-aware title case, sentence case conversion
+    - LaTeX special character encoding/decoding
+    - HTML entity encoding/decoding
+    - Author name parsing (First Last, Last First, suffixes, particles,
+      institutional/corporate authors)
+    - Date parsing from diverse formats (ISO 8601, natural language, partial)
+    - URL validation and normalization
+    - DOI validation and normalization (to https://doi.org/ form)
+    - ISBN-10/ISBN-13 validation and conversion
+    - Sorting with locale-aware collation
+
+
+================================================================================
+2. CHROME EXTENSION ARCHITECTURE (Manifest V3)
+================================================================================
+
+2.1 Service Worker (Background)
+    - Initialize WASM module on install/startup
+    - Handle citation requests from content scripts and popup
+    - Manage IndexedDB operations
+    - Handle Chrome alarms for periodic sync
+    - Handle context menu events
+    - Handle omnibox (address bar) commands
+    - Manage cloud sync scheduling
+    - Handle keyboard shortcut commands
+
+2.2 Content Scripts
+    - Inject on all http/https pages (with user permission control)
+    - Extract page metadata and send to service worker
+    - Inject floating cite button (configurable position, or disabled)
+    - Handle text selection for quote extraction with citation
+    - Handle right-click context menu data collection
+    - Detect academic databases and apply specialized extractors:
+        - Google Scholar, PubMed, Scopus, Web of Science, JSTOR,
+          ResearchGate, Academia.edu, Semantic Scholar, IEEE Xplore,
+          SpringerLink, Wiley, Taylor & Francis, ScienceDirect,
+          SSRN, ERIC, ProQuest, EBSCOhost, arXiv, bioRxiv, medRxiv,
+          CORE, Crossref, ORCID pages
+    - PDF viewer integration (detect embedded PDFs, browser PDF viewer)
+
+2.3 Popup UI
+    - Quick cite current page (one-click)
+    - Show extracted metadata with editable fields
+    - Source type selector (auto-detected with manual override)
+    - Citation style selector (with search, recently used, favorites)
+    - Copy formatted citation (bibliography entry)
+    - Copy in-text citation (parenthetical or narrative toggle)
+    - Add to project (project selector dropdown)
+    - Quick access to recent citations
+    - Cite by identifier (paste DOI, ISBN, PMID, URL, arXiv ID)
+    - Status indicators (sync status, error alerts)
+
+2.4 Side Panel
+    - Full bibliography manager (persistent, doesn't close on navigation)
+    - Project/folder tree view
+    - Search and filter citations
+    - Drag and drop to reorder or move between projects
+    - Bulk operations (select multiple → export, delete, move, tag)
+    - Inline editing of citation fields
+    - Preview formatted citation in selected style
+    - Import panel (drag and drop files, paste BibTeX/RIS/DOI)
+    - Export panel with format and filter options
+
+2.5 Options Page
+    - Default citation style selection
+    - Citation style management (download, pin, create custom)
+    - Cloud sync configuration
+    - Import/export settings
+    - Keyboard shortcut configuration
+    - UI preferences (theme, popup vs side panel default, float button)
+    - Privacy settings (telemetry opt-out, local-only mode)
+    - Data management (clear cache, backup/restore, storage usage)
+    - Site-specific extractor settings
+    - Proxy/FTP configuration for cloud storage
+
+2.6 Context Menu Integration
+    - Right-click page → "Cite this page"
+    - Right-click link → "Cite linked page"
+    - Right-click selected text → "Save quote with citation"
+    - Right-click PDF link → "Cite this PDF"
+    - Right-click image → "Cite this image"
+    - Sub-menu for quick style selection
+    - Sub-menu for project selection
+
+2.7 Omnibox Integration
+    - Type "cite " in address bar to activate
+    - "cite doi:10.xxxx" → resolve and cite
+    - "cite isbn:978xxxx" → resolve and cite
+    - "cite search:query" → search library
+    - "cite export" → open export panel
+
+2.8 Keyboard Shortcuts
+    - Ctrl+Shift+C — Cite current page (configurable)
+    - Ctrl+Shift+S — Open side panel
+    - Ctrl+Shift+V — Paste citation from clipboard
+    - All shortcuts user-configurable via chrome://extensions/shortcuts
+
+
+================================================================================
+3. DATA MODEL
+================================================================================
+
+3.1 Citation Entry (CSL-JSON based, extended)
+    - All standard CSL-JSON fields (type, id, title, author, issued, etc.)
+    - Extended fields:
+        - _id:              unique UUID
+        - _projectIds:      array of project IDs this entry belongs to
+        - _tags:            array of user-defined tags
+        - _notes:           user annotations/notes (rich text)
+        - _quotes:          array of { text, page, timestamp }
+        - _color:           color label
+        - _starred:         boolean favorite flag
+        - _dateAdded:       ISO timestamp
+        - _dateModified:    ISO timestamp
+        - _sourceUrl:       original URL where citation was captured
+        - _attachments:     array of { name, type, size, localPath | cloudPath }
+        - _readStatus:      unread | reading | read
+        - _customFields:    object of user-defined key-value pairs
+        - _importSource:    origin format and file name
+        - _syncStatus:      synced | pending | conflict
+        - _syncHash:        hash for conflict detection
+
+3.2 Project / Folder
+    - id:               unique UUID
+    - name:             string
+    - description:      string (optional)
+    - parentId:         UUID or null (for nested folders)
+    - color:            hex color
+    - icon:             icon identifier
+    - sortOrder:        integer
+    - dateCreated:      ISO timestamp
+    - dateModified:     ISO timestamp
+    - defaultStyle:     CSL style ID override (optional)
+
+3.3 Tag
+    - id:               unique UUID
+    - name:             string
+    - color:            hex color
+
+3.4 Settings
+    - defaultStyleId:           CSL style ID
+    - defaultLocale:            language code (en-US, es-ES, etc.)
+    - theme:                    light | dark | system
+    - floatButtonEnabled:       boolean
+    - floatButtonPosition:      top-right | top-left | bottom-right | bottom-left
+    - autoAddToProject:         project ID or "last-used" or "ask"
+    - citationCopyFormat:       text | html | both
+    - inTextDefault:            parenthetical | narrative
+    - syncEnabled:              boolean
+    - syncProvider:             none | chrome | gdrive | dropbox | onedrive | webdav | ftp
+    - syncInterval:             minutes (5, 15, 30, 60)
+    - syncConflictResolution:   local-wins | remote-wins | ask
+    - exportDefaults:           { format, encoding, filters }
+    - keyboardShortcuts:        { action: shortcut } map
+    - siteExtractors:           { domain: enabled/disabled } overrides
+    - proxyConfig:              { host, port, auth } for FTP/WebDAV
+
+
+================================================================================
+4. BIBLIOGRAPHY MANAGEMENT
+================================================================================
+
+4.1 Projects / Folders
+    - Create, rename, delete projects
+    - Nested folders (unlimited depth)
+    - Move/copy citations between projects
+    - A citation can belong to multiple projects (many-to-many)
+    - Project-level default citation style override
+    - Project-level export (all entries in a project)
+    - Duplicate detection within and across projects
+    - Project templates (pre-configured for common assignment types)
+    - Archive projects (hide from active view, still searchable)
+
+4.2 Tagging
+    - Create, rename, delete, merge tags
+    - Assign multiple tags to any citation
+    - Color-coded tags
+    - Filter/search by tag (AND/OR logic)
+    - Tag auto-suggestions based on existing tags
+    - Bulk tag operations
+
+4.3 Search & Filter
+    - Full-text search across all citation fields
+    - Filter by: source type, author, year/date range, tag, project,
+      read status, starred, color, date added range, has notes,
+      has attachments, has quotes
+    - Combine filters with AND/OR logic
+    - Save filter presets
+    - Sort by: author, title, year, date added, date modified,
+      source type, custom order
+    - Search results highlighting
+
+4.4 Duplicate Detection & Merge
+    - Auto-detect duplicates on import and manual add
+    - Detection based on: DOI match, title similarity (fuzzy),
+      ISBN match, URL match, author+year+title heuristic
+    - Side-by-side comparison view
+    - Merge duplicates (pick best fields from each)
+    - Mark as "not duplicate" to suppress future warnings
+    - Batch duplicate scan across entire library
+
+4.5 Annotations & Quotes
+    - Attach notes to any citation (rich text / markdown)
+    - Save selected text as quote with automatic citation
+    - Page number / location for each quote
+    - Timestamp when quote was captured
+    - Export all quotes for a project (with citations)
+
+4.6 Read Status & Workflow
+    - Mark citations as: unread, reading, read
+    - Star/favorite citations
+    - Color labels (red, orange, yellow, green, blue, purple)
+    - Custom fields for user-defined metadata
+
+4.7 Citation Editing
+    - Edit any field of a citation entry
+    - Change source type (with field remapping)
+    - Author name editor (add, remove, reorder authors)
+    - Date editor with partial date support (year-only, year-month)
+    - Undo/redo for edits
+    - Edits persist (never revert to auto-extracted values)
+    - Edit history log
+
+4.8 Batch Operations
+    - Select multiple citations (checkbox, select all, shift-select)
+    - Batch delete
+    - Batch move to project
+    - Batch add/remove tags
+    - Batch change source type
+    - Batch export
+    - Batch change style
+    - Batch find & replace across fields
+
+
+================================================================================
+5. IMPORT SYSTEM
+================================================================================
+
+5.1 File Import
+    - Drag & drop files onto side panel or options page
+    - File picker dialog
+    - Supported formats: all formats listed in 1.7
+    - Multi-file import (mixed formats in one batch)
+    - Import preview: show parsed entries before committing
+    - Selective import: checkbox per entry in preview
+    - Field mapping configuration for CSV/TSV
+    - Duplicate detection during import (skip, merge, import anyway)
+    - Import log with success/warning/error counts per entry
+    - Preserve original file reference in _importSource
+
+5.2 Identifier Import
+    - Paste list of DOIs → batch resolve and import
+    - Paste list of ISBNs → batch resolve and import
+    - Paste list of PMIDs → batch resolve and import
+    - Paste list of arXiv IDs → batch resolve and import
+    - Paste list of URLs → batch extract and import
+    - Mixed identifier list (auto-detect type per line)
+    - One identifier per line or comma-separated
+
+5.3 Clipboard Import
+    - Paste BibTeX/RIS text directly → parse and import
+    - Paste formatted citation text → attempt reverse parse (best effort)
+    - Paste CSL-JSON → import directly
+
+5.4 Cloud Import
+    - Import from Google Drive (pick .bib, .ris, .json, etc.)
+    - Import from Dropbox
+    - Import from OneDrive
+    - Import from WebDAV server
+    - Import from FTP/SFTP server
+    - Browse remote file system, preview, selective import
+
+5.5 Migration Import (from other tools)
+    - Zotero library export (RDF, CSL-JSON, BibTeX)
+    - Mendeley export (BibTeX, RIS)
+    - EndNote export (XML, RIS)
+    - RefWorks export (RIS)
+    - Papers export (BibTeX)
+    - EasyBib / Scribbr / MyBib (BibTeX, RIS — whatever they export)
+    - JabRef (BibTeX with JabRef-specific fields)
+    - Citavi (BibTeX, RIS)
+    - Guided migration wizard with tool-specific instructions
+
+
+================================================================================
+6. EXPORT SYSTEM
+================================================================================
+
+6.1 Export Formats
+    - All formats listed in 1.8
+    - Per-format configuration options:
+        BibTeX/BibLaTeX:
+            - Key generation style (author-year, author-title, custom pattern)
+            - Include abstract: yes/no
+            - Include keywords: yes/no
+            - Include custom fields: yes/no
+            - Encoding: UTF-8 / ASCII with LaTeX escapes
+        RIS:
+            - Include notes: yes/no
+            - Include keywords: yes/no
+        Formatted (text/HTML/RTF/Markdown):
+            - Citation style selection
+            - Include in-text citations: yes/no
+            - Hanging indent: yes/no
+            - Line spacing: single / 1.5 / double
+            - Font family and size (RTF/HTML)
+            - Number entries: yes/no
+        CSV/TSV:
+            - Column selection and ordering
+            - Header row: yes/no
+            - Delimiter: comma / tab / semicolon / pipe / custom
+            - Quoting: always / as-needed / never
+            - Date format selection
+        Word XML:
+            - Compatible with Word 2007+
+        LaTeX \bibitem:
+            - Key generation style
+            - Include \bibliographystyle command
+
+6.2 Selective Export Logic
+    - Export entire library
+    - Export specific project(s)
+    - Export by tag(s) (AND/OR)
+    - Export by source type(s)
+    - Export by author(s)
+    - Export by year/date range
+    - Export by date added range
+    - Export starred only
+    - Export by read status
+    - Export by color label
+    - Export search results (current filter)
+    - Export manually selected entries (checkbox)
+    - Combine any of the above filters
+    - Preview export count before executing
+    - Remember last export settings per format
+
+6.3 Export Destinations
+    - Download as file (browser download)
+    - Copy to clipboard (formatted or raw)
+    - Save to Google Drive (pick folder)
+    - Save to Dropbox (pick folder)
+    - Save to OneDrive (pick folder)
+    - Save to WebDAV server (pick path)
+    - Save to FTP/SFTP server (pick path)
+    - Auto-export on change (watch mode → cloud destination)
+    - Email export (generate mailto: link with attachment)
+
+6.4 Scheduled / Automated Export
+    - Auto-export on every change to a cloud destination
+    - Periodic export (daily/weekly) to configured destination
+    - Export on project completion
+    - Export format + destination profiles (save named configurations)
+
+
+================================================================================
+7. SYNC & CLOUD STORAGE
+================================================================================
+
+7.1 Chrome Storage Sync
+    - Sync settings and small metadata across Chrome instances
+    - Limited to Chrome's storage.sync quota (100KB total)
+    - Used for: settings, style preferences, project list metadata
+
+7.2 Full Library Sync via Cloud
+    - Sync entire citation library across devices
+    - Supported providers:
+        a) Google Drive
+            - OAuth 2.0 authentication
+            - Store library as JSON in app-specific folder
+            - Incremental sync (only changed entries)
+        b) Dropbox
+            - OAuth 2.0 authentication
+            - Store in /Apps/Cite/ folder
+            - Use Dropbox content hashing for change detection
+        c) OneDrive
+            - OAuth 2.0 / Microsoft Graph API
+            - Store in app folder
+        d) WebDAV
+            - Basic auth or token auth
+            - User-configurable server URL
+            - Compatible with Nextcloud, ownCloud, Synology, etc.
+        e) FTP / SFTP
+            - Username/password or key-based auth (SFTP)
+            - User-configurable host, port, path
+            - Passive/active mode configuration
+        f) Custom S3-compatible
+            - Access key / secret key auth
+            - Configurable endpoint, bucket, path prefix
+            - Compatible with AWS S3, MinIO, Backblaze B2, Wasabi, etc.
+
+7.3 Sync Logic
+    - Entry-level sync (not whole-file replacement)
+    - Last-modified timestamp comparison
+    - Content hash for conflict detection
+    - Conflict resolution strategies:
+        - Local wins (overwrite remote)
+        - Remote wins (overwrite local)
+        - Ask user (side-by-side diff with merge UI)
+        - Auto-merge non-conflicting field changes
+    - Sync queue for offline changes (apply when back online)
+    - Sync status per entry (synced, pending, conflict, error)
+    - Sync log / history viewable in options
+    - Manual sync trigger button
+    - Sync pause/resume
+
+7.4 Backup & Restore
+    - One-click full library backup (JSON + attachments archive)
+    - Scheduled automatic backups (daily/weekly, configurable)
+    - Backup to local download or cloud destination
+    - Restore from backup file
+    - Backup versioning (keep last N backups)
+    - Selective restore (pick entries/projects from backup)
+
+
+================================================================================
+8. UI / UX SPECIFICATIONS
+================================================================================
+
+8.1 Design Principles
+    - Clean, minimal, fast — no bloat
+    - Dark mode and light mode (follow system or manual toggle)
+    - Responsive within extension constraints (popup 400x600, side panel 400xfull)
+    - Accessible (WCAG 2.1 AA: keyboard nav, screen readers, contrast)
+    - Zero ads, zero tracking, zero upsells
+    - Instant feedback on all actions (optimistic UI)
+    - Animations: subtle, functional, never blocking (150ms max)
+
+8.2 Popup (400 x 600px)
+    - Header: page title (truncated), source type badge
+    - Metadata card: author, date, title, publisher, DOI — all editable inline
+    - Source type dropdown (auto-selected, overridable)
+    - Style selector: search bar + recently used + pinned
+    - Formatted citation preview (bibliography entry)
+    - In-text citation preview (parenthetical / narrative toggle)
+    - Action buttons: Copy citation, Copy in-text, Add to project
+    - Project selector dropdown (with "New project" option)
+    - Bottom bar: "Cite by DOI/ISBN" link, settings gear, side panel icon
+    - Loading state: skeleton UI, never blank
+    - Error state: clear message + suggested action
+
+8.3 Side Panel (400px x full height)
+    - Tabs: Library | Import | Export | Settings
+    - Library tab:
+        - Project tree (left sidebar, collapsible)
+        - Citation list (sortable, filterable)
+        - Search bar with filter chips
+        - Each citation row: type icon, title, author, year, tags,
+          star, read status, sync status
+        - Click to expand inline detail/edit view
+        - Multi-select with shift/ctrl+click
+        - Bulk action toolbar (appears on multi-select)
+    - Import tab:
+        - Drag & drop zone
+        - "Paste identifiers" text area
+        - "Browse cloud" buttons per provider
+        - Import preview list with checkboxes
+    - Export tab:
+        - Format selector (grid of format icons)
+        - Filter/selection panel
+        - Destination selector
+        - Preview count
+        - Export button
+    - Settings tab:
+        - Mirrors options page in compact form
+
+8.4 Options Page (full tab)
+    - All settings organized by category in sidebar nav
+    - Live preview for citation style changes
+    - Cloud account management (connect/disconnect per provider)
+    - Keyboard shortcut editor
+    - Data management (storage usage, clear cache, backup/restore)
+    - About / version / changelog / links
+
+8.5 Float Button
+    - Small cite icon overlaid on web pages (configurable position)
+    - Click to open popup pre-filled with current page metadata
+    - Can be disabled globally or per-site
+    - Drag to reposition (remember position)
+    - Fade when not hovered
+
+8.6 Notifications
+    - Toast notifications for: citation added, export complete, sync status,
+      import complete, errors
+    - Non-blocking, auto-dismiss (3-5 seconds)
+    - Click to see details
+    - Notification history in side panel
+
+
+================================================================================
+9. PRIVACY & SECURITY
+================================================================================
+
+9.1 Privacy
+    - NO telemetry by default (opt-in analytics only)
+    - NO bandwidth hijacking (unlike MyBib)
+    - NO server-side processing of citations (all processing in WASM locally)
+    - Cloud sync is optional and user-initiated
+    - API calls only to: CrossRef, Open Library, NCBI, arXiv, Google Books
+      (for identifier resolution — user-triggered only)
+    - Clear documentation of every network request the extension makes
+    - No third-party scripts or SDKs (except OAuth flows for cloud providers)
+
+9.2 Security
+    - Content Security Policy: strict, no eval, no inline scripts
+    - OAuth tokens stored in chrome.storage.session (encrypted, session-scoped)
+    - Cloud credentials never logged or transmitted beyond auth provider
+    - FTP/SFTP credentials stored encrypted in chrome.storage.local
+    - Input sanitization on all user-editable fields
+    - CSL/XML parsing hardened against XXE and injection
+    - WASM memory sandboxed by browser (no direct system access)
+    - Regular dependency audits (cargo audit, npm audit)
+
+9.3 Permissions (Minimal)
+    - activeTab — extract metadata from current tab only when user clicks
+    - storage — local and sync storage
+    - sidePanel — side panel UI
+    - contextMenus — right-click actions
+    - identity — OAuth flows for cloud providers (optional)
+    - Optional host permissions requested on-demand per site
+    - NO blanket <all_urls> permission at install (request as needed)
+
+
+================================================================================
+10. PERFORMANCE REQUIREMENTS
+================================================================================
+
+10.1 Targets
+    - Extension popup open:           <200ms
+    - Metadata extraction:            <300ms per page
+    - Single citation format:         <5ms
+    - 500-entry bibliography format:  <50ms
+    - BibTeX parse (1000 entries):    <100ms
+    - Search across 10,000 entries:   <50ms
+    - WASM module load (cold):        <100ms
+    - WASM module load (cached):      <10ms
+    - Side panel render (500 items):  <200ms (virtualized list)
+
+10.2 Resource Limits
+    - Extension bundle size:          <2MB (WASM + JS + CSS + bundled styles)
+    - Memory usage (idle):            <20MB
+    - Memory usage (active, 10k entries): <100MB
+    - IndexedDB storage:              warn at 50MB, no hard limit
+    - Service worker wake time:       <50ms
+
+
+================================================================================
+11. TESTING REQUIREMENTS
+================================================================================
+
+11.1 Rust/WASM
+    - Unit tests for every CSL feature (formatting, sorting, disambiguation)
+    - Unit tests for every parser (BibTeX, RIS, etc.) with fixtures
+    - Unit tests for every serializer
+    - Property-based tests for parsers (roundtrip: parse → serialize → parse)
+    - Benchmark tests for performance targets
+    - Test against CSL test suite (citeproc-test)
+    - Test with real-world .bib/.ris files from popular repositories
+
+11.2 Extension / JS
+    - Unit tests for content script extraction logic
+    - Integration tests for popup and side panel workflows
+    - E2E tests with Puppeteer/Playwright for Chrome extension
+    - Test against known academic sites (Google Scholar, PubMed, JSTOR, etc.)
+    - Cross-browser testing prep (Firefox WebExtensions API differences)
+
+11.3 Citation Accuracy
+    - Maintain a test suite of 100+ known-correct citations
+    - Compare output against authoritative sources (Purdue OWL, APA manual, etc.)
+    - Regression tests: any reported formatting bug becomes a permanent test case
+
+
+================================================================================
+12. FUTURE / POST-LAUNCH (Out of scope for MVP, tracked for roadmap)
+================================================================================
+
+12.1 Browser Ports
+    - Firefox (WebExtensions API, manifest differences)
+    - Safari (Safari Web Extension, Xcode wrapper)
+    - Edge (Chromium-based, minimal changes)
+
+12.2 Integrations
+    - Google Docs add-on (insert citations inline, auto-bibliography)
+    - Microsoft Word add-in (VSTO or web add-in)
+    - Overleaf integration (export BibTeX to Overleaf project)
+    - Notion integration
+    - Obsidian plugin
+    - VS Code extension (for LaTeX/Markdown writers)
+
+12.3 AI Features (local, privacy-first)
+    - AI-assisted author/date extraction fallback (local small model)
+    - Smart source type detection
+    - Citation completeness scoring
+    - Related source suggestions
+
+12.4 Collaboration
+    - Shared projects (read/write with link sharing)
+    - Real-time collaborative bibliography editing
+    - Comment threads on citations
+
+12.5 Citation Graph
+    - Visualize citation relationships (cited by / cites)
+    - Discover related papers via CrossRef/Semantic Scholar
+    - Bibliography network visualization
+
+
+================================================================================
+13. PHASED DELIVERY
+================================================================================
+
+Phase 1 — Foundation (MVP)
+    - Rust/WASM CSL engine (top 20 styles, 4 output formats)
+    - Metadata extraction (structured data + heuristic fallback)
+    - Chrome extension (popup, context menu, basic side panel)
+    - Local storage (IndexedDB)
+    - Projects, tags, search, star, read status
+    - Copy citation + in-text citation
+    - Import: BibTeX, RIS, CSL-JSON, DOI/ISBN/PMID lookup
+    - Export: BibTeX, RIS, CSL-JSON, formatted text/HTML/Markdown
+    - Selective import/export with filters
+    - Basic settings and options page
+    - Dark/light theme
+
+Phase 2 — Full Import/Export & Cloud
+    - All remaining import formats (1.7)
+    - All remaining export formats (1.8)
+    - CSV/TSV with custom column mapping
+    - Cloud sync (Google Drive, Dropbox, OneDrive)
+    - WebDAV sync
+    - FTP/SFTP sync
+    - S3-compatible sync
+    - Scheduled backup to cloud
+    - Migration wizard for other tools
+    - Duplicate detection & merge
+
+Phase 3 — Power User
+    - Full CSL style repository (10,000+ styles, search, lazy-load)
+    - Custom citation style editor
+    - PDF metadata extraction (WASM)
+    - Batch operations
+    - Annotations & quotes
+    - Side panel full build-out
+    - Omnibox integration
+    - Float button
+    - Notification system
+    - Auto-export on change
+
+Phase 4 — Expansion
+    - Firefox & Safari ports
+    - Google Docs add-on
+    - Word add-in
+    - AI-assisted extraction
+    - Collaboration features
+    - Citation graph visualization
+
+
+================================================================================
+END OF REQUIREMENTS
+================================================================================

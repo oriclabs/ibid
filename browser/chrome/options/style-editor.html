@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ibid — Custom Style Editor</title>
+  <link rel="stylesheet" href="../styles/ibid.css">
+</head>
+<body class="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans">
+
+  <div class="max-w-3xl mx-auto py-8 px-6">
+    <div class="flex items-center gap-3 mb-6">
+      <img src="../icons/icon-128.png" alt="Ibid" class="w-8 h-8 rounded-lg">
+      <h1 class="text-lg font-bold text-saffron-700 dark:text-saffron-400">Custom Style Editor</h1>
+    </div>
+
+    <div class="grid grid-cols-2 gap-6">
+      <!-- Editor panel -->
+      <div class="space-y-4">
+        <div class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 space-y-3">
+          <h2 class="text-sm font-semibold">Style Name</h2>
+          <input id="cs-name" type="text" placeholder="My Custom Style" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 outline-none">
+        </div>
+
+        <div class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 space-y-3">
+          <h2 class="text-sm font-semibold">Bibliography Template</h2>
+          <p class="text-[10px] text-zinc-400">Use placeholders: {author}, {year}, {title}, {container}, {volume}, {issue}, {page}, {doi}, {url}, {publisher}</p>
+
+          <div class="space-y-2">
+            <div>
+              <label class="text-[10px] text-zinc-500">Journal Article</label>
+              <input id="cs-journal" type="text" value="{author}. ({year}). {title}. *{container}*, *{volume}*({issue}), {page}. {doi}" class="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-xs font-mono focus:ring-1 focus:ring-saffron-500 outline-none">
+            </div>
+            <div>
+              <label class="text-[10px] text-zinc-500">Book</label>
+              <input id="cs-book" type="text" value="{author}. ({year}). *{title}*. {publisher}." class="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-xs font-mono focus:ring-1 focus:ring-saffron-500 outline-none">
+            </div>
+            <div>
+              <label class="text-[10px] text-zinc-500">Webpage</label>
+              <input id="cs-webpage" type="text" value="{author}. ({year}). {title}. {url}" class="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-xs font-mono focus:ring-1 focus:ring-saffron-500 outline-none">
+            </div>
+            <div>
+              <label class="text-[10px] text-zinc-500">Other / Default</label>
+              <input id="cs-default" type="text" value="{author}. ({year}). {title}. {doi}" class="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-xs font-mono focus:ring-1 focus:ring-saffron-500 outline-none">
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 space-y-3">
+          <h2 class="text-sm font-semibold">In-text Citation</h2>
+          <div class="space-y-2">
+            <div>
+              <label class="text-[10px] text-zinc-500">Parenthetical</label>
+              <input id="cs-intext" type="text" value="({author-short}, {year})" class="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-xs font-mono focus:ring-1 focus:ring-saffron-500 outline-none">
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 space-y-3">
+          <h2 class="text-sm font-semibold">Author Format</h2>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[10px] text-zinc-500">Name order</label>
+              <select id="cs-name-order" class="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-xs">
+                <option value="last-first">Last, First (Smith, J.)</option>
+                <option value="first-last">First Last (J. Smith)</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[10px] text-zinc-500">Et al. after</label>
+              <select id="cs-etal" class="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-xs">
+                <option value="3">3 authors</option>
+                <option value="4">4 authors</option>
+                <option value="6">6 authors</option>
+                <option value="7">7 authors</option>
+                <option value="99">Never</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[10px] text-zinc-500">Connector</label>
+              <select id="cs-connector" class="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-xs">
+                <option value="&">&</option>
+                <option value="and">and</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[10px] text-zinc-500">Initials</label>
+              <select id="cs-initials" class="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-xs">
+                <option value="true">Use initials (J. A.)</option>
+                <option value="false">Full name (John Andrew)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex gap-2">
+          <button id="btn-save-style" class="flex-1 px-3 py-2 rounded-lg bg-saffron-500 hover:bg-saffron-600 text-white font-medium text-sm transition-colors">Save Style</button>
+          <button id="btn-export-style" class="px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">Export JSON</button>
+        </div>
+      </div>
+
+      <!-- Preview panel -->
+      <div class="space-y-4">
+        <div class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 sticky top-4">
+          <h2 class="text-sm font-semibold mb-3">Live Preview</h2>
+
+          <div class="space-y-3">
+            <div>
+              <h3 class="text-[10px] text-zinc-400 uppercase tracking-wider mb-1">Journal Article</h3>
+              <div id="preview-journal" class="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-800 rounded px-3 py-2"></div>
+            </div>
+            <div>
+              <h3 class="text-[10px] text-zinc-400 uppercase tracking-wider mb-1">Book</h3>
+              <div id="preview-book" class="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-800 rounded px-3 py-2"></div>
+            </div>
+            <div>
+              <h3 class="text-[10px] text-zinc-400 uppercase tracking-wider mb-1">Webpage</h3>
+              <div id="preview-webpage" class="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-800 rounded px-3 py-2"></div>
+            </div>
+            <div>
+              <h3 class="text-[10px] text-zinc-400 uppercase tracking-wider mb-1">In-text Citation</h3>
+              <div id="preview-intext" class="text-sm text-zinc-700 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-800 rounded px-3 py-2"></div>
+            </div>
+          </div>
+
+          <div id="style-save-status" class="hidden mt-3 text-xs rounded px-3 py-2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (s) => document.querySelector(s);
+
+    // Sample data for preview
+    const samples = {
+      journal: {
+        author: [{ family: 'Smith', given: 'John A.' }, { family: 'Doe', given: 'Jane B.' }, { family: 'Wilson', given: 'Robert C.' }],
+        title: 'The impact of climate change on marine biodiversity',
+        'container-title': 'Nature Climate Change',
+        issued: { 'date-parts': [[2024, 3]] },
+        volume: '14', issue: '3', page: '245-260',
+        DOI: '10.1038/s41558-024-01234-5',
+        URL: 'https://doi.org/10.1038/s41558-024-01234-5',
+        publisher: 'Nature Publishing Group',
+      },
+      book: {
+        author: [{ family: 'Knuth', given: 'Donald E.' }],
+        title: 'The Art of Computer Programming',
+        issued: { 'date-parts': [[1997]] },
+        publisher: 'Addison-Wesley',
+      },
+      webpage: {
+        author: [{ literal: 'World Health Organization' }],
+        title: 'Climate change and health',
+        issued: { 'date-parts': [[2024, 1]] },
+        URL: 'https://www.who.int/health-topics/climate-change',
+      },
+    };
+
+    function formatAuthors(authors, opts) {
+      if (!authors?.length) return '';
+      const fmt = (a) => {
+        if (a.literal) return a.literal;
+        const f = a.family || '';
+        const g = a.given || '';
+        const initials = opts.initials ? g.split(/[\s.]/).filter(Boolean).map(p => p[0] + '.').join(' ') : g;
+        return opts.order === 'last-first' ? `${f}, ${initials}`.trim() : `${initials} ${f}`.trim();
+      };
+      const etAlMin = parseInt(opts.etal);
+      if (authors.length >= etAlMin) {
+        return fmt(authors[0]) + ' et al.';
+      }
+      if (authors.length === 1) return fmt(authors[0]);
+      if (authors.length === 2) return `${fmt(authors[0])} ${opts.connector} ${fmt(authors[1])}`;
+      return authors.slice(0, -1).map(fmt).join(', ') + `, ${opts.connector} ` + fmt(authors[authors.length - 1]);
+    }
+
+    function applyTemplate(template, data, opts) {
+      const author = formatAuthors(data.author, opts);
+      const authorShort = data.author?.[0]?.family || data.author?.[0]?.literal || '';
+      const year = data.issued?.['date-parts']?.[0]?.[0] || 'n.d.';
+      const doi = data.DOI ? `https://doi.org/${data.DOI}` : '';
+
+      return template
+        .replace('{author}', author)
+        .replace('{author-short}', authorShort)
+        .replace('{year}', year)
+        .replace('{title}', data.title || '')
+        .replace('{container}', data['container-title'] || '')
+        .replace('{volume}', data.volume || '')
+        .replace('{issue}', data.issue || '')
+        .replace('{page}', data.page || '')
+        .replace('{doi}', doi)
+        .replace('{url}', data.URL || '')
+        .replace('{publisher}', data.publisher || '')
+        .replace(/\*([^*]+)\*/g, '<i>$1</i>')  // *text* → italic
+        .replace(/\(\)/g, '')  // remove empty parens
+        .replace(/, ,/g, ',')
+        .replace(/\.\./g, '.')
+        .replace(/,\s*\./g, '.');
+    }
+
+    function updatePreview() {
+      const opts = {
+        order: $('#cs-name-order').value,
+        etal: $('#cs-etal').value,
+        connector: $('#cs-connector').value,
+        initials: $('#cs-initials').value === 'true',
+      };
+
+      $('#preview-journal').innerHTML = applyTemplate($('#cs-journal').value, samples.journal, opts);
+      $('#preview-book').innerHTML = applyTemplate($('#cs-book').value, samples.book, opts);
+      $('#preview-webpage').innerHTML = applyTemplate($('#cs-webpage').value, samples.webpage, opts);
+      $('#preview-intext').innerHTML = applyTemplate($('#cs-intext').value, samples.journal, opts);
+    }
+
+    // Live update
+    for (const el of document.querySelectorAll('input, select')) {
+      el.addEventListener('input', updatePreview);
+      el.addEventListener('change', updatePreview);
+    }
+
+    // Save
+    $('#btn-save-style').addEventListener('click', async () => {
+      const name = $('#cs-name').value.trim() || 'My Custom Style';
+      const style = {
+        id: 'custom-' + name.toLowerCase().replace(/\s+/g, '-'),
+        name,
+        templates: {
+          'article-journal': $('#cs-journal').value,
+          'book': $('#cs-book').value,
+          'webpage': $('#cs-webpage').value,
+          'default': $('#cs-default').value,
+        },
+        intext: $('#cs-intext').value,
+        authorFormat: {
+          order: $('#cs-name-order').value,
+          etal: parseInt($('#cs-etal').value),
+          connector: $('#cs-connector').value,
+          initials: $('#cs-initials').value === 'true',
+        },
+      };
+
+      const { customStyles = [] } = await chrome.storage.local.get(['customStyles']);
+      const existing = customStyles.findIndex(s => s.id === style.id);
+      if (existing >= 0) customStyles[existing] = style;
+      else customStyles.push(style);
+      await chrome.storage.local.set({ customStyles });
+
+      const status = $('#style-save-status');
+      status.className = 'mt-3 text-xs rounded px-3 py-2 bg-emerald-50 text-emerald-700';
+      status.textContent = `Style "${name}" saved! It will appear in the style picker.`;
+      status.classList.remove('hidden');
+      setTimeout(() => status.classList.add('hidden'), 3000);
+    });
+
+    // Export
+    $('#btn-export-style').addEventListener('click', () => {
+      const style = {
+        name: $('#cs-name').value.trim() || 'My Custom Style',
+        templates: {
+          'article-journal': $('#cs-journal').value,
+          'book': $('#cs-book').value,
+          'webpage': $('#cs-webpage').value,
+          'default': $('#cs-default').value,
+        },
+        intext: $('#cs-intext').value,
+        authorFormat: {
+          order: $('#cs-name-order').value,
+          etal: parseInt($('#cs-etal').value),
+          connector: $('#cs-connector').value,
+          initials: $('#cs-initials').value === 'true',
+        },
+      };
+      const blob = new Blob([JSON.stringify(style, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${style.name.replace(/\s+/g, '-').toLowerCase()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // Initial preview
+    updatePreview();
+  </script>
+</body>
+</html>

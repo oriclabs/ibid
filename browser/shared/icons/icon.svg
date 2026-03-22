@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffb820"/>
+      <stop offset="100%" stop-color="#d87102"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="128" height="128" rx="26" ry="26" fill="url(#bg)"/>
+
+  <!-- Book - left page -->
+  <path d="M 64 30.72
+           Q 60.16 28.16 23.04 29.44
+           L 19.2 32
+           L 19.2 92.16
+           L 64 89.6
+           Z"
+        fill="white" opacity="0.92"/>
+
+  <!-- Book - right page -->
+  <path d="M 64 30.72
+           Q 67.84 28.16 104.96 29.44
+           L 108.8 32
+           L 108.8 92.16
+           L 64 89.6
+           Z"
+        fill="white" opacity="0.85"/>
+
+  <!-- Spine line -->
+  <line x1="64" y1="28.16" x2="64" y2="92.16" stroke="#d87102" stroke-width="1.92" opacity="0.3"/>
+
+  <!-- Text lines on left page -->
+  <rect x="26.88" y="46.08" width="26.496000000000002" height="3.2" rx="1.28" fill="#d87102" opacity="0.25"/>
+  <rect x="26.88" y="56.32" width="20.608" height="3.2" rx="1.28" fill="#d87102" opacity="0.20"/>
+  <rect x="26.88" y="66.56" width="23.552000000000003" height="3.2" rx="1.28" fill="#d87102" opacity="0.20"/>
+
+  <!-- Citation number [1] on right page -->
+  <text x="86.4" y="69.76"
+        text-anchor="middle" font-family="Georgia, serif" font-weight="bold"
+        font-size="28.16" fill="#d87102" opacity="0.5">[1]</text>
+
+  <!-- Bookmark ribbon -->
+  <path d="M 74.24 23.04
+           L 87.03999999999999 23.04
+           L 87.03999999999999 66.56
+           L 80.64 57.6
+           L 74.24 66.56
+           Z"
+        fill="#d87102" opacity="0.8"/>
+
+  <!-- Bottom label bar -->
+  <rect x="19.2" y="99.84" width="89.6" height="5.12" rx="2.56" fill="white" opacity="0.35"/>
+  <rect x="19.2" y="108.8" width="57.6" height="5.12" rx="2.56" fill="white" opacity="0.22"/>
+</svg>

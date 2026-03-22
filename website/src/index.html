@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ibid — Privacy-First Citation Manager</title>
+  <meta name="description" content="Free, privacy-first citation manager browser extension. 74 styles including APA, MLA, Chicago, Harvard, IEEE, Vancouver. No telemetry. No ads. Powered by Rust/WebAssembly.">
+  <link rel="icon" type="image/png" href="../browser/shared/icons/icon-32.png">
+  <style>
+    /* Inline critical styles — no build step needed for the website */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Inter, system-ui, -apple-system, sans-serif; color: #18181b; line-height: 1.6; }
+    a { color: inherit; text-decoration: none; }
+    .saffron { color: #f49707; }
+    .bg-saffron { background-color: #f49707; }
+    .container { max-width: 960px; margin: 0 auto; padding: 0 1.5rem; }
+
+    /* Hero */
+    .hero { padding: 5rem 0 4rem; text-align: center; background: linear-gradient(135deg, #fff9eb 0%, #fff 50%, #f0f4ff 100%); }
+    .hero h1 { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 1rem; }
+    .hero h1 span { color: #f49707; }
+    .hero p { font-size: 1.15rem; color: #52525b; max-width: 600px; margin: 0 auto 2rem; }
+    .hero-cta { display: inline-flex; align-items: center; gap: 0.5rem; background: #f49707; color: #fff; padding: 0.75rem 2rem; border-radius: 0.5rem; font-weight: 600; font-size: 1rem; transition: background 0.2s; }
+    .hero-cta:hover { background: #d87102; }
+    .hero-sub { margin-top: 0.75rem; font-size: 0.85rem; color: #a1a1aa; }
+
+    /* Features grid */
+    .features { padding: 4rem 0; }
+    .features h2 { text-align: center; font-size: 1.75rem; font-weight: 700; margin-bottom: 2.5rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; }
+    .card { padding: 1.5rem; border: 1px solid #e4e4e7; border-radius: 0.75rem; }
+    .card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .card p { font-size: 0.875rem; color: #71717a; }
+    .card .icon { width: 2rem; height: 2rem; margin-bottom: 0.75rem; color: #f49707; }
+
+    /* Styles section */
+    .styles { padding: 3rem 0; background: #fafafa; }
+    .styles h2 { text-align: center; font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; }
+    .style-tags { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; max-width: 700px; margin: 0 auto; }
+    .style-tag { padding: 0.25rem 0.75rem; border-radius: 9999px; background: #fff; border: 1px solid #e4e4e7; font-size: 0.8rem; color: #52525b; }
+
+    /* Privacy */
+    .privacy-section { padding: 3rem 0; text-align: center; }
+    .privacy-section h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; }
+    .privacy-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; max-width: 700px; margin: 0 auto; }
+    .privacy-item { padding: 1rem; font-size: 0.875rem; color: #52525b; }
+    .privacy-item strong { display: block; color: #18181b; margin-bottom: 0.25rem; }
+
+    /* Footer */
+    footer { padding: 2rem 0; text-align: center; font-size: 0.8rem; color: #a1a1aa; border-top: 1px solid #e4e4e7; }
+    footer a { color: #f49707; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav style="padding: 1rem 0; border-bottom: 1px solid #f4f4f5;">
+    <div class="container" style="display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <img src="../browser/shared/icons/icon-32.png" alt="Ibid" width="28" height="28" style="border-radius: 6px;">
+        <strong style="font-size: 1.1rem;" class="saffron">Ibid</strong>
+      </div>
+      <div style="display: flex; gap: 1.5rem; font-size: 0.875rem;">
+        <a href="#features" style="color: #52525b;">Features</a>
+        <a href="#styles" style="color: #52525b;">Styles</a>
+        <a href="privacy.html" style="color: #52525b;">Privacy</a>
+        <a href="../browser/chrome/help/help.html" style="color: #52525b;">Help</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <img src="../browser/shared/icons/icon-128.png" alt="Ibid" width="80" height="80" style="border-radius: 16px; margin: 0 auto 1.5rem; display: block; box-shadow: 0 4px 12px rgba(244,151,7,0.2);">
+      <h1>Citations done right.<br><span>Finally.</span></h1>
+      <p>Free, privacy-first citation manager for Chrome. 74 styles, one-click citing, smart metadata extraction, and zero data collection. Built with Rust/WebAssembly.</p>
+      <a href="#install" class="hero-cta">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Add to Chrome — Free
+      </a>
+      <p class="hero-sub">No account required. No ads. No telemetry. 100% offline capable.</p>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features" class="features">
+    <div class="container">
+      <h2>Everything citation tools should be</h2>
+      <div class="grid">
+        <div class="card">
+          <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          <h3>One-click citing</h3>
+          <p>Click the Ibid icon on any page. Metadata auto-fills from structured data. Copy the formatted citation instantly.</p>
+        </div>
+        <div class="card">
+          <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <h3>Smart auto-enhance</h3>
+          <p>Paste a DOI, ISBN, PMID, or arXiv ID. Ibid resolves it via CrossRef, Open Library, or NCBI and fills missing fields automatically.</p>
+        </div>
+        <div class="card">
+          <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <h3>Actually accurate</h3>
+          <p>Built to address the #1 complaint about every other citation tool: wrong formatting. Our JS formatter handles APA, MLA, Chicago, Harvard, IEEE, and Vancouver correctly.</p>
+        </div>
+        <div class="card">
+          <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+          <h3>Zero data collection</h3>
+          <p>No telemetry. No analytics. No bandwidth hijacking. All processing happens locally in your browser via Rust/WebAssembly.</p>
+        </div>
+        <div class="card">
+          <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          <h3>Import & export anything</h3>
+          <p>Import from BibTeX, RIS, CSL-JSON. Export to 6 formats. Drag & drop files or paste text. Selective import with preview.</p>
+        </div>
+        <div class="card">
+          <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+          <h3>Project-based library</h3>
+          <p>Organize citations into projects with per-project styles. Sort, filter, star, search, bulk operations. Side panel stays open while you research.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Styles -->
+  <section id="styles" class="styles">
+    <div class="container">
+      <h2>74 citation styles, all offline</h2>
+      <p style="text-align: center; color: #71717a; margin-bottom: 1.5rem; font-size: 0.9rem;">Official CSL styles from the citation-style-language repository. No downloads needed.</p>
+      <div class="style-tags">
+        <span class="style-tag"><strong>APA 7</strong></span>
+        <span class="style-tag">APA 6</span>
+        <span class="style-tag"><strong>MLA 9</strong></span>
+        <span class="style-tag"><strong>Chicago 17</strong></span>
+        <span class="style-tag">Chicago 16</span>
+        <span class="style-tag"><strong>Harvard</strong></span>
+        <span class="style-tag"><strong>IEEE</strong></span>
+        <span class="style-tag"><strong>Vancouver</strong></span>
+        <span class="style-tag">AMA 11</span>
+        <span class="style-tag">AMA 10</span>
+        <span class="style-tag">Nature</span>
+        <span class="style-tag">Science</span>
+        <span class="style-tag">Cell</span>
+        <span class="style-tag">Lancet</span>
+        <span class="style-tag">NEJM</span>
+        <span class="style-tag">ACS</span>
+        <span class="style-tag">ACM</span>
+        <span class="style-tag">Springer</span>
+        <span class="style-tag">Elsevier</span>
+        <span class="style-tag">OSCOLA</span>
+        <span class="style-tag">Bluebook</span>
+        <span class="style-tag">Turabian</span>
+        <span class="style-tag">ASA</span>
+        <span class="style-tag">APSA</span>
+        <span class="style-tag">ABNT</span>
+        <span class="style-tag">DIN 1505</span>
+        <span class="style-tag">ISO 690</span>
+        <span class="style-tag">GOST</span>
+        <span class="style-tag">+ 46 more</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Privacy summary -->
+  <section class="privacy-section">
+    <div class="container">
+      <h2>Privacy by design</h2>
+      <div class="privacy-grid">
+        <div class="privacy-item">
+          <strong>No telemetry</strong>
+          Zero analytics. Zero tracking scripts. We don't know you exist.
+        </div>
+        <div class="privacy-item">
+          <strong>Local processing</strong>
+          All citation formatting runs in Rust/WebAssembly inside your browser.
+        </div>
+        <div class="privacy-item">
+          <strong>No account</strong>
+          Everything works without signing in. Your data stays on your device.
+        </div>
+        <div class="privacy-item">
+          <strong>Minimal permissions</strong>
+          Only activeTab, scripting, storage, sidePanel, contextMenus. Nothing else.
+        </div>
+      </div>
+      <p style="margin-top: 1.5rem;"><a href="privacy.html" style="color: #f49707; font-weight: 600;">Read our full Privacy Policy &rarr;</a></p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <p>Ibid Citation Manager &mdash; Free, open-source, privacy-first.</p>
+      <p style="margin-top: 0.5rem;">
+        <a href="privacy.html">Privacy Policy</a> &middot;
+        <a href="../browser/chrome/help/help.html">Help</a> &middot;
+        <a href="mailto:support@ibid.tools">Contact</a>
+      </p>
+    </div>
+  </footer>
+
+</body>
+</html>

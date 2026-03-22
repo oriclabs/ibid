@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ibid — Library</title>
+  <link rel="stylesheet" href="../styles/ibid.css">
+</head>
+<body class="w-full h-screen bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-sans text-sm flex flex-col">
+
+  <!-- Header -->
+  <header class="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-700 shrink-0">
+    <div class="flex items-center gap-2">
+      <img src="../icons/icon-32.png" alt="Ibid" class="w-6 h-6 rounded">
+      <h1 class="text-base font-semibold text-saffron-700 dark:text-saffron-400">Ibid</h1>
+    </div>
+    <!-- Tabs -->
+    <nav class="flex gap-1">
+      <button data-tab="library" class="tab-btn active px-2 py-1 rounded text-xs font-medium bg-saffron-100 dark:bg-saffron-900/30 text-saffron-700 dark:text-saffron-400">Library</button>
+      <button data-tab="import" class="tab-btn px-2 py-1 rounded text-xs font-medium text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800">Import</button>
+      <button data-tab="export" class="tab-btn px-2 py-1 rounded text-xs font-medium text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800">Export</button>
+    </nav>
+  </header>
+
+  <!-- Search bar -->
+  <div class="px-4 py-2 border-b border-zinc-100 dark:border-zinc-800 shrink-0">
+    <div class="relative">
+      <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input id="search" type="text" placeholder="Search citations..." class="w-full pl-8 pr-3 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 focus:border-saffron-500 outline-none">
+    </div>
+  </div>
+
+  <!-- Bulk action bar (hidden until items selected) -->
+  <div id="bulk-bar" class="hidden px-4 py-2 bg-saffron-50 dark:bg-saffron-900/20 border-b border-saffron-200 dark:border-saffron-800 flex items-center justify-between shrink-0">
+    <span id="bulk-count" class="text-xs font-medium text-saffron-700 dark:text-saffron-400">0 selected</span>
+    <div class="flex gap-1">
+      <button id="bulk-star" class="px-2 py-1 text-[10px] rounded hover:bg-saffron-100 dark:hover:bg-saffron-800 text-saffron-700 dark:text-saffron-400" title="Star selected">Star</button>
+      <button id="bulk-unstar" class="px-2 py-1 text-[10px] rounded hover:bg-saffron-100 dark:hover:bg-saffron-800 text-saffron-700 dark:text-saffron-400" title="Unstar selected">Unstar</button>
+      <button id="bulk-delete" class="px-2 py-1 text-[10px] rounded hover:bg-red-100 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400" title="Delete selected">Delete</button>
+      <button id="bulk-cancel" class="px-2 py-1 text-[10px] rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-500" title="Cancel">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Tab: Library -->
+  <div id="tab-library" class="tab-content flex-1 flex flex-col overflow-hidden">
+    <!-- Library toolbar: filters + sort + count -->
+    <div class="px-3 py-1.5 border-b border-zinc-100 dark:border-zinc-800 shrink-0 space-y-1.5">
+      <!-- Row 1: Project filter + Sort + Count -->
+      <div class="flex items-center gap-2">
+        <select id="lib-project-filter" class="flex-1 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-[10px] focus:ring-1 focus:ring-saffron-500 outline-none cursor-pointer">
+          <option value="all">All Projects</option>
+        </select>
+        <select id="lib-sort" class="px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-[10px] focus:ring-1 focus:ring-saffron-500 outline-none cursor-pointer">
+          <option value="date-desc">Newest First</option>
+          <option value="date-asc">Oldest First</option>
+          <option value="author-asc">Author A-Z</option>
+          <option value="title-asc">Title A-Z</option>
+          <option value="year-desc">Year (Newest)</option>
+          <option value="year-asc">Year (Oldest)</option>
+          <option value="type">By Type</option>
+        </select>
+        <span id="lib-count" class="text-[10px] text-zinc-400 shrink-0"></span>
+        <button id="btn-find-dupes" class="px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700 text-[9px] text-zinc-400 hover:text-saffron-600 hover:border-saffron-400 transition-colors shrink-0" title="Find duplicates">Dupes</button>
+      </div>
+      <!-- Row 2: Filter chips -->
+      <div class="flex items-center gap-1 flex-wrap">
+        <button data-chip="starred" class="lib-chip px-1.5 py-0.5 rounded-full text-[9px] font-medium border transition-colors border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:border-saffron-400 hover:text-saffron-500">Starred</button>
+        <button data-chip="article-journal" class="lib-chip px-1.5 py-0.5 rounded-full text-[9px] font-medium border transition-colors border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:border-saffron-400 hover:text-saffron-500">Journal</button>
+        <button data-chip="book" class="lib-chip px-1.5 py-0.5 rounded-full text-[9px] font-medium border transition-colors border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:border-saffron-400 hover:text-saffron-500">Book</button>
+        <button data-chip="webpage" class="lib-chip px-1.5 py-0.5 rounded-full text-[9px] font-medium border transition-colors border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:border-saffron-400 hover:text-saffron-500">Web</button>
+        <button data-chip="chapter" class="lib-chip px-1.5 py-0.5 rounded-full text-[9px] font-medium border transition-colors border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:border-saffron-400 hover:text-saffron-500">Chapter</button>
+        <button data-chip="thesis" class="lib-chip px-1.5 py-0.5 rounded-full text-[9px] font-medium border transition-colors border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:border-saffron-400 hover:text-saffron-500">Thesis</button>
+        <button id="btn-clear-filters" class="hidden px-1.5 py-0.5 rounded-full text-[9px] font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">Clear</button>
+      </div>
+      <!-- Row 3: Tag filters (populated dynamically) -->
+      <div id="tag-filter-row" class="hidden flex items-center gap-1 flex-wrap">
+        <span class="text-[9px] text-zinc-400 shrink-0">Tags:</span>
+        <div id="tag-chips" class="flex items-center gap-1 flex-wrap"></div>
+        <button id="btn-manage-tags" class="text-[9px] text-saffron-500 hover:text-saffron-700 font-medium shrink-0">+ Manage</button>
+      </div>
+    </div>
+
+    <!-- Tag management modal (hidden) -->
+    <div id="tag-modal" class="hidden fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
+      <div class="w-72 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-zinc-200 dark:border-zinc-700">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-700">
+          <span class="text-sm font-semibold">Manage Tags</span>
+          <button id="tag-modal-close" class="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="p-4 space-y-3">
+          <!-- Add tag -->
+          <div class="flex gap-1">
+            <input id="new-tag-name" type="text" placeholder="New tag name" class="flex-1 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-xs focus:ring-1 focus:ring-saffron-500 outline-none">
+            <input id="new-tag-color" type="color" value="#f49707" class="w-8 h-8 rounded border border-zinc-200 dark:border-zinc-700 cursor-pointer">
+            <button id="btn-add-tag" class="px-2 py-1 rounded bg-saffron-500 text-white text-xs font-medium hover:bg-saffron-600 transition-colors">Add</button>
+          </div>
+          <!-- Tag list -->
+          <div id="tag-list" class="space-y-1 max-h-[200px] overflow-y-auto"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Citation list (scrollable) -->
+    <div id="citation-list" class="flex-1 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-800">
+      <div class="px-4 py-8 text-center text-zinc-400">
+        <p>No citations yet.</p>
+        <p class="text-xs mt-1">Click the Ibid icon on any page to start citing.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Inline edit panel (hidden) -->
+  <div id="edit-panel" class="hidden fixed inset-0 bg-black/30 z-50 flex items-end justify-center">
+    <div class="w-full bg-white dark:bg-zinc-900 rounded-t-xl shadow-xl max-h-[80vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-700">
+        <span class="text-sm font-semibold">Edit Citation</span>
+        <button id="edit-close" class="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="p-4 space-y-2">
+        <input id="edit-id" type="hidden">
+        <div>
+          <label class="block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-0.5">Title</label>
+          <input id="edit-title" type="text" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-0.5">Authors</label>
+          <input id="edit-authors" type="text" placeholder="Last, First; Last, First" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-0.5">Date</label>
+            <div class="flex">
+              <input id="edit-date" type="text" placeholder="YYYY" class="flex-1 px-2 py-1.5 rounded-l border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 outline-none">
+              <button id="edit-no-date" class="px-1.5 py-1.5 border border-l-0 border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 rounded-r text-[10px] text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/20 transition-colors" title="No date (n.d.)">n.d.</button>
+            </div>
+          </div>
+          <div>
+            <label class="block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-0.5">Type</label>
+            <select id="edit-type" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-1 focus:ring-saffron-500 outline-none">
+              <option value="webpage">Webpage</option>
+              <option value="article-journal">Journal Article</option>
+              <option value="article-newspaper">News Article</option>
+              <option value="book">Book</option>
+              <option value="chapter">Book Chapter</option>
+              <option value="paper-conference">Conference Paper</option>
+              <option value="thesis">Thesis</option>
+              <option value="report">Report</option>
+              <option value="post-weblog">Blog Post</option>
+              <option value="software">Software</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-0.5">Container (Journal/Site)</label>
+          <input id="edit-container" type="text" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 outline-none">
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-0.5">Volume</label>
+            <input id="edit-volume" type="text" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-0.5">Issue</label>
+            <input id="edit-issue" type="text" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-0.5">Pages</label>
+            <input id="edit-pages" type="text" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 outline-none">
+          </div>
+        </div>
+        <div>
+          <label class="block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-0.5">DOI / URL</label>
+          <input id="edit-doi" type="text" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-0.5">Tags</label>
+          <input id="edit-tags" type="text" placeholder="tag1, tag2, tag3" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 outline-none">
+        </div>
+        <!-- Quotes/Annotations -->
+        <div>
+          <label class="block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-0.5">Notes</label>
+          <textarea id="edit-notes" placeholder="Your notes about this source..." class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-xs resize-none h-16 focus:ring-2 focus:ring-saffron-500 outline-none"></textarea>
+        </div>
+        <div id="edit-quotes-section" class="hidden">
+          <label class="block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-0.5">Saved Quotes</label>
+          <div id="edit-quotes-list" class="space-y-1 max-h-[120px] overflow-y-auto"></div>
+        </div>
+        <button id="edit-save" class="w-full mt-2 px-3 py-2 rounded-lg bg-saffron-500 hover:bg-saffron-600 text-white font-medium text-sm transition-colors">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Duplicate merge modal -->
+  <div id="dupe-modal" class="hidden fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
+    <div class="w-[380px] max-h-[80vh] bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-zinc-200 dark:border-zinc-700 flex flex-col overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-700 shrink-0">
+        <span class="text-sm font-semibold">Duplicate Scan</span>
+        <button id="dupe-modal-close" class="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="dupe-content" class="flex-1 overflow-y-auto p-4">
+        <p class="text-xs text-zinc-400 text-center py-4">Scanning...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Import -->
+  <div id="tab-import" class="tab-content hidden flex-1 overflow-y-auto p-4 space-y-3">
+    <!-- Drop zone -->
+    <div id="drop-zone" class="border-2 border-dashed border-zinc-300 dark:border-zinc-600 rounded-lg p-6 text-center transition-colors">
+      <svg class="w-8 h-8 mx-auto text-zinc-300 dark:text-zinc-600 mb-2" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+      <p class="text-zinc-500 dark:text-zinc-400 text-sm mb-1">Drag & drop files here</p>
+      <p class="text-[10px] text-zinc-400">BibTeX, RIS, CSL-JSON, EndNote XML, MEDLINE, CSV, TSV</p>
+      <input id="file-input" type="file" accept=".bib,.ris,.json,.xml,.nbib,.csv,.tsv,.txt" multiple class="hidden">
+      <button id="btn-browse" class="mt-2 text-xs text-saffron-600 dark:text-saffron-400 hover:text-saffron-800 font-medium">or browse files</button>
+    </div>
+
+    <!-- Paste area -->
+    <div>
+      <textarea id="import-text" placeholder="Or paste BibTeX, RIS, CSL-JSON, or DOIs (one per line)..." class="w-full h-20 px-3 py-2 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-xs font-mono resize-none focus:ring-2 focus:ring-saffron-500 outline-none"></textarea>
+      <button id="btn-parse" class="mt-1 w-full px-3 py-1.5 rounded border border-saffron-300 dark:border-saffron-700 bg-saffron-50 dark:bg-saffron-900/20 text-saffron-600 dark:text-saffron-400 text-xs font-medium hover:bg-saffron-100 dark:hover:bg-saffron-900/40 transition-colors">Parse & Preview</button>
+    </div>
+
+    <!-- Migration wizard -->
+    <div class="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
+      <button id="btn-migration-toggle" class="w-full px-3 py-2 text-left text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 flex items-center justify-between transition-colors">
+        <span>Migrate from another tool</span>
+        <svg class="w-3 h-3 transition-transform" id="migration-chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+      </button>
+      <div id="migration-panel" class="hidden border-t border-zinc-100 dark:border-zinc-800 p-3 space-y-2">
+        <div class="grid grid-cols-3 gap-1.5">
+          <button class="migrate-btn px-2 py-2 rounded border border-zinc-200 dark:border-zinc-700 text-center hover:border-saffron-400 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors" data-tool="zotero">
+            <p class="text-xs font-medium">Zotero</p>
+            <p class="text-[9px] text-zinc-400">BibTeX / RDF</p>
+          </button>
+          <button class="migrate-btn px-2 py-2 rounded border border-zinc-200 dark:border-zinc-700 text-center hover:border-saffron-400 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors" data-tool="mendeley">
+            <p class="text-xs font-medium">Mendeley</p>
+            <p class="text-[9px] text-zinc-400">BibTeX / RIS</p>
+          </button>
+          <button class="migrate-btn px-2 py-2 rounded border border-zinc-200 dark:border-zinc-700 text-center hover:border-saffron-400 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors" data-tool="endnote">
+            <p class="text-xs font-medium">EndNote</p>
+            <p class="text-[9px] text-zinc-400">XML / RIS</p>
+          </button>
+        </div>
+        <div id="migration-instructions" class="hidden text-[11px] text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800 rounded p-2.5 space-y-1"></div>
+      </div>
+    </div>
+
+    <!-- Import status -->
+    <div id="import-status" class="hidden text-xs rounded px-3 py-2"></div>
+
+    <!-- Preview list -->
+    <div id="import-preview" class="hidden">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">Preview (<span id="preview-count">0</span> entries)</span>
+        <div class="flex gap-2">
+          <button id="btn-select-all" class="text-[10px] text-saffron-600 dark:text-saffron-400 font-medium">Select all</button>
+          <button id="btn-select-none" class="text-[10px] text-zinc-400 font-medium">None</button>
+        </div>
+      </div>
+      <div id="preview-list" class="space-y-1 max-h-[300px] overflow-y-auto"></div>
+      <button id="btn-import-selected" class="mt-3 w-full px-3 py-2 rounded-lg bg-saffron-500 hover:bg-saffron-600 text-white font-medium text-sm transition-colors">Import Selected</button>
+    </div>
+  </div>
+
+  <!-- Tab: Export -->
+  <div id="tab-export" class="tab-content hidden flex-1 overflow-y-auto p-4">
+    <div class="space-y-3">
+      <div>
+        <label class="block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-1">Format</label>
+        <select id="export-format" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm">
+          <optgroup label="Data formats">
+            <option value="bibtex">BibTeX (.bib)</option>
+            <option value="ris">RIS (.ris)</option>
+            <option value="csl-json">CSL-JSON (.json)</option>
+            <option value="csv">CSV (.csv)</option>
+            <option value="tsv">TSV (.tsv)</option>
+            <option value="yaml">YAML (.yaml)</option>
+          </optgroup>
+          <optgroup label="Formatted output">
+            <option value="text">Formatted Text (.txt)</option>
+            <option value="html">Formatted HTML (.html)</option>
+            <option value="markdown">Markdown (.md)</option>
+          </optgroup>
+          <optgroup label="Application-specific">
+            <option value="word-xml">Word XML Bibliography (.xml)</option>
+          </optgroup>
+        </select>
+      </div>
+      <div>
+        <label class="block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-1">Scope</label>
+        <select id="export-scope" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm">
+          <option value="all">All citations</option>
+          <option value="starred">Starred only</option>
+        </select>
+      </div>
+      <!-- Format-specific options (shown for BibTeX) -->
+      <div id="export-bibtex-opts" class="space-y-1">
+        <label class="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">
+          <input type="checkbox" id="export-opt-abstract" class="rounded text-saffron-500 focus:ring-saffron-500">
+          Include abstracts
+        </label>
+        <label class="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">
+          <input type="checkbox" id="export-opt-keywords" checked class="rounded text-saffron-500 focus:ring-saffron-500">
+          Include keywords
+        </label>
+      </div>
+      <!-- Style selector for formatted exports -->
+      <div id="export-style-picker" class="hidden">
+        <label class="block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-1">Citation Style</label>
+        <select id="export-style" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm">
+          <option value="apa7">APA 7th Edition</option>
+          <option value="mla9">MLA 9th Edition</option>
+          <option value="chicago17-author-date">Chicago 17th (Author-Date)</option>
+          <option value="harvard">Harvard</option>
+          <option value="ieee">IEEE</option>
+          <option value="vancouver">Vancouver</option>
+        </select>
+      </div>
+      <div id="export-count" class="text-xs text-zinc-400"></div>
+      <div class="flex gap-2">
+        <button id="btn-export-download" class="flex-1 px-3 py-2 rounded-lg bg-saffron-500 hover:bg-saffron-600 text-white font-medium text-sm transition-colors">Download</button>
+        <button id="btn-export-copy" class="px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">Copy</button>
+      </div>
+      <div id="export-status" class="hidden text-xs rounded px-3 py-2"></div>
+    </div>
+  </div>
+
+  <script src="../shared/dialog.js"></script>
+  <script src="sidepanel.js" type="module"></script>
+</body>
+</html>
