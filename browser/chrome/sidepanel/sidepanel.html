@@ -14,12 +14,63 @@
       <img src="../icons/icon-32.png" alt="Ibid" class="w-6 h-6 rounded">
       <h1 class="text-base font-semibold text-saffron-700 dark:text-saffron-400">Ibid</h1>
     </div>
-    <!-- Tabs -->
-    <nav class="flex gap-1">
-      <button data-tab="library" class="tab-btn active px-2 py-1 rounded text-xs font-medium bg-saffron-100 dark:bg-saffron-900/30 text-saffron-700 dark:text-saffron-400">Library</button>
-      <button data-tab="import" class="tab-btn px-2 py-1 rounded text-xs font-medium text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800">Import</button>
-      <button data-tab="export" class="tab-btn px-2 py-1 rounded text-xs font-medium text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800">Export</button>
-    </nav>
+    <div class="flex items-center gap-1">
+      <!-- Tabs -->
+      <nav class="flex gap-1">
+        <button data-tab="library" class="tab-btn active px-2 py-1 rounded text-xs font-medium bg-saffron-100 dark:bg-saffron-900/30 text-saffron-700 dark:text-saffron-400">Library</button>
+        <button data-tab="import" class="tab-btn px-2 py-1 rounded text-xs font-medium text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800">Import</button>
+        <button data-tab="export" class="tab-btn px-2 py-1 rounded text-xs font-medium text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800">Export</button>
+      </nav>
+      <!-- Settings gear -->
+      <div class="relative">
+        <button id="sp-settings-btn" class="p-1.5 rounded text-zinc-400 hover:text-saffron-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors" title="Settings">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+        <!-- Settings dropdown -->
+        <div id="sp-settings-dropdown" class="hidden absolute right-0 top-full mt-1 w-56 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-lg z-50 overflow-hidden">
+          <div class="px-3 py-2 border-b border-zinc-100 dark:border-zinc-700">
+            <span class="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">Library Settings</span>
+          </div>
+          <!-- Default sort -->
+          <div class="px-3 py-2 flex items-center justify-between">
+            <label class="text-xs text-zinc-600 dark:text-zinc-300">Default sort</label>
+            <select id="sp-pref-sort" class="px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-600 bg-zinc-50 dark:bg-zinc-700 text-[10px] outline-none cursor-pointer">
+              <option value="date-desc">Newest First</option>
+              <option value="date-asc">Oldest First</option>
+              <option value="author-asc">Author A-Z</option>
+              <option value="title-asc">Title A-Z</option>
+              <option value="year-desc">Year (Newest)</option>
+              <option value="year-asc">Year (Oldest)</option>
+              <option value="type">By Type</option>
+            </select>
+          </div>
+          <!-- Copy format -->
+          <div class="px-3 py-2 flex items-center justify-between">
+            <label class="text-xs text-zinc-600 dark:text-zinc-300">Copy format</label>
+            <select id="sp-pref-copy-format" class="px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-600 bg-zinc-50 dark:bg-zinc-700 text-[10px] outline-none cursor-pointer">
+              <option value="text">Plain text</option>
+              <option value="rich">Rich text (HTML)</option>
+            </select>
+          </div>
+          <!-- Theme -->
+          <div class="px-3 py-2 flex items-center justify-between">
+            <label class="text-xs text-zinc-600 dark:text-zinc-300">Theme</label>
+            <select id="sp-pref-theme" class="px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-600 bg-zinc-50 dark:bg-zinc-700 text-[10px] outline-none cursor-pointer">
+              <option value="system">System</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </div>
+          <!-- Divider -->
+          <div class="border-t border-zinc-100 dark:border-zinc-700"></div>
+          <!-- Open full settings -->
+          <button id="sp-open-options" class="w-full px-3 py-2 text-left text-xs text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 hover:text-saffron-600 transition-colors flex items-center gap-2">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Advanced Settings
+          </button>
+        </div>
+      </div>
+    </div>
   </header>
 
   <!-- Search bar -->
@@ -59,15 +110,10 @@
           <option value="year-asc">Year (Oldest)</option>
           <option value="type">By Type</option>
         </select>
-        <select id="lib-copy-style" class="px-1 py-0.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-[9px] focus:ring-1 focus:ring-saffron-500 outline-none cursor-pointer shrink-0" title="Style for copy">
-          <option value="apa">APA</option>
-          <option value="mla">MLA</option>
-          <option value="chicago">Chicago</option>
-          <option value="harvard">Harvard</option>
-          <option value="ieee">IEEE</option>
-          <option value="vancouver">Vancouver</option>
-        </select>
         <span id="lib-count" class="text-[10px] text-zinc-400 shrink-0"></span>
+        <button id="btn-add-manual" class="p-1 rounded border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-saffron-600 hover:border-saffron-400 transition-colors shrink-0" title="Add entry manually">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
         <button id="btn-find-dupes" class="px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700 text-[9px] text-zinc-400 hover:text-saffron-600 hover:border-saffron-400 transition-colors shrink-0" title="Find duplicates">Dupes</button>
       </div>
       <!-- Row 2: Filter chips -->
@@ -85,6 +131,44 @@
         <span class="text-[9px] text-zinc-400 shrink-0">Tags:</span>
         <div id="tag-chips" class="flex items-center gap-1 flex-wrap"></div>
         <button id="btn-manage-tags" class="text-[9px] text-saffron-500 hover:text-saffron-700 font-medium shrink-0">+ Manage</button>
+      </div>
+    </div>
+
+    <!-- Manual entry form (hidden) -->
+    <div id="manual-entry-form" class="hidden px-3 py-2 border-b border-saffron-200 dark:border-saffron-800 bg-saffron-50/50 dark:bg-saffron-900/10 shrink-0">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-[10px] font-semibold text-saffron-700 dark:text-saffron-400 uppercase tracking-wider">Add Entry</span>
+        <button id="btn-cancel-manual" class="text-[10px] text-zinc-400 hover:text-red-500">Cancel</button>
+      </div>
+      <div class="space-y-1.5">
+        <div class="flex gap-1.5">
+          <select id="manual-type" class="w-24 px-1.5 py-1 rounded border border-zinc-200 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-[10px] outline-none">
+            <option value="article-journal">Journal</option>
+            <option value="book">Book</option>
+            <option value="chapter">Chapter</option>
+            <option value="webpage">Webpage</option>
+            <option value="thesis">Thesis</option>
+            <option value="report">Report</option>
+            <option value="paper-conference">Conference</option>
+          </select>
+          <input id="manual-title" type="text" placeholder="Title *" class="flex-1 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-[10px] outline-none focus:ring-1 focus:ring-saffron-500">
+        </div>
+        <input id="manual-authors" type="text" placeholder="Authors (Last, First; Last, First)" class="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-[10px] outline-none focus:ring-1 focus:ring-saffron-500">
+        <div class="flex gap-1.5">
+          <input id="manual-year" type="text" placeholder="Year" class="w-16 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-[10px] outline-none focus:ring-1 focus:ring-saffron-500">
+          <input id="manual-container" type="text" placeholder="Journal / Book title" class="flex-1 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-[10px] outline-none focus:ring-1 focus:ring-saffron-500">
+        </div>
+        <div class="flex gap-1.5">
+          <input id="manual-doi" type="text" placeholder="DOI / URL" class="flex-1 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-[10px] outline-none focus:ring-1 focus:ring-saffron-500">
+          <button id="btn-enhance-manual" class="px-2 py-1 rounded bg-zinc-100 dark:bg-zinc-700 text-[10px] text-zinc-500 hover:text-saffron-600 hover:bg-saffron-50 transition-colors shrink-0" title="Auto-fill from DOI">Enhance</button>
+        </div>
+        <div class="flex gap-1.5">
+          <input id="manual-volume" type="text" placeholder="Vol" class="w-12 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-[10px] outline-none focus:ring-1 focus:ring-saffron-500">
+          <input id="manual-issue" type="text" placeholder="Issue" class="w-12 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-[10px] outline-none focus:ring-1 focus:ring-saffron-500">
+          <input id="manual-pages" type="text" placeholder="Pages" class="w-20 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-[10px] outline-none focus:ring-1 focus:ring-saffron-500">
+          <input id="manual-publisher" type="text" placeholder="Publisher" class="flex-1 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-[10px] outline-none focus:ring-1 focus:ring-saffron-500">
+        </div>
+        <button id="btn-save-manual" class="w-full py-1.5 rounded bg-saffron-500 hover:bg-saffron-600 text-white text-[10px] font-medium transition-colors">Add to Library</button>
       </div>
     </div>
 
@@ -339,6 +423,7 @@
   </div>
 
   <script src="../shared/dialog.js"></script>
+  <script src="../shared/citation-formatter.js"></script>
   <script src="sidepanel.js" type="module"></script>
 </body>
 </html>

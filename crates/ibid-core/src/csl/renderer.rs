@@ -21,6 +21,10 @@ pub struct Renderer {
     style: Style,
     locale: Locale,
     format: OutputFormat,
+    /// Context-specific et-al overrides (from <bibliography> or <citation> elements)
+    ctx_et_al_min: Option<u32>,
+    ctx_et_al_use_first: Option<u32>,
+    ctx_et_al_use_last: bool,
 }
 
 impl Renderer {
@@ -29,6 +33,9 @@ impl Renderer {
             style,
             locale,
             format,
+            ctx_et_al_min: None,
+            ctx_et_al_use_first: None,
+            ctx_et_al_use_last: false,
         }
     }
 
@@ -37,12 +44,17 @@ impl Renderer {
     }
 
     /// Render a single bibliography entry
-    pub fn render_bibliography_entry(&self, item: &CslItem) -> Result<String> {
+    pub fn render_bibliography_entry(&mut self, item: &CslItem) -> Result<String> {
         let bib = self
             .style
             .bibliography
             .as_ref()
             .ok_or_else(|| IbidError::CslRender("No bibliography element in style".into()))?;
+
+        // Set context et-al from <bibliography> element
+        self.ctx_et_al_min = bib.et_al_min;
+        self.ctx_et_al_use_first = bib.et_al_use_first;
+        self.ctx_et_al_use_last = bib.et_al_use_last;
 
         let mut parts: Vec<String> = Vec::new();
         for element in &bib.layout.elements {
@@ -52,7 +64,7 @@ impl Renderer {
             }
         }
 
-        let mut result = parts.join(bib.layout.delimiter.as_deref().unwrap_or(""));
+        let mut result = join_with_punct_dedup(&parts, bib.layout.delimiter.as_deref().unwrap_or(""));
 
         // Apply layout prefix/suffix
         if let Some(ref prefix) = bib.layout.prefix {
@@ -69,7 +81,7 @@ impl Renderer {
     }
 
     /// Render a full bibliography (sorted, formatted)
-    pub fn render_bibliography(&self, items: &[CslItem]) -> Result<Vec<String>> {
+    pub fn render_bibliography(&mut self, items: &[CslItem]) -> Result<Vec<String>> {
         let mut entries: Vec<String> = Vec::new();
         // TODO: implement sorting based on style.bibliography.sort
         for item in items {
@@ -79,12 +91,17 @@ impl Renderer {
     }
 
     /// Render an in-text citation (parenthetical)
-    pub fn render_citation(&self, items: &[&CslItem]) -> Result<String> {
+    pub fn render_citation(&mut self, items: &[&CslItem]) -> Result<String> {
         let cit = self
             .style
             .citation
             .as_ref()
             .ok_or_else(|| IbidError::CslRender("No citation element in style".into()))?;
+
+        // Set context et-al from <citation> element
+        self.ctx_et_al_min = cit.et_al_min;
+        self.ctx_et_al_use_first = cit.et_al_use_first;
+        self.ctx_et_al_use_last = cit.et_al_use_last;
 
         let mut cite_parts: Vec<String> = Vec::new();
         for item in items {
@@ -254,15 +271,18 @@ impl Renderer {
     fn format_name_list(&self, names: &[Name], ne: &NamesElement) -> Result<String> {
         let config = ne.name.as_ref();
 
+        // Et-al cascade: per-<names> config > context (bib/citation) > global
         let et_al_min = config
             .and_then(|c| c.et_al_min)
+            .or(self.ctx_et_al_min)
             .or(self.style.global_options.et_al_min);
         let et_al_use_first = config
             .and_then(|c| c.et_al_use_first)
+            .or(self.ctx_et_al_use_first)
             .or(self.style.global_options.et_al_use_first);
         let et_al_use_last = config
             .and_then(|c| c.et_al_use_last)
-            .unwrap_or(self.style.global_options.et_al_use_last);
+            .unwrap_or(self.ctx_et_al_use_last || self.style.global_options.et_al_use_last);
 
         let use_et_al = et_al_min.is_some_and(|min| names.len() as u32 >= min);
         let display_count = if use_et_al {
@@ -613,7 +633,7 @@ impl Renderer {
         }
 
         let delimiter = ge.delimiter.as_deref().unwrap_or("");
-        let mut result = parts.join(delimiter);
+        let mut result = join_with_punct_dedup(&parts, delimiter);
         result = self.apply_formatting(&result, &ge.formatting);
         result = self.apply_affixes(&result, &ge.prefix, &ge.suffix);
 
@@ -893,7 +913,18 @@ impl Renderer {
         }
         result.push_str(text);
         if let Some(s) = suffix {
-            result.push_str(s);
+            // CSL spec: avoid duplicate punctuation at the join point
+            // e.g., text ends with "." and suffix starts with "." → skip duplicate
+            if let (Some(last_char), Some(first_char)) = (result.chars().last(), s.chars().next()) {
+                if last_char == first_char && ".,:;!?".contains(last_char) {
+                    // Skip duplicate punctuation
+                    result.push_str(&s[first_char.len_utf8()..]);
+                } else {
+                    result.push_str(s);
+                }
+            } else {
+                result.push_str(s);
+            }
         }
         result
     }
@@ -939,26 +970,57 @@ impl Renderer {
 // Helper functions
 // =============================================================================
 
-fn initialize_given(given: &str, delimiter: &str) -> String {
-    given
-        .split_whitespace()
-        .filter(|part| !part.is_empty())
-        .map(|part| {
-            if part.len() == 1 || (part.len() == 2 && part.ends_with('.')) {
-                // Already an initial
-                if part.ends_with('.') {
-                    part.to_string()
-                } else {
-                    format!("{}.", part)
+/// Join strings with a delimiter, avoiding duplicate punctuation at boundaries.
+/// e.g., joining ["Smith, J.", "Title"] with ". " → "Smith, J. Title" (not "Smith, J.. Title")
+fn join_with_punct_dedup(parts: &[String], delimiter: &str) -> String {
+    if parts.is_empty() {
+        return String::new();
+    }
+    let mut result = parts[0].clone();
+    let delim_first = delimiter.chars().next();
+
+    for part in &parts[1..] {
+        if let Some(dc) = delim_first {
+            if let Some(last_char) = result.chars().last() {
+                if last_char == dc && ".,:;!?".contains(dc) {
+                    // Skip duplicate leading punctuation from delimiter
+                    result.push_str(&delimiter[dc.len_utf8()..]);
+                    result.push_str(part);
+                    continue;
                 }
-            } else {
-                // Take first letter as initial
-                let first = part.chars().next().unwrap();
-                format!("{}.", first.to_uppercase().next().unwrap())
             }
-        })
-        .collect::<Vec<_>>()
-        .join(delimiter)
+        }
+        result.push_str(delimiter);
+        result.push_str(part);
+    }
+    result
+}
+
+fn initialize_given(given: &str, init_with: &str) -> String {
+    let period = init_with.trim_end(); // e.g., "." from ". "
+
+    // Process each whitespace-separated word
+    let mut word_results: Vec<String> = Vec::new();
+    for word in given.split_whitespace() {
+        if word.contains('-') {
+            // Hyphenated name: "Jean-Pierre" → "J.-P."
+            let hyph_parts: Vec<&str> = word.split('-').collect();
+            let initialized: Vec<String> = hyph_parts.iter()
+                .filter(|hp| !hp.is_empty())
+                .map(|hp| {
+                    let ch = hp.chars().next().unwrap().to_uppercase().to_string();
+                    format!("{}{}", ch, period)
+                })
+                .collect();
+            word_results.push(initialized.join("-"));
+        } else {
+            let ch = word.chars().next().unwrap().to_uppercase().to_string();
+            word_results.push(format!("{}{}", ch, period));
+        }
+    }
+
+    // Join words with space (the trailing space from init_with like ". ")
+    word_results.join(" ")
 }
 
 fn to_roman(mut n: i32) -> String {
@@ -1057,9 +1119,9 @@ mod tests {
     #[test]
     fn test_initialize_given_name() {
         assert_eq!(initialize_given("John", ". "), "J.");
-        assert_eq!(initialize_given("John Andrew", ". "), "J.. A.");
-        // Single delimiter
-        assert_eq!(initialize_given("John Andrew", " "), "J. A.");
+        assert_eq!(initialize_given("John Andrew", ". "), "J. A.");
+        assert_eq!(initialize_given("Benjamin Robert", ". "), "B. R.");
+        assert_eq!(initialize_given("Jean-Pierre", ". "), "J.-P.");
     }
 
     #[test]
@@ -1096,7 +1158,7 @@ mod tests {
 
         let style = Style::from_xml(xml).unwrap();
         let locale = Locale::english();
-        let renderer = Renderer::new(style, locale, OutputFormat::Html);
+        let mut renderer = Renderer::new(style, locale, OutputFormat::Html);
         let item = sample_item();
 
         let result = renderer.render_bibliography_entry(&item).unwrap();
@@ -1123,10 +1185,165 @@ mod tests {
 
         let style = Style::from_xml(xml).unwrap();
         let locale = Locale::english();
-        let renderer = Renderer::new(style, locale, OutputFormat::PlainText);
+        let mut renderer = Renderer::new(style, locale, OutputFormat::PlainText);
         let item = sample_item();
 
         let result = renderer.render_bibliography_entry(&item).unwrap();
         assert_eq!(result, "The impact of climate change on biodiversity.");
+    }
+
+    // =========================================================================
+    // APA-style integration tests matching JS formatter output
+    // =========================================================================
+
+    fn apa_style_xml() -> &'static str {
+        r#"<?xml version="1.0" encoding="utf-8"?>
+<style xmlns="http://purl.org/net/xbiblio/csl" class="in-text" version="1.0"
+       default-locale="en-US" initialize-with=". " name-as-sort-order="all"
+       and="symbol" delimiter-precedes-last="always">
+  <info>
+    <title>APA Test</title>
+    <id>apa-test</id>
+  </info>
+  <citation et-al-min="3" et-al-use-first="1">
+    <layout prefix="(" suffix=")" delimiter="; ">
+      <group delimiter=", ">
+        <names variable="author">
+          <name form="short"/>
+        </names>
+        <date variable="issued">
+          <date-part name="year"/>
+        </date>
+      </group>
+    </layout>
+  </citation>
+  <bibliography et-al-min="21" et-al-use-first="19" et-al-use-last="true">
+    <layout suffix=".">
+      <group delimiter=". ">
+        <names variable="author">
+          <name/>
+        </names>
+        <date variable="issued" prefix="(" suffix=")">
+          <date-part name="year"/>
+        </date>
+        <text variable="title"/>
+        <group>
+          <text variable="container-title" font-style="italic"/>
+          <group prefix=", ">
+            <text variable="volume" font-style="italic"/>
+            <text variable="issue" prefix="(" suffix=")"/>
+          </group>
+          <text variable="page" prefix=", "/>
+        </group>
+        <text variable="DOI" prefix="https://doi.org/"/>
+      </group>
+    </layout>
+  </bibliography>
+</style>"#
+    }
+
+    #[test]
+    fn test_apa_bib_author_initials() {
+        // Authors should be "Smith, J., & Doe, J." with initials, not full given names
+        let style = Style::from_xml(apa_style_xml()).unwrap();
+        let locale = Locale::english();
+        let mut renderer = Renderer::new(style, locale, OutputFormat::PlainText);
+        let item = sample_item();
+
+        let result = renderer.render_bibliography_entry(&item).unwrap();
+        // Should contain initialized names, not full given names
+        assert!(result.contains("Smith, J."), "Expected 'Smith, J.' but got: {}", result);
+        assert!(result.contains("Doe, J."), "Expected 'Doe, J.' but got: {}", result);
+        // Should NOT contain full names
+        assert!(!result.contains("John"), "Should not contain full given name 'John': {}", result);
+    }
+
+    #[test]
+    fn test_apa_bib_group_delimiters() {
+        // Parts should be separated by ". " from the group delimiter
+        let style = Style::from_xml(apa_style_xml()).unwrap();
+        let locale = Locale::english();
+        let mut renderer = Renderer::new(style, locale, OutputFormat::PlainText);
+        let item = sample_item();
+
+        let result = renderer.render_bibliography_entry(&item).unwrap();
+        // Should end with period from layout suffix
+        assert!(result.ends_with('.'), "Should end with period: {}", result);
+        // Should contain year in parens (date-part only specifies year)
+        assert!(result.contains("(2023)"), "Expected '(2023)' in: {}", result);
+        // Should NOT contain month name when only year date-part is specified
+        assert!(!result.contains("May"), "Should not contain month 'May': {}", result);
+        // Should contain title
+        assert!(result.contains("The impact of climate change on biodiversity"), "Expected title in: {}", result);
+    }
+
+    #[test]
+    fn test_apa_citation_et_al() {
+        // With 2 authors and et-al-min=3, should show both names
+        let style = Style::from_xml(apa_style_xml()).unwrap();
+        let locale = Locale::english();
+        let mut renderer = Renderer::new(style, locale, OutputFormat::PlainText);
+        let item = sample_item(); // has 2 authors
+
+        let items = vec![&item];
+        let result = renderer.render_citation(&items).unwrap();
+        // 2 authors, et-al-min=3, so both should appear: (Smith & Doe, 2023)
+        assert!(result.contains("Smith"), "Expected 'Smith' in: {}", result);
+        assert!(result.contains("Doe"), "Expected 'Doe' in: {}", result);
+        assert!(result.starts_with('('), "Should start with '(': {}", result);
+        assert!(result.ends_with(')'), "Should end with ')': {}", result);
+    }
+
+    #[test]
+    fn test_apa_citation_et_al_many_authors() {
+        // With 5 authors and et-al-min=3, should show "Smith et al., 2023"
+        let style = Style::from_xml(apa_style_xml()).unwrap();
+        let locale = Locale::english();
+        let mut renderer = Renderer::new(style, locale, OutputFormat::PlainText);
+
+        let mut item = sample_item();
+        item.author = Some(vec![
+            Name { family: Some("Smith".into()), given: Some("John".into()), ..Default::default() },
+            Name { family: Some("Doe".into()), given: Some("Jane".into()), ..Default::default() },
+            Name { family: Some("Brown".into()), given: Some("Alice".into()), ..Default::default() },
+            Name { family: Some("Wilson".into()), given: Some("Bob".into()), ..Default::default() },
+            Name { family: Some("Lee".into()), given: Some("Carlos".into()), ..Default::default() },
+        ]);
+
+        let items = vec![&item];
+        let result = renderer.render_citation(&items).unwrap();
+        // et-al-min=3, et-al-use-first=1 → "Smith et al."
+        assert!(result.contains("et al."), "Expected 'et al.' in: {}", result);
+        assert!(result.contains("Smith"), "Expected 'Smith' in: {}", result);
+        assert!(!result.contains("Doe"), "Should NOT contain 'Doe': {}", result);
+        assert!(!result.contains("Brown"), "Should NOT contain 'Brown': {}", result);
+    }
+
+    #[test]
+    fn test_apa_bib_volume_issue_format() {
+        // Volume/issue should be compact: "13(3)" not "volume 13, issue 3"
+        let style = Style::from_xml(apa_style_xml()).unwrap();
+        let locale = Locale::english();
+        let mut renderer = Renderer::new(style, locale, OutputFormat::PlainText);
+        let item = sample_item();
+
+        let result = renderer.render_bibliography_entry(&item).unwrap();
+        assert!(result.contains("13(3)"), "Expected '13(3)' in: {}", result);
+        assert!(!result.contains("volume"), "Should NOT contain 'volume': {}", result);
+    }
+
+    #[test]
+    fn test_hyphenated_name_initials() {
+        let style = Style::from_xml(apa_style_xml()).unwrap();
+        let locale = Locale::english();
+        let mut renderer = Renderer::new(style, locale, OutputFormat::PlainText);
+
+        let mut item = sample_item();
+        item.author = Some(vec![
+            Name { family: Some("Dupont".into()), given: Some("Jean-Pierre".into()), ..Default::default() },
+        ]);
+
+        let result = renderer.render_bibliography_entry(&item).unwrap();
+        assert!(result.contains("Dupont, J.-P."), "Expected 'Dupont, J.-P.' in: {}", result);
     }
 }

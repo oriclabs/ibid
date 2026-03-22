@@ -56,7 +56,7 @@ async function loadStyleXml(styleId) {
 
   if (styleCache[styleId]) return styleCache[styleId];
 
-  // Try bundled styles (74 offline, no network needed)
+  // 1. Try bundled styles (74 offline, no network needed)
   const bundled = BUNDLED_STYLES[styleId];
   if (bundled) {
     const url = chrome.runtime.getURL(bundled.path);
@@ -67,7 +67,31 @@ async function loadStyleXml(styleId) {
     return xml;
   }
 
-  throw new Error(`Style "${styleId}" not found. Choose from the 74 bundled styles.`);
+  // 2. Try previously downloaded styles (cached in chrome.storage.local)
+  const cacheKey = `csl_cache_${styleId}`;
+  const cached = await chrome.storage.local.get([cacheKey]);
+  if (cached[cacheKey]) {
+    styleCache[styleId] = cached[cacheKey];
+    return cached[cacheKey];
+  }
+
+  // 3. Download from official CSL repository on GitHub
+  const githubUrl = `https://raw.githubusercontent.com/citation-style-language/styles/master/${styleId}.csl`;
+  try {
+    const res = await fetch(githubUrl, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) throw new Error(`Style not found: ${styleId}`);
+    const xml = await res.text();
+    // Validate it's actual CSL XML
+    if (!xml.includes('<style') || !xml.includes('purl.org/net/xbiblio/csl')) {
+      throw new Error('Invalid CSL style file');
+    }
+    // Cache in memory and storage
+    styleCache[styleId] = xml;
+    await chrome.storage.local.set({ [cacheKey]: xml });
+    return xml;
+  } catch (e) {
+    throw new Error(`Style "${styleId}" not available. ${e.message}`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -282,14 +306,74 @@ async function handleMessage(message) {
   }
 
   if (message.action === 'getStyles') {
-    return {
-      styles: Object.entries(BUNDLED_STYLES).map(([id, info]) => ({
-        id,
-        name: info.name,
-        group: info.group,
-        bundled: true,
-      })),
-    };
+    // Return bundled styles + any previously downloaded styles from the registry
+    const bundled = Object.entries(BUNDLED_STYLES).map(([id, info]) => ({
+      id, name: info.name, group: info.group, field: info.field, bundled: true,
+    }));
+    // Check for cached downloaded style IDs
+    const { downloaded_style_ids: downloadedIds = [] } = await chrome.storage.local.get(['downloaded_style_ids']);
+    const downloaded = downloadedIds.map(s => ({
+      id: s.id, name: s.name, group: s.group || 'Downloaded', field: s.field || 'generic', bundled: false,
+    }));
+    return { styles: [...bundled, ...downloaded] };
+  }
+
+  // Download and cache a style from the official CSL repository
+  if (message.action === 'downloadStyle') {
+    const styleId = message.styleId;
+    if (!styleId) return { error: 'No style ID provided' };
+    try {
+      const xml = await loadStyleXml(styleId);
+      // Extract style name from the XML
+      const titleMatch = xml.match(/<title>([^<]+)<\/title>/);
+      const name = titleMatch ? titleMatch[1] : styleId;
+      const groupMatch = xml.match(/<category\s+field="([^"]+)"/);
+      const field = groupMatch ? groupMatch[1] : 'generic';
+      // Track in downloaded styles list
+      const { downloaded_style_ids: existing = [] } = await chrome.storage.local.get(['downloaded_style_ids']);
+      if (!existing.find(s => s.id === styleId)) {
+        existing.push({ id: styleId, name, group: 'Downloaded', field });
+        await chrome.storage.local.set({ downloaded_style_ids: existing });
+      }
+      return { success: true, name, styleId };
+    } catch (e) {
+      return { error: e.message };
+    }
+  }
+
+  // Search the official CSL repository for styles by name
+  if (message.action === 'searchRemoteStyles') {
+    const query = (message.query || '').toLowerCase().trim();
+    if (!query || query.length < 2) return { styles: [] };
+    try {
+      // Fetch the file list from GitHub API (cached in memory for the session)
+      if (!globalThis._cslFileList) {
+        const res = await fetch(
+          'https://api.github.com/repos/citation-style-language/styles/git/trees/master',
+          { signal: AbortSignal.timeout(10000) }
+        );
+        if (!res.ok) return { styles: [], error: 'GitHub API unavailable' };
+        const data = await res.json();
+        globalThis._cslFileList = data.tree
+          .filter(f => f.path.endsWith('.csl') && f.type === 'blob')
+          .map(f => f.path.replace('.csl', ''));
+      }
+      // Filter by query
+      const matches = globalThis._cslFileList
+        .filter(id => id.includes(query) || id.replace(/-/g, ' ').includes(query))
+        .slice(0, 30)
+        .map(id => ({
+          id,
+          name: id.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+          group: 'CSL Repository',
+          field: 'generic',
+          bundled: false,
+          remote: true,
+        }));
+      return { styles: matches };
+    } catch (e) {
+      return { styles: [], error: e.message };
+    }
   }
 
   // Search styles — all 74 bundled styles, offline
@@ -493,10 +577,9 @@ async function handleMessage(message) {
     case 'formatBoth': {
       const xml = message.styleXml || (await loadStyleXml(message.styleId || 'apa7'));
       engine.loadStyle(xml);
-      engine.setFormat('html');
       const bib = engine.formatBibliographyEntry(JSON.stringify(message.item));
-      engine.setFormat('text');
       const intext = engine.formatCitation(JSON.stringify([message.item]));
+      console.log('[Ibid] formatBoth result — bib:', bib?.substring(0, 80), '| intext:', intext);
       return { bibliography: bib, intext };
     }
 

@@ -5,6 +5,9 @@ edition = "2024"
 description = "High-performance CSL citation engine for the Ibid citation manager"
 license = "MIT"
 
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 
@@ -18,6 +21,7 @@ js-sys = "0.3"
 web-sys = { version = "0.3", features = ["console"] }
 thiserror = "2"
 unicode-segmentation = "1"
+hayagriva = { version = "0.9", default-features = false }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3"

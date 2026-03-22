@@ -11,6 +11,7 @@ let globalStyle = 'apa7';
 let projects = [];
 let intextMode = 'parenthetical';
 let currentProjectId = 'default';
+let existingCitationId = null; // set when page already in library
 
 // ---------------------------------------------------------------------------
 // Init
@@ -41,6 +42,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#btn-retry').addEventListener('click', () => location.reload());
   $('#btn-enhance').addEventListener('click', enhanceMetadata);
   $('#btn-rescan').addEventListener('click', rescanPage);
+  $('#btn-view-in-library')?.addEventListener('click', async () => {
+    const win = await chrome.windows.getCurrent();
+    chrome.sidePanel.open({ windowId: win.id });
+  });
+  $('#btn-update-existing')?.addEventListener('click', () => {
+    if (existingCitationId) addToProject();
+  });
   const openHelp = () => chrome.tabs.create({ url: chrome.runtime.getURL('help/help.html') });
   $('#btn-help').addEventListener('click', openHelp);
   $('#btn-help-header').addEventListener('click', openHelp);
@@ -194,6 +202,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Extract metadata from current tab
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const isFileUrl = tab?.url?.startsWith('file://');
     const isRestricted = !tab?.url || tab.url.startsWith('chrome://') ||
       tab.url.startsWith('edge://') || tab.url.startsWith('about:') ||
       tab.url.startsWith('chrome-extension://');
@@ -202,6 +211,35 @@ document.addEventListener('DOMContentLoaded', async () => {
       currentMetadata = { URL: tab?.url || '', type: 'webpage' };
       showState('ready');
       showHint('restricted', 'This page can\'t be auto-cited. Enter details manually or paste a DOI/ISBN below and click Enhance.');
+    } else if (isFileUrl) {
+      // Local file — try to extract what we can from the filename/title
+      const meta = extractLocalFileMeta(tab);
+      currentMetadata = meta;
+      populateFields(meta);
+      showState('ready');
+      // Try injection (works only if user enabled "Allow access to file URLs")
+      let injected = false;
+      try {
+        await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content/extractor.js'] });
+        if (tab.url?.toLowerCase().endsWith('.pdf') || tab.url?.includes('pdf')) {
+          await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content/pdf-extractor.js'] });
+        }
+        injected = true;
+      } catch {}
+      if (injected) {
+        chrome.tabs.sendMessage(tab.id, { action: 'extractMetadata' }, (response) => {
+          if (chrome.runtime.lastError || !response?.metadata) return;
+          // Merge: prefer extracted metadata over filename-derived
+          const extracted = response.metadata;
+          if (extracted.title && extracted.title !== meta.title) currentMetadata.title = extracted.title;
+          if (extracted.DOI) currentMetadata.DOI = extracted.DOI;
+          if (extracted.author?.length) currentMetadata.author = extracted.author;
+          populateFields(currentMetadata);
+        });
+        showHint('info', 'Local file detected. Metadata extracted from filename. Paste a DOI and click Enhance for full details.');
+      } else {
+        showHint('info', 'Local file detected. To auto-extract, enable "Allow access to file URLs" in chrome://extensions. Or paste a DOI below and click Enhance.');
+      }
     } else if (tab?.id) {
       // Programmatically inject content scripts (no <all_urls> permission needed)
       try {
@@ -301,6 +339,7 @@ function populateFields(meta) {
   window._validateTimer = setTimeout(() => validateSourceType(), 1500);
   updateFieldRelevance();
   updatePreview();
+  checkIfInLibrary(meta);
 }
 
 function formatAuthorsForInput(authors) {
@@ -402,234 +441,45 @@ async function updatePreview() {
     return;
   }
 
-  // Show instantly with JS formatter (no delay)
-  $('#citation-preview').innerHTML = formatBibliography(item, currentStyle);
-  $('#intext-preview').textContent = formatIntext(item, currentStyle);
-}
+  // Check if current style maps cleanly to a JS family
+  const family = CitationFormatter.resolveStyleFamily(currentStyle);
+  const jsAccurate = ['apa', 'mla', 'chicago', 'harvard', 'ieee', 'vancouver'].includes(currentStyle) ||
+    currentStyle.startsWith(family);
 
-// ---------------------------------------------------------------------------
-// JS Citation Formatter — style-aware, handles all common styles
-// ---------------------------------------------------------------------------
-
-function formatBibliography(item, styleId) {
-  // Resolve alias to base style family
-  const style = resolveStyleFamily(styleId);
-  const a = formatAuthorsBib(item.author, style);
-  const year = item.issued?.['date-parts']?.[0]?.[0] || 'n.d.';
-  const title = item.title || 'Untitled';
-  const container = item['container-title'] || '';
-  const vol = item.volume || '';
-  const iss = item.issue || '';
-  const pg = item.page || '';
-  const doi = item.DOI ? `https://doi.org/${item.DOI}` : '';
-  const url = item.URL || '';
-  const pub = item.publisher || '';
-
-  switch (style) {
-    case 'apa':
-      return formatApa(a, year, title, container, vol, iss, pg, doi, url, pub, item);
-    case 'mla':
-      return formatMla(a, year, title, container, vol, iss, pg, doi, url, pub, item);
-    case 'chicago':
-      return formatChicago(a, year, title, container, vol, iss, pg, doi, url, pub, item);
-    case 'harvard':
-      return formatHarvard(a, year, title, container, vol, iss, pg, doi, url, pub, item);
-    case 'ieee':
-      return formatIeee(item);
-    case 'vancouver':
-      return formatVancouver(item);
-    default:
-      return formatApa(a, year, title, container, vol, iss, pg, doi, url, pub, item);
+  if (jsAccurate) {
+    // Standard family — JS is accurate, show instantly
+    $('#citation-preview').innerHTML = CitationFormatter.formatBibSync(item, currentStyle, { html: true });
+    $('#intext-preview').textContent = CitationFormatter.formatIntextSync(item, currentStyle, intextMode === 'narrative');
+  } else {
+    // Non-standard style — show placeholder while WASM renders
+    $('#citation-preview').innerHTML = '<span class="text-zinc-400 italic text-xs">Formatting with ' +
+      ($('#style-picker-label')?.textContent || currentStyle) + '...</span>';
+    $('#intext-preview').innerHTML = '<span class="text-zinc-400 italic text-xs">...</span>';
   }
-}
 
-function formatIntext(item, styleId) {
-  const style = resolveStyleFamily(styleId);
-  const first = (item.author || [])[0];
-  const name = first?.family || first?.literal || (item.title ? item.title.split(' ').slice(0, 3).join(' ') : 'Unknown');
-  const year = item.issued?.['date-parts']?.[0]?.[0] || 'n.d.';
-  const authorCount = (item.author || []).length;
-  const narrative = intextMode === 'narrative';
-
-  switch (style) {
-    case 'apa':
-    case 'chicago':
-    case 'harvard':
-      if (narrative) {
-        if (authorCount >= 3) return `${name} et al. (${year})`;
-        if (authorCount === 2) return `${name} & ${item.author[1].family || ''} (${year})`;
-        return `${name} (${year})`;
-      }
-      if (authorCount >= 3) return `(${name} et al., ${year})`;
-      if (authorCount === 2) return `(${name} & ${item.author[1].family || ''}, ${year})`;
-      return `(${name}, ${year})`;
-    case 'mla':
-      if (narrative) {
-        if (authorCount >= 3) return `${name} et al.`;
-        if (authorCount === 2) return `${name} and ${item.author[1].family || ''}`;
-        return name;
-      }
-      if (authorCount >= 3) return `(${name} et al. ${item.page || ''})`.trim();
-      if (authorCount === 2) return `(${name} and ${item.author[1].family || ''} ${item.page || ''})`.trim();
-      return `(${name} ${item.page || ''})`.trim();
-    case 'ieee':
-    case 'vancouver':
-      return '[1]';
-    default:
-      return `(${name}, ${year})`;
-  }
-}
-
-function resolveStyleFamily(styleId) {
-  const id = (styleId || '').toLowerCase();
-  if (id.includes('apa') || id === 'apa') return 'apa';
-  if (id.includes('mla') || id.includes('modern-language')) return 'mla';
-  if (id.includes('chicago')) return 'chicago';
-  if (id.includes('harvard') || id.includes('cite-them-right') || id.includes('elsevier-harvard')) return 'harvard';
-  if (id.includes('ieee')) return 'ieee';
-  if (id.includes('vancouver') || id.includes('ama') || id.includes('medical') || id.includes('nlm') || id.includes('lancet') || id.includes('bmj') || id.includes('nejm')) return 'vancouver';
-  if (id.includes('nature') || id.includes('science') || id.includes('cell')) return 'vancouver';
-  return 'apa'; // default
-}
-
-function formatAuthorsBib(authors, style) {
-  if (!authors || authors.length === 0) return '';
-  const fmt = (a) => {
-    if (a.literal) return a.literal;
-    const f = a.family || '';
-    const g = a.given || '';
-    if (style === 'ieee' || style === 'vancouver') {
-      // F. Last
-      const initials = g.split(/[\s.]/).filter(Boolean).map(p => p[0] + '.').join(' ');
-      return `${initials} ${f}`.trim();
+  // Always try WASM (hayagriva) for accurate CSL rendering
+  try {
+    const both = await CitationFormatter.formatBoth(item, currentStyle, { html: true, narrative: intextMode === 'narrative' });
+    if (both.bib) $('#citation-preview').innerHTML = both.bib;
+    // WASM doesn't support narrative mode — always use JS for in-text when narrative
+    if (intextMode === 'narrative') {
+      $('#intext-preview').textContent = CitationFormatter.formatIntextSync(item, currentStyle, true);
+    } else if (both.intext) {
+      $('#intext-preview').textContent = both.intext;
     }
-    // Last, F.
-    const initials = g.split(/[\s.]/).filter(Boolean).map(p => p[0] + '.').join(' ');
-    return `${f}, ${initials}`.trim();
-  };
-
-  if (authors.length === 1) return fmt(authors[0]);
-  if (authors.length === 2) {
-    const sep = style === 'apa' ? ' & ' : style === 'mla' ? ', and ' : ' and ';
-    return `${fmt(authors[0])}${sep}${fmt(authors[1])}`;
+  } catch {
+    // WASM unavailable — show JS fallback if not already shown
+    if (!jsAccurate) {
+      $('#citation-preview').innerHTML = CitationFormatter.formatBibSync(item, currentStyle, { html: true });
+      $('#intext-preview').textContent = CitationFormatter.formatIntextSync(item, currentStyle, intextMode === 'narrative');
+    }
   }
-  // 3+ authors
-  if (style === 'vancouver' && authors.length > 6) {
-    return authors.slice(0, 6).map(fmt).join(', ') + ', et al.';
-  }
-  const last = authors.length - 1;
-  const sep = style === 'apa' ? ', & ' : style === 'mla' ? ', and ' : ', & ';
-  return authors.slice(0, last).map(fmt).join(', ') + sep + fmt(authors[last]);
 }
 
-function formatApa(a, year, title, container, vol, iss, pg, doi, url, pub, item) {
-  let parts = [];
-  parts.push(a || title); // author or title as fallback
-  parts.push(`(${year})`);
-  if (a) parts.push(item.type === 'book' || item.type === 'report' || item.type === 'thesis' ? `<i>${title}</i>` : title);
-  if (container) {
-    let c = `<i>${container}</i>`;
-    if (vol) c += `, <i>${vol}</i>`;
-    if (iss) c += `(${iss})`;
-    if (pg) c += `, ${pg}`;
-    parts.push(c);
-  }
-  if (pub) parts.push(pub);
-  const access = doi || url;
-  if (access) parts.push(access);
-  return parts.filter(Boolean).join('. ').replace(/\.\./g, '.').replace(/\. \./g, '.') + '.';
-}
-
-function formatMla(a, year, title, container, vol, iss, pg, doi, url, pub, item) {
-  let parts = [];
-  parts.push(a || 'Unknown');
-  parts.push(item.type === 'book' ? `<i>${title}</i>` : `\u201c${title}.\u201d`);
-  if (container) parts.push(`<i>${container}</i>`);
-  let locParts = [];
-  if (vol) locParts.push(`vol. ${vol}`);
-  if (iss) locParts.push(`no. ${iss}`);
-  if (locParts.length) parts.push(locParts.join(', '));
-  if (pub) parts.push(pub);
-  if (year !== 'n.d.') parts.push(year);
-  if (pg) parts.push(`pp. ${pg}`);
-  const access = doi || url;
-  if (access) parts.push(access);
-  return parts.filter(Boolean).join(', ').replace(/,\./g, '.') + '.';
-}
-
-function formatChicago(a, year, title, container, vol, iss, pg, doi, url, pub, item) {
-  let parts = [];
-  parts.push(a || 'Unknown');
-  parts.push(year);
-  parts.push(item.type === 'book' || item.type === 'thesis' ? `<i>${title}</i>` : `\u201c${title}\u201d`);
-  if (container) {
-    let c = `<i>${container}</i>`;
-    if (vol) c += ` ${vol}`;
-    if (iss) c += `, no. ${iss}`;
-    if (pg) c += `: ${pg}`;
-    parts.push(c);
-  }
-  if (pub && item.publisher_place) parts.push(`${item.publisher_place}: ${pub}`);
-  else if (pub) parts.push(pub);
-  const access = doi || url;
-  if (access) parts.push(access);
-  return parts.filter(Boolean).join('. ').replace(/\.\./g, '.') + '.';
-}
-
-function formatHarvard(a, year, title, container, vol, iss, pg, doi, url, pub, item) {
-  let parts = [];
-  parts.push(a || 'Unknown');
-  parts.push(`(${year})`);
-  parts.push(item.type === 'book' || item.type === 'thesis' ? `<i>${title}</i>` : `\u2018${title}\u2019`);
-  if (container) {
-    let c = `<i>${container}</i>`;
-    if (vol) c += `, ${vol}`;
-    if (iss) c += `(${iss})`;
-    if (pg) c += `, pp. ${pg}`;
-    parts.push(c);
-  }
-  if (pub) parts.push(pub);
-  if (doi) parts.push(`doi:${item.DOI}`);
-  else if (url) parts.push(`Available at: ${url}`);
-  return parts.filter(Boolean).join('. ').replace(/\.\./g, '.') + '.';
-}
-
-function formatIeee(item) {
-  const authors = formatAuthorsBib(item.author, 'ieee');
-  const title = item.title || 'Untitled';
-  const container = item['container-title'] || '';
-  const vol = item.volume ? `vol. ${item.volume}` : '';
-  const iss = item.issue ? `no. ${item.issue}` : '';
-  const pg = item.page ? `pp. ${item.page}` : '';
-  const year = item.issued?.['date-parts']?.[0]?.[0] || '';
-  const doi = item.DOI ? `doi: ${item.DOI}` : '';
-
-  let parts = [authors, `\u201c${title},\u201d`];
-  if (container) parts.push(`<i>${container}</i>`);
-  if (vol) parts.push(vol);
-  if (iss) parts.push(iss);
-  if (pg) parts.push(pg);
-  if (year) parts.push(year);
-  if (doi) parts.push(doi);
-  return '[1] ' + parts.filter(Boolean).join(', ') + '.';
-}
-
-function formatVancouver(item) {
-  const authors = formatAuthorsBib(item.author, 'vancouver');
-  const title = item.title || 'Untitled';
-  const container = item['container-title'] || '';
-  const year = item.issued?.['date-parts']?.[0]?.[0] || '';
-  const vol = item.volume || '';
-  const iss = item.issue ? `(${item.issue})` : '';
-  const pg = item.page ? `:${item.page}` : '';
-  const doi = item.DOI ? `doi: ${item.DOI}` : '';
-
-  let parts = [`${authors}.`, `${title}.`];
-  if (container) parts.push(`${container}. ${year}${vol ? `;${vol}` : ''}${iss}${pg}.`);
-  else if (year) parts.push(`${year}.`);
-  if (doi) parts.push(doi);
-  return '1. ' + parts.filter(Boolean).join(' ');
-}
+// ---------------------------------------------------------------------------
+// Citation formatting — delegated to shared CitationFormatter module
+// (WASM-first with JS fallback, supports all 74 bundled styles)
+// ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
 // Enhance — resolve identifiers and fill missing fields
@@ -958,8 +808,6 @@ async function addToProject() {
   }
 
   const item = buildCslItem();
-  item.id = crypto.randomUUID();
-  item._dateAdded = new Date().toISOString();
   item._sourceUrl = currentMetadata?.URL || '';
 
   const projectId = $('#project-selector').value;
@@ -969,6 +817,30 @@ async function addToProject() {
 
   const stored = await chrome.storage.local.get(['citations']);
   const citations = stored.citations || [];
+
+  // If updating existing entry
+  if (existingCitationId) {
+    const idx = citations.findIndex(c => c.id === existingCitationId);
+    if (idx >= 0) {
+      item.id = existingCitationId;
+      item._dateAdded = citations[idx]._dateAdded;
+      item._dateModified = new Date().toISOString();
+      item._tags = citations[idx]._tags;
+      item._notes = citations[idx]._notes;
+      item._quotes = citations[idx]._quotes;
+      item._starred = citations[idx]._starred;
+      if (projectId !== 'new') item._projectIds = [projectId];
+      citations[idx] = item;
+      await chrome.storage.local.set({ citations });
+      flashButton('#btn-add-project', 'Updated!', true);
+      cacheCurrentFields();
+      return;
+    }
+  }
+
+  // New entry
+  item.id = crypto.randomUUID();
+  item._dateAdded = new Date().toISOString();
 
   // Duplicate detection
   const dup = findDuplicate(item, citations);
@@ -1464,7 +1336,10 @@ function renderStyleList(query) {
     }
   } else {
     if (filtered.length === 0) {
-      html += `<div class="px-3 py-4 text-center text-xs text-zinc-400">No styles match "${query}"</div>`;
+      html += `<div class="px-3 py-2 text-center text-xs text-zinc-400">No bundled styles match "${query}"</div>`;
+      html += `<div id="popup-remote-results"><div class="px-3 py-2 text-[10px] text-zinc-400 text-center">Searching 2600+ CSL styles online...</div></div>`;
+      // Async remote search
+      searchRemotePopup(query);
     } else {
       html += `<div class="px-2.5 py-1 text-[9px] text-zinc-400">${filtered.length} result${filtered.length !== 1 ? 's' : ''}</div>`;
       html += filtered.map(s => styleItemHtml(s, false)).join('');
@@ -1476,6 +1351,58 @@ function renderStyleList(query) {
   // Bind clicks
   for (const btn of list.querySelectorAll('.style-item')) {
     btn.addEventListener('click', () => selectStyle(btn.dataset.id, btn.dataset.name));
+  }
+
+  // Download buttons (from remote search results)
+  bindPopupDownloadButtons();
+}
+
+function bindPopupDownloadButtons() {
+  const list = $('#style-picker-list');
+  for (const dlBtn of list.querySelectorAll('.download-style-btn')) {
+    dlBtn.addEventListener('click', async () => {
+      const styleId = dlBtn.dataset.id;
+      dlBtn.querySelector('.dl-label')?.remove();
+      dlBtn.textContent = 'Downloading...';
+      dlBtn.disabled = true;
+      try {
+        const res = await chrome.runtime.sendMessage({ action: 'downloadStyle', styleId });
+        if (res?.success) {
+          allStyles.push({ id: styleId, name: res.name, group: 'Downloaded', field: 'generic' });
+          selectStyle(styleId, res.name);
+        } else {
+          dlBtn.textContent = res?.error || 'Not found';
+          setTimeout(() => { dlBtn.textContent = dlBtn.dataset.name || styleId; dlBtn.disabled = false; }, 2000);
+        }
+      } catch {
+        dlBtn.textContent = 'Download failed';
+      }
+    });
+  }
+}
+
+async function searchRemotePopup(query) {
+  try {
+    const res = await chrome.runtime.sendMessage({ action: 'searchRemoteStyles', query });
+    const container = $('#popup-remote-results');
+    if (!container) return;
+    if (!res?.styles?.length) {
+      container.innerHTML = `<div class="px-3 py-3 text-center text-xs text-zinc-400">No styles found for "${query}"</div>`;
+      return;
+    }
+    let html = `<div class="px-2.5 py-1 text-[9px] font-semibold text-zinc-400 uppercase tracking-wider bg-zinc-50 dark:bg-zinc-900/50">Online (${res.styles.length} results)</div>`;
+    for (const s of res.styles) {
+      if (allStyles.find(ls => ls.id === s.id)) continue;
+      html += `<button class="download-style-btn w-full text-left px-3 py-1.5 text-xs flex items-center justify-between gap-1 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 text-zinc-700 dark:text-zinc-300 transition-colors" data-id="${s.id}" data-name="${s.name}">
+        <span class="truncate">${s.name}</span>
+        <span class="text-[9px] px-1 py-0.5 rounded bg-saffron-100 dark:bg-saffron-900/30 text-saffron-600 dark:text-saffron-400 shrink-0">download</span>
+      </button>`;
+    }
+    container.innerHTML = html;
+    bindPopupDownloadButtons();
+  } catch {
+    const container = $('#popup-remote-results');
+    if (container) container.innerHTML = `<div class="px-3 py-3 text-center text-xs text-zinc-400">Search unavailable offline</div>`;
   }
 }
 
@@ -1519,6 +1446,41 @@ initStylePicker();
 // UI helpers
 // ---------------------------------------------------------------------------
 
+// Extract metadata from local file URL (file:///) using filename and title
+function extractLocalFileMeta(tab) {
+  const url = tab.url || '';
+  const meta = { URL: url, type: 'document' };
+
+  // Extract filename from path
+  let filename = '';
+  try {
+    const path = decodeURIComponent(new URL(url).pathname);
+    filename = path.split('/').pop() || '';
+  } catch {
+    filename = url.split('/').pop() || '';
+  }
+
+  // Strip extension
+  const nameNoExt = filename.replace(/\.\w{1,5}$/, '');
+
+  // Use document title if available and different from filename
+  if (tab.title && tab.title !== filename && !tab.title.startsWith('file:')) {
+    meta.title = tab.title.replace(/\.pdf$/i, '').trim();
+  } else if (nameNoExt) {
+    // Clean up filename: replace hyphens/underscores with spaces
+    meta.title = nameNoExt.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  // Try to find DOI pattern in filename (e.g., s44187-026-00833-z)
+  const doiMatch = filename.match(/(10\.\d{4,}[^\s]+)/);
+  if (doiMatch) meta.DOI = doiMatch[1];
+
+  // Detect if PDF
+  if (url.toLowerCase().endsWith('.pdf')) meta._isPdf = true;
+
+  return meta;
+}
+
 function showState(state) {
   $('#state-loading').classList.toggle('hidden', state !== 'loading');
   $('#state-ready').classList.toggle('hidden', state !== 'ready');
@@ -1547,6 +1509,10 @@ function showHint(type, message) {
     enhancing: {
       bar: 'bg-saffron-50 dark:bg-saffron-900/15 border-saffron-200 dark:border-saffron-800 text-saffron-700 dark:text-saffron-400',
       icon: 'text-saffron-500',
+    },
+    info: {
+      bar: 'bg-blue-50 dark:bg-blue-900/15 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400',
+      icon: 'text-blue-500',
     },
   };
 
@@ -1606,6 +1572,54 @@ async function rescanPage() {
 }
 
 // Cache current field values for this tab (survives popup close/reopen)
+// Check if current page's citation already exists in library
+async function checkIfInLibrary(meta) {
+  existingCitationId = null;
+  const badge = $('#in-library-badge');
+  const addBtn = $('#btn-add-project');
+  const addLabel = $('#add-label');
+  const addIcon = $('#add-icon');
+
+  try {
+    const { citations = [] } = await chrome.storage.local.get(['citations']);
+    const url = meta?.URL || meta?.DOI || '';
+    const doi = meta?.DOI || '';
+
+    const match = citations.find(c => {
+      if (doi && c.DOI && doi.toLowerCase() === c.DOI.toLowerCase()) return true;
+      if (url && c.URL && url === c.URL) return true;
+      if (url && c._sourceUrl && url === c._sourceUrl) return true;
+      return false;
+    });
+
+    if (match) {
+      existingCitationId = match.id;
+      if (badge) badge.classList.remove('hidden');
+      // Show which project it's in
+      const projectLabel = $('#in-library-project');
+      if (projectLabel) {
+        const projId = match._projectIds?.[0] || match._project || 'default';
+        const { projects = [] } = await chrome.storage.local.get(['projects']);
+        const proj = projects.find(p => p.id === projId);
+        projectLabel.textContent = proj ? `In "${proj.name}"` : 'In library';
+      }
+      // Keep Add button as "Add" so user can still add to a different project
+      // The Update button in the badge handles updating the existing entry
+      if (addLabel) addLabel.textContent = 'Add';
+      if (addIcon) addIcon.innerHTML = '<path d="M12 5v14M5 12h14"/>';
+    } else {
+      existingCitationId = null;
+      if (badge) badge.classList.add('hidden');
+      if (addLabel) addLabel.textContent = 'Add';
+      if (addIcon) addIcon.innerHTML = '<path d="M12 5v14M5 12h14"/>';
+      addBtn?.classList.remove('bg-emerald-500', 'hover:bg-emerald-600');
+      addBtn?.classList.add('bg-saffron-500', 'hover:bg-saffron-600');
+    }
+  } catch {
+    // Storage error — ignore
+  }
+}
+
 async function cacheCurrentFields() {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });

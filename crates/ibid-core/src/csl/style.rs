@@ -128,6 +128,10 @@ pub struct Citation {
     pub layout: Layout,
     pub sort: Option<Sort>,
     pub options: CitationOptions,
+    // Name/et-al options that apply to all names in this citation
+    pub et_al_min: Option<u32>,
+    pub et_al_use_first: Option<u32>,
+    pub et_al_use_last: bool,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -168,6 +172,10 @@ pub struct Bibliography {
     pub layout: Layout,
     pub sort: Option<Sort>,
     pub options: BibliographyOptions,
+    // Name/et-al options that apply to all names in this bibliography
+    pub et_al_min: Option<u32>,
+    pub et_al_use_first: Option<u32>,
+    pub et_al_use_last: bool,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -565,8 +573,12 @@ impl Style {
 
         // Stack to track pending NamesElement data from opening tags
         let mut names_stack: Vec<NamesElement> = Vec::new();
-        // Stack to track pending NameConfig from <name> child elements
-        let mut pending_name_config: Option<NameConfig> = None;
+        // Stack to track pending GroupElement attributes from opening tags
+        let mut group_stack: Vec<GroupElement> = Vec::new();
+        // Stack to track pending DateElement attributes from opening tags
+        let mut date_stack: Vec<DateElement> = Vec::new();
+        // Stack to track pending NameConfig from <name> child elements (one per nested <names>)
+        let mut name_config_stack: Vec<Option<NameConfig>> = Vec::new();
 
         // Choose/if/else tracking
         #[derive(Default)]
@@ -638,12 +650,18 @@ impl Style {
                         "citation" => {
                             let mut citation = Citation::default();
                             parse_citation_options(&attrs, &mut citation.options);
+                            citation.et_al_min = attrs.get("et-al-min").and_then(|v| v.parse().ok());
+                            citation.et_al_use_first = attrs.get("et-al-use-first").and_then(|v| v.parse().ok());
+                            citation.et_al_use_last = attrs.get("et-al-use-last").map(|v| v == "true").unwrap_or(false);
                             style.citation = Some(citation);
                             context_stack.push("citation".to_string());
                         }
                         "bibliography" => {
                             let mut bib = Bibliography::default();
                             parse_bibliography_options(&attrs, &mut bib.options);
+                            bib.et_al_min = attrs.get("et-al-min").and_then(|v| v.parse().ok());
+                            bib.et_al_use_first = attrs.get("et-al-use-first").and_then(|v| v.parse().ok());
+                            bib.et_al_use_last = attrs.get("et-al-use-last").map(|v| v == "true").unwrap_or(false);
                             style.bibliography = Some(bib);
                             context_stack.push("bibliography".to_string());
                         }
@@ -695,9 +713,20 @@ impl Style {
                         "text" | "number" | "names" | "name" | "et-al" | "label" | "date"
                         | "date-part" | "group" | "choose" | "if" | "else-if" | "else"
                         | "substitute" => {
+                            // Handle <date-part> child element inside <date>
+                            if tag == "date-part" {
+                                if let Some(de) = date_stack.last_mut() {
+                                    de.parts.push(parse_date_part(&attrs));
+                                }
+                                context_stack.push(tag.clone());
+                                continue;
+                            }
+
                             // Handle <name> child element inside <names>
                             if tag == "name" && context_stack.last().map(|s| s.as_str()) == Some("names") {
-                                pending_name_config = Some(parse_name_config(&attrs));
+                                if let Some(slot) = name_config_stack.last_mut() {
+                                    *slot = Some(parse_name_config(&attrs));
+                                }
                                 context_stack.push(tag.clone());
                                 continue;
                             }
@@ -730,11 +759,17 @@ impl Style {
                             {
                                 // For container elements, push new level
                                 match &elem {
-                                    Element::Group(_) => {
+                                    Element::Group(ge) => {
+                                        group_stack.push(ge.clone());
                                         element_stack.push(Vec::new());
                                     }
                                     Element::Names(ne) => {
                                         names_stack.push(ne.clone());
+                                        name_config_stack.push(None);
+                                        element_stack.push(Vec::new());
+                                    }
+                                    Element::Date(de) => {
+                                        date_stack.push(de.clone());
                                         element_stack.push(Vec::new());
                                     }
                                     _ => {}
@@ -742,7 +777,8 @@ impl Style {
                                 // Push element to current level for non-containers
                                 match &elem {
                                     Element::Group(_)
-                                    | Element::Names(_) => {
+                                    | Element::Names(_)
+                                    | Element::Date(_) => {
                                         // These will collect children and be assembled on End
                                     }
                                     _ => {
@@ -812,9 +848,17 @@ impl Style {
                         }
                         "name" if context_stack.last().map(|s| s.as_str()) == Some("names") => {
                             // Self-closing <name .../> inside <names>
-                            pending_name_config = Some(parse_name_config(&attrs));
+                            if let Some(slot) = name_config_stack.last_mut() {
+                                *slot = Some(parse_name_config(&attrs));
+                            }
                         }
-                        "text" | "number" | "label" | "date-part" | "et-al" => {
+                        "date-part" => {
+                            // Add date-part to the parent date element on the stack
+                            if let Some(de) = date_stack.last_mut() {
+                                de.parts.push(parse_date_part(&attrs));
+                            }
+                        }
+                        "text" | "number" | "label" | "et-al" => {
                             if let Some(elem) =
                                 parse_element_empty(&tag, &attrs)
                             {
@@ -879,12 +923,10 @@ impl Style {
                         }
                         "group" => {
                             let children = element_stack.pop().unwrap_or_default();
-                            // Create the group with its children
-                            // We need to reconstruct from context
-                            let group = Element::Group(GroupElement {
-                                elements: children,
-                                ..Default::default()
-                            });
+                            // Restore the group's attributes from the opening tag
+                            let mut ge = group_stack.pop().unwrap_or_default();
+                            ge.elements = children;
+                            let group = Element::Group(ge);
                             if let Some(current) = element_stack.last_mut() {
                                 current.push(group);
                             }
@@ -894,7 +936,7 @@ impl Style {
                             let _children = element_stack.pop().unwrap_or_default();
                             let mut ne = names_stack.pop().unwrap_or_default();
                             // Wire up child <name> config if found
-                            if let Some(nc) = pending_name_config.take() {
+                            if let Some(Some(nc)) = name_config_stack.pop() {
                                 ne.name = Some(nc);
                             }
                             let names = Element::Names(ne);
@@ -942,12 +984,28 @@ impl Style {
                             context_stack.pop();
                         }
                         "substitute" => {
-                            // Substitute children go into the parent names element
-                            let _children = element_stack.pop().unwrap_or_default();
-                            // TODO: wire substitute into NamesElement
+                            let children = element_stack.pop().unwrap_or_default();
+                            // Wire substitute children into the parent NamesElement
+                            if let Some(ne) = names_stack.last_mut() {
+                                ne.substitute = Some(children);
+                            }
                             context_stack.pop();
                         }
-                        "text" | "number" | "label" | "date" | "date-part" | "name" | "et-al" => {
+                        "date" => {
+                            let children = element_stack.pop().unwrap_or_default();
+                            let mut de = date_stack.pop().unwrap_or_default();
+                            // Collect date-part children
+                            // date-part elements are pushed as Element but we need DatePart structs
+                            // They were NOT added to element_stack since parse_element_empty returns None
+                            // So children here may be empty — date-parts were parsed differently
+                            // We'll handle this by checking the context
+                            let date = Element::Date(de);
+                            if let Some(current) = element_stack.last_mut() {
+                                current.push(date);
+                            }
+                            context_stack.pop();
+                        }
+                        "text" | "number" | "label" | "date-part" | "name" | "et-al" => {
                             context_stack.pop();
                         }
                         _ => {
@@ -1323,6 +1381,23 @@ fn parse_name_config(attrs: &HashMap<String, String>) -> NameConfig {
         formatting: parse_formatting(attrs),
         prefix: attrs.get("prefix").cloned(),
         suffix: attrs.get("suffix").cloned(),
+    }
+}
+
+fn parse_date_part(attrs: &HashMap<String, String>) -> DatePart {
+    DatePart {
+        name: match attrs.get("name").map(|s| s.as_str()) {
+            Some("month") => DatePartName::Month,
+            Some("day") => DatePartName::Day,
+            _ => DatePartName::Year,
+        },
+        form: attrs.get("form").cloned(),
+        prefix: attrs.get("prefix").cloned(),
+        suffix: attrs.get("suffix").cloned(),
+        formatting: parse_formatting(attrs),
+        text_case: parse_text_case(attrs),
+        range_delimiter: attrs.get("range-delimiter").cloned(),
+        strip_periods: attrs.get("strip-periods").map(|v| v == "true").unwrap_or(false),
     }
 }
 

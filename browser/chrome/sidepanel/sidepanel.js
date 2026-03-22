@@ -10,6 +10,7 @@ let activeChips = new Set();
 let activeTagFilters = new Set();
 let allCitations = []; // cache to avoid repeated storage reads
 let allTags = []; // tag definitions
+const previewPickers = new Map(); // citeId → picker instance
 
 // ---------------------------------------------------------------------------
 // Tab switching
@@ -52,8 +53,9 @@ async function loadCitations() {
 function populateProjectFilter(projects) {
   const sel = $('#lib-project-filter');
   const current = sel.value;
-  sel.innerHTML = '<option value="all">All Projects</option>';
+  sel.innerHTML = '<option value="all">All Projects</option><option value="default">My Bibliography</option>';
   for (const p of projects) {
+    if (p.id === 'default') continue; // already added above
     const opt = document.createElement('option');
     opt.value = p.id;
     opt.textContent = p.name;
@@ -65,10 +67,14 @@ function populateProjectFilter(projects) {
 function applyFiltersAndRender() {
   let filtered = [...allCitations];
 
-  // Project filter
+  // Project filter — handle both _projectIds (array) and _project (legacy singular)
   const projectId = $('#lib-project-filter').value;
   if (projectId !== 'all') {
-    filtered = filtered.filter(c => c._projectIds?.includes(projectId));
+    filtered = filtered.filter(c =>
+      c._projectIds?.includes(projectId) ||
+      c._project === projectId ||
+      (!c._projectIds && !c._project && projectId === 'default')
+    );
   }
 
   // Search filter
@@ -224,27 +230,50 @@ function renderCitationRow(item) {
       const isStarred = item._starred;
 
       return `
-        <div class="citation-row px-3 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer transition-colors ${isSelected ? 'bg-saffron-50 dark:bg-saffron-900/10' : ''}" data-id="${item.id}">
-          <div class="flex items-start gap-2">
-            <input type="checkbox" class="cite-select mt-1 rounded text-saffron-500 focus:ring-saffron-500 shrink-0" data-id="${item.id}" ${isSelected ? 'checked' : ''}>
-            <div class="min-w-0 flex-1" data-action="edit" data-id="${item.id}">
-              <div class="flex items-center gap-1.5">
-                <span class="text-[9px] px-1 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 uppercase shrink-0">${typeLabel}</span>
-                <p class="font-medium text-sm truncate">${item.title || 'Untitled'}</p>
+        <div class="citation-row" data-id="${item.id}">
+          <div class="px-3 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer transition-colors ${isSelected ? 'bg-saffron-50 dark:bg-saffron-900/10' : ''}">
+            <div class="flex items-start gap-2">
+              <input type="checkbox" class="cite-select mt-1 rounded text-saffron-500 focus:ring-saffron-500 shrink-0" data-id="${item.id}" ${isSelected ? 'checked' : ''}>
+              <div class="min-w-0 flex-1 btn-preview-toggle" data-id="${item.id}">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[9px] px-1 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 uppercase shrink-0">${typeLabel}</span>
+                  <p class="font-medium text-sm truncate">${item.title || 'Untitled'}</p>
+                </div>
+                <p class="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">${authors}${authors && year ? ' (' + year + ')' : year}</p>
+                ${(item._tags && item._tags.length) ? `<div class="flex gap-0.5 mt-0.5 flex-wrap">${getCitationTags(item)}</div>` : ''}
               </div>
-              <p class="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">${authors}${authors && year ? ' (' + year + ')' : year}</p>
-              ${(item._tags && item._tags.length) ? `<div class="flex gap-0.5 mt-0.5 flex-wrap">${getCitationTags(item)}</div>` : ''}
-            </div>
-            <div class="flex items-center gap-0.5 shrink-0">
-              <button class="btn-copy-cite p-1 rounded text-zinc-300 dark:text-zinc-600 hover:text-saffron-500 transition-colors" data-id="${item.id}" title="Copy formatted citation">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-              </button>
+              <div class="flex items-center gap-0.5 shrink-0">
+                ${(item.URL || item.DOI || item._sourceUrl) ? `<button class="btn-visit-source p-1 rounded text-zinc-300 dark:text-zinc-600 hover:text-blue-500 transition-colors" data-url="${item.URL || (item.DOI ? 'https://doi.org/' + item.DOI : '') || item._sourceUrl}" title="Visit source">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                </button>` : ''}
+                <button class="btn-edit-cite p-1 rounded text-zinc-300 dark:text-zinc-600 hover:text-saffron-500 transition-colors" data-id="${item.id}" title="Edit">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
               <button class="btn-star p-1 rounded transition-colors ${isStarred ? 'text-saffron-500' : 'text-zinc-300 dark:text-zinc-600 hover:text-saffron-400'}" data-id="${item.id}" title="${isStarred ? 'Unstar' : 'Star'}">
                 <svg class="w-4 h-4" fill="${isStarred ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"/></svg>
               </button>
               <button class="btn-delete p-1 rounded text-zinc-300 dark:text-zinc-600 hover:text-red-500 transition-colors" data-id="${item.id}" title="Delete">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg>
               </button>
+            </div>
+          </div>
+          </div>
+          <!-- Inline preview (hidden, toggles on click) -->
+          <div class="cite-preview hidden bg-zinc-50 dark:bg-zinc-800/50 px-3 py-2 border-t border-zinc-100 dark:border-zinc-800" data-preview-id="${item.id}">
+            <div class="flex items-center gap-2 mb-1.5">
+              <div class="preview-style-picker shrink-0" data-id="${item.id}" style="min-width:140px;max-width:180px"></div>
+              <span class="text-[9px] text-zinc-400 flex-1">Preview</span>
+              <button class="preview-copy-bib text-[9px] text-saffron-600 dark:text-saffron-400 hover:text-saffron-800 font-medium" data-id="${item.id}">Copy Bib</button>
+              <button class="preview-copy-intext text-[9px] text-zinc-500 hover:text-saffron-600 font-medium" data-id="${item.id}">Copy In-text</button>
+            </div>
+            <div class="preview-bib-output text-[11px] leading-relaxed text-zinc-700 dark:text-zinc-300 mb-1.5 pb-1.5 border-b border-zinc-200 dark:border-zinc-700 select-all">${CitationFormatter.formatBibSync(item, 'apa')}</div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-[8px] text-zinc-400 uppercase tracking-wider shrink-0">In-text</span>
+              <div class="inline-flex rounded overflow-hidden border border-zinc-200 dark:border-zinc-600 shrink-0">
+                <button class="preview-pn-btn text-[8px] px-1.5 py-0.5 bg-saffron-500 text-white" data-id="${item.id}" data-mode="parenthetical">P</button>
+                <button class="preview-pn-btn text-[8px] px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300" data-id="${item.id}" data-mode="narrative">N</button>
+              </div>
+              <div class="preview-intext-output text-[11px] text-zinc-500 dark:text-zinc-400 select-all flex-1">${CitationFormatter.formatIntextSync(item, 'apa')}</div>
             </div>
           </div>
         </div>`;
@@ -273,7 +302,7 @@ function bindCitationEvents() {
       const item = allCitations.find((c) => c.id === id);
       if (!item) return;
 
-      const formatted = formatCitationForCopy(item);
+      const formatted = CitationFormatter.formatBibSync(item, 'apa');
       try {
         await navigator.clipboard.writeText(formatted);
         // Flash the button
@@ -312,9 +341,135 @@ function bindCitationEvents() {
     });
   }
 
-  // Click row to edit
-  for (const el of $$('[data-action="edit"]')) {
-    el.addEventListener('click', () => openEditPanel(el.dataset.id));
+  // Click row to toggle inline preview
+  for (const el of $$('.btn-preview-toggle')) {
+    el.addEventListener('click', () => {
+      const id = el.dataset.id;
+      const preview = $(`[data-preview-id="${id}"]`);
+      if (preview) {
+        // Close all other previews
+        for (const p of $$('.cite-preview')) {
+          if (p !== preview) p.classList.add('hidden');
+        }
+        preview.classList.toggle('hidden');
+      }
+    });
+  }
+
+  // Visit source link
+  for (const btn of $$('.btn-visit-source')) {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const url = btn.dataset.url;
+      if (url) chrome.tabs.create({ url });
+    });
+  }
+
+  // Edit button opens edit panel
+  for (const btn of $$('.btn-edit-cite')) {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openEditPanel(btn.dataset.id);
+    });
+  }
+
+  // Clean up old picker instances
+  for (const [id, picker] of previewPickers) { picker.destroy(); }
+  previewPickers.clear();
+
+  // Initialize searchable style pickers for each inline preview
+  for (const container of $$('.preview-style-picker')) {
+    const citeId = container.dataset.id;
+    CitationFormatter.createStylePicker(container, {
+      selectedId: 'apa',
+      async onSelect(styleId) {
+        const item = allCitations.find(c => c.id === citeId);
+        if (!item) return;
+        const preview = $(`[data-preview-id="${citeId}"]`);
+        if (preview) {
+          // Bib: use WASM (hayagriva) for accurate rendering
+          const bib = await CitationFormatter.formatBib(item, styleId);
+          preview.querySelector('.preview-bib-output').textContent = bib;
+          // In-text: respect P/N toggle
+          const narrativeBtn = preview.querySelector('.preview-pn-btn[data-mode="narrative"]');
+          const isNarrative = narrativeBtn?.classList.contains('bg-saffron-500');
+          const intext = await CitationFormatter.formatIntext(item, styleId, isNarrative);
+          preview.querySelector('.preview-intext-output').textContent = intext;
+        }
+      },
+    }).then(picker => previewPickers.set(citeId, picker));
+  }
+
+  // Preview copy buttons
+  for (const btn of $$('.preview-copy-bib')) {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const item = allCitations.find(c => c.id === id);
+      const style = previewPickers.get(id)?.getSelectedId() || 'apa';
+      if (item) {
+        const copyFormat = $('#sp-pref-copy-format')?.value || 'text';
+        if (copyFormat === 'rich') {
+          const html = await CitationFormatter.formatBib(item, style, { html: true });
+          const text = await CitationFormatter.formatBib(item, style);
+          try {
+            await navigator.clipboard.write([new ClipboardItem({
+              'text/plain': new Blob([text], { type: 'text/plain' }),
+              'text/html': new Blob([html], { type: 'text/html' }),
+            })]);
+          } catch { await navigator.clipboard.writeText(text); }
+        } else {
+          const text = await CitationFormatter.formatBib(item, style);
+          await navigator.clipboard.writeText(text);
+        }
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy Bib', 1500);
+      }
+    });
+  }
+  for (const btn of $$('.preview-copy-intext')) {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const item = allCitations.find(c => c.id === id);
+      const style = previewPickers.get(id)?.getSelectedId() || 'apa';
+      if (item) {
+        // Check if narrative mode is active for this preview
+        const narrativeBtn = $(`[data-preview-id="${id}"] .preview-pn-btn[data-mode="narrative"]`);
+        const isNarrative = narrativeBtn?.classList.contains('bg-saffron-500');
+        const text = CitationFormatter.formatIntextSync(item, style, isNarrative);
+        await navigator.clipboard.writeText(text);
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy In-text', 1500);
+      }
+    });
+  }
+
+  // P/N toggle for inline preview in-text
+  for (const btn of $$('.preview-pn-btn')) {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const mode = btn.dataset.mode;
+      const item = allCitations.find(c => c.id === id);
+      const style = previewPickers.get(id)?.getSelectedId() || 'apa';
+      if (!item) return;
+
+      // Toggle button styles
+      const preview = $(`[data-preview-id="${id}"]`);
+      if (preview) {
+        for (const b of preview.querySelectorAll('.preview-pn-btn')) {
+          if (b.dataset.mode === mode) {
+            b.setAttribute('class', 'preview-pn-btn text-[8px] px-1.5 py-0.5 bg-saffron-500 text-white');
+          } else {
+            b.setAttribute('class', 'preview-pn-btn text-[8px] px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300');
+          }
+        }
+        // Re-render in-text: async for parenthetical (WASM), sync for narrative (JS)
+        const intext = await CitationFormatter.formatIntext(item, style, mode === 'narrative');
+        preview.querySelector('.preview-intext-output').textContent = intext;
+      }
+    });
   }
 }
 
@@ -1097,109 +1252,16 @@ function scanDuplicates() {
 }
 
 // ---------------------------------------------------------------------------
+// Format citation for copy (uses default toolbar style)
 // ---------------------------------------------------------------------------
-// Format citation for copy (uses default style)
-// ---------------------------------------------------------------------------
-
-function formatCitationForCopy(item) {
-  const style = $('#lib-copy-style')?.value || 'apa';
-
-  const fmtAuthors = (s) => {
-    const aa = (item.author || []).map(a => {
-      if (a.literal) return a.literal;
-      const f = a.family || '';
-      const g = a.given || '';
-      const initials = g.split(/[\s.]/).filter(Boolean).map(p => p[0] + '.').join(' ');
-      if (s === 'ieee' || s === 'vancouver') return `${initials} ${f}`.trim();
-      return `${f}, ${initials}`.trim();
-    });
-    if (aa.length === 0) return '';
-    if (aa.length === 1) return aa[0];
-    if (s === 'vancouver' && aa.length > 6) return aa.slice(0, 6).join(', ') + ', et al.';
-    const sep = s === 'mla' ? ', and ' : s === 'apa' ? ', & ' : ', & ';
-    if (aa.length === 2) return `${aa[0]}${sep}${aa[1]}`;
-    return aa.slice(0, -1).join(', ') + sep + aa[aa.length - 1];
-  };
-
-  const a = fmtAuthors(style);
-  const year = item.issued?.['date-parts']?.[0]?.[0] || 'n.d.';
-  const title = item.title || 'Untitled';
-  const container = item['container-title'] || '';
-  const vol = item.volume || '';
-  const iss = item.issue || '';
-  const pg = item.page || '';
-  const doi = item.DOI ? `https://doi.org/${item.DOI}` : '';
-  const url = item.URL || '';
-  const pub = item.publisher || '';
-  const access = doi || url;
-
-  switch (style) {
-    case 'apa': {
-      let parts = [a || title, `(${year})`];
-      if (a) parts.push(title);
-      if (container) { let c = container; if (vol) c += `, ${vol}`; if (iss) c += `(${iss})`; if (pg) c += `, ${pg}`; parts.push(c); }
-      if (pub) parts.push(pub);
-      if (access) parts.push(access);
-      return parts.filter(Boolean).join('. ').replace(/\.\./g, '.') + '.';
-    }
-    case 'mla': {
-      let parts = [a || 'Unknown', `"${title}."`];
-      if (container) parts.push(container);
-      let loc = []; if (vol) loc.push(`vol. ${vol}`); if (iss) loc.push(`no. ${iss}`);
-      if (loc.length) parts.push(loc.join(', '));
-      if (pub) parts.push(pub);
-      if (year !== 'n.d.') parts.push(year);
-      if (pg) parts.push(`pp. ${pg}`);
-      if (access) parts.push(access);
-      return parts.filter(Boolean).join(', ') + '.';
-    }
-    case 'chicago': {
-      let parts = [a || 'Unknown', year, `"${title}"`];
-      if (container) { let c = container; if (vol) c += ` ${vol}`; if (iss) c += `, no. ${iss}`; if (pg) c += `: ${pg}`; parts.push(c); }
-      if (pub) parts.push(pub);
-      if (access) parts.push(access);
-      return parts.filter(Boolean).join('. ').replace(/\.\./g, '.') + '.';
-    }
-    case 'harvard': {
-      let parts = [a || 'Unknown', `(${year})`];
-      parts.push(`'${title}'`);
-      if (container) { let c = container; if (vol) c += `, ${vol}`; if (iss) c += `(${iss})`; if (pg) c += `, pp. ${pg}`; parts.push(c); }
-      if (pub) parts.push(pub);
-      if (doi) parts.push(`doi:${item.DOI}`); else if (url) parts.push(`Available at: ${url}`);
-      return parts.filter(Boolean).join('. ').replace(/\.\./g, '.') + '.';
-    }
-    case 'ieee': {
-      let parts = [a, `"${title},"`];
-      if (container) parts.push(container);
-      if (vol) parts.push(`vol. ${vol}`); if (iss) parts.push(`no. ${iss}`);
-      if (pg) parts.push(`pp. ${pg}`);
-      if (year) parts.push(year);
-      if (item.DOI) parts.push(`doi: ${item.DOI}`);
-      return '[1] ' + parts.filter(Boolean).join(', ') + '.';
-    }
-    case 'vancouver': {
-      let parts = [`${a}.`, `${title}.`];
-      if (container) parts.push(`${container}. ${year}${vol ? `;${vol}` : ''}${iss ? `(${iss})` : ''}${pg ? `:${pg}` : ''}.`);
-      else if (year) parts.push(`${year}.`);
-      if (item.DOI) parts.push(`doi: ${item.DOI}`);
-      return '1. ' + parts.filter(Boolean).join(' ');
-    }
-    default: {
-      let parts = [a || title, `(${year})`];
-      if (a) parts.push(title);
-      if (container) { let c = container; if (vol) c += `, ${vol}`; if (iss) c += `(${iss})`; if (pg) c += `, ${pg}`; parts.push(c); }
-      if (pub) parts.push(pub);
-      if (access) parts.push(access);
-      return parts.filter(Boolean).join('. ').replace(/\.\./g, '.') + '.';
-    }
-  }
-}
 
 // Init
 // ---------------------------------------------------------------------------
 
 loadCitations();
 updateExportCount();
+initSidepanelSettings();
+initManualEntry();
 
 chrome.storage.onChanged.addListener((changes) => {
   if (changes.citations) {
@@ -1215,3 +1277,201 @@ chrome.storage.onChanged.addListener((changes) => {
     populateProjectFilter(changes.projects.newValue || []);
   }
 });
+
+// ---------------------------------------------------------------------------
+// Sidepanel settings
+// ---------------------------------------------------------------------------
+
+async function initSidepanelSettings() {
+  // Load saved preferences
+  const prefs = await chrome.storage.local.get(['spDefaultSort', 'spCopyFormat', 'spTheme']);
+
+  if (prefs.spDefaultSort) {
+    $('#sp-pref-sort').value = prefs.spDefaultSort;
+    $('#lib-sort').value = prefs.spDefaultSort;
+  }
+  if (prefs.spCopyFormat) {
+    $('#sp-pref-copy-format').value = prefs.spCopyFormat;
+  }
+  if (prefs.spTheme) {
+    $('#sp-pref-theme').value = prefs.spTheme;
+    applyTheme(prefs.spTheme);
+  }
+
+  // Toggle dropdown
+  $('#sp-settings-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    $('#sp-settings-dropdown').classList.toggle('hidden');
+  });
+
+  // Close on outside click
+  document.addEventListener('click', (e) => {
+    const dd = $('#sp-settings-dropdown');
+    if (!dd.classList.contains('hidden') && !dd.contains(e.target) && e.target !== $('#sp-settings-btn')) {
+      dd.classList.add('hidden');
+    }
+  });
+
+  // Default sort
+  $('#sp-pref-sort').addEventListener('change', (e) => {
+    const val = e.target.value;
+    chrome.storage.local.set({ spDefaultSort: val });
+    $('#lib-sort').value = val;
+    applyFiltersAndRender();
+  });
+
+  // Copy format
+  $('#sp-pref-copy-format').addEventListener('change', (e) => {
+    chrome.storage.local.set({ spCopyFormat: e.target.value });
+  });
+
+  // Theme
+  $('#sp-pref-theme').addEventListener('change', (e) => {
+    const val = e.target.value;
+    chrome.storage.local.set({ spTheme: val });
+    applyTheme(val);
+  });
+
+  // Open full options page
+  $('#sp-open-options').addEventListener('click', () => {
+    chrome.runtime.openOptionsPage();
+    $('#sp-settings-dropdown').classList.add('hidden');
+  });
+}
+
+function applyTheme(theme) {
+  if (theme === 'dark') {
+    document.documentElement.classList.add('dark');
+  } else if (theme === 'light') {
+    document.documentElement.classList.remove('dark');
+  } else {
+    // System
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Manual entry
+// ---------------------------------------------------------------------------
+
+function initManualEntry() {
+  $('#btn-add-manual').addEventListener('click', () => {
+    $('#manual-entry-form').classList.toggle('hidden');
+  });
+
+  $('#btn-cancel-manual').addEventListener('click', () => {
+    $('#manual-entry-form').classList.add('hidden');
+    clearManualForm();
+  });
+
+  // Enhance from DOI
+  $('#btn-enhance-manual').addEventListener('click', async () => {
+    const doiOrUrl = $('#manual-doi').value.trim();
+    if (!doiOrUrl) return;
+    $('#btn-enhance-manual').textContent = '...';
+    try {
+      const res = await chrome.runtime.sendMessage({ action: 'resolve', identifier: doiOrUrl });
+      if (res?.resolved) {
+        const r = res.resolved;
+        if (r.title && !$('#manual-title').value) $('#manual-title').value = r.title;
+        if (r.author?.length && !$('#manual-authors').value) {
+          $('#manual-authors').value = r.author.map(a =>
+            a.literal || `${a.family || ''}, ${a.given || ''}`.trim()
+          ).join('; ');
+        }
+        if (r.issued?.['date-parts']?.[0]?.[0] && !$('#manual-year').value) {
+          $('#manual-year').value = r.issued['date-parts'][0][0];
+        }
+        if (r['container-title'] && !$('#manual-container').value) {
+          $('#manual-container').value = r['container-title'];
+        }
+        if (r.volume && !$('#manual-volume').value) $('#manual-volume').value = r.volume;
+        if (r.issue && !$('#manual-issue').value) $('#manual-issue').value = r.issue;
+        if (r.page && !$('#manual-pages').value) $('#manual-pages').value = r.page;
+        if (r.publisher && !$('#manual-publisher').value) $('#manual-publisher').value = r.publisher;
+        if (r.type) $('#manual-type').value = r.type;
+      }
+    } catch {}
+    $('#btn-enhance-manual').textContent = 'Enhance';
+  });
+
+  // Save
+  $('#btn-save-manual').addEventListener('click', async () => {
+    const title = $('#manual-title').value.trim();
+    if (!title) { $('#manual-title').focus(); return; }
+
+    const item = {
+      id: crypto.randomUUID(),
+      type: $('#manual-type').value,
+      title,
+      'container-title': $('#manual-container').value.trim() || undefined,
+      volume: $('#manual-volume').value.trim() || undefined,
+      issue: $('#manual-issue').value.trim() || undefined,
+      page: $('#manual-pages').value.trim() || undefined,
+      publisher: $('#manual-publisher').value.trim() || undefined,
+      _addedAt: new Date().toISOString(),
+      _projectIds: ['default'],
+    };
+
+    // Parse authors
+    const authorsStr = $('#manual-authors').value.trim();
+    if (authorsStr) {
+      item.author = authorsStr.split(';').map(a => {
+        a = a.trim();
+        if (a.includes(',')) {
+          const [family, given] = a.split(',', 2).map(s => s.trim());
+          return { family, given };
+        }
+        const parts = a.split(/\s+/);
+        if (parts.length === 1) return { literal: parts[0] };
+        const family = parts.pop();
+        return { family, given: parts.join(' ') };
+      });
+    }
+
+    // Parse year
+    const year = $('#manual-year').value.trim();
+    if (year) {
+      const y = parseInt(year, 10);
+      if (!isNaN(y)) item.issued = { 'date-parts': [[y]] };
+    }
+
+    // DOI or URL
+    const doiOrUrl = $('#manual-doi').value.trim();
+    if (doiOrUrl) {
+      if (doiOrUrl.match(/^10\.\d{4,}/)) {
+        item.DOI = doiOrUrl;
+      } else if (doiOrUrl.startsWith('http')) {
+        item.URL = doiOrUrl;
+      } else {
+        item.DOI = doiOrUrl;
+      }
+    }
+
+    // Save
+    const { citations = [] } = await chrome.storage.local.get(['citations']);
+    citations.push(item);
+    await chrome.storage.local.set({ citations });
+
+    // Done
+    $('#manual-entry-form').classList.add('hidden');
+    clearManualForm();
+  });
+}
+
+function clearManualForm() {
+  $('#manual-title').value = '';
+  $('#manual-authors').value = '';
+  $('#manual-year').value = '';
+  $('#manual-container').value = '';
+  $('#manual-doi').value = '';
+  $('#manual-volume').value = '';
+  $('#manual-issue').value = '';
+  $('#manual-pages').value = '';
+  $('#manual-publisher').value = '';
+  $('#manual-type').value = 'article-journal';
+}

@@ -1,5 +1,6 @@
 use wasm_bindgen::prelude::*;
 
+use crate::csl::hayagriva_renderer;
 use crate::csl::locale::Locale;
 use crate::csl::renderer::{OutputFormat, Renderer};
 use crate::csl::style::Style;
@@ -9,6 +10,7 @@ use crate::types::CslItem;
 #[wasm_bindgen]
 pub struct IbidEngine {
     style: Option<Style>,
+    style_xml: Option<String>, // raw XML for hayagriva rendering
     locale: Locale,
     items: Vec<CslItem>,
     format: OutputFormat,
@@ -21,6 +23,7 @@ impl IbidEngine {
     pub fn new() -> Self {
         Self {
             style: None,
+            style_xml: None,
             locale: Locale::english(),
             items: Vec::new(),
             format: OutputFormat::Html,
@@ -39,9 +42,13 @@ impl IbidEngine {
     /// Load a CSL style from XML string
     #[wasm_bindgen(js_name = loadStyle)]
     pub fn load_style(&mut self, xml: &str) -> Result<(), JsValue> {
-        let style = Style::from_xml(xml)
-            .map_err(|e| JsValue::from_str(&e.to_string()))?;
-        self.style = Some(style);
+        // Always save raw XML for hayagriva rendering (primary renderer)
+        self.style_xml = Some(xml.to_string());
+        // Try parsing with our custom parser (used for getStyleInfo only)
+        match Style::from_xml(xml) {
+            Ok(style) => self.style = Some(style),
+            Err(_) => self.style = None, // Custom parser failed, but hayagriva will work
+        }
         Ok(())
     }
 
@@ -81,25 +88,25 @@ impl IbidEngine {
     /// Format a single item as a bibliography entry (by item ID)
     #[wasm_bindgen(js_name = formatBibliographyEntry)]
     pub fn format_bibliography_entry(&self, item_json: &str) -> Result<String, JsValue> {
-        let style = self.style.as_ref()
+        let xml = self.style_xml.as_ref()
             .ok_or_else(|| JsValue::from_str("No style loaded"))?;
         let item: CslItem = serde_json::from_str(item_json)
             .map_err(|e| JsValue::from_str(&e.to_string()))?;
-        let renderer = Renderer::new(style.clone(), self.locale.clone(), self.format);
-        renderer
-            .render_bibliography_entry(&item)
+        hayagriva_renderer::render_bibliography(&item, xml)
             .map_err(|e| JsValue::from_str(&e.to_string()))
     }
 
     /// Format all loaded items as a bibliography, returns JSON array of strings
     #[wasm_bindgen(js_name = formatBibliography)]
     pub fn format_bibliography(&self) -> Result<String, JsValue> {
-        let style = self.style.as_ref()
+        let xml = self.style_xml.as_ref()
             .ok_or_else(|| JsValue::from_str("No style loaded"))?;
-        let renderer = Renderer::new(style.clone(), self.locale.clone(), self.format);
-        let entries = renderer
-            .render_bibliography(&self.items)
-            .map_err(|e| JsValue::from_str(&e.to_string()))?;
+        let mut entries = Vec::new();
+        for item in &self.items {
+            let bib = hayagriva_renderer::render_bibliography(item, xml)
+                .map_err(|e| JsValue::from_str(&e.to_string()))?;
+            entries.push(bib);
+        }
         serde_json::to_string(&entries)
             .map_err(|e| JsValue::from_str(&e.to_string()))
     }
@@ -107,37 +114,47 @@ impl IbidEngine {
     /// Format an in-text citation for given item IDs (JSON array of item JSON objects)
     #[wasm_bindgen(js_name = formatCitation)]
     pub fn format_citation(&self, items_json: &str) -> Result<String, JsValue> {
-        let style = self.style.as_ref()
+        let xml = self.style_xml.as_ref()
             .ok_or_else(|| JsValue::from_str("No style loaded"))?;
         let items: Vec<CslItem> = serde_json::from_str(items_json)
             .map_err(|e| JsValue::from_str(&e.to_string()))?;
-        let item_refs: Vec<&CslItem> = items.iter().collect();
-        let renderer = Renderer::new(style.clone(), self.locale.clone(), self.format);
-        renderer
-            .render_citation(&item_refs)
-            .map_err(|e| JsValue::from_str(&e.to_string()))
+        // Format citation for the first item
+        if let Some(item) = items.first() {
+            hayagriva_renderer::render_citation(item, xml)
+                .map_err(|e| JsValue::from_str(&e.to_string()))
+        } else {
+            Err(JsValue::from_str("No items provided"))
+        }
     }
 
     /// Get loaded style info as JSON
     #[wasm_bindgen(js_name = getStyleInfo)]
     pub fn get_style_info(&self) -> Result<String, JsValue> {
-        let style = self.style.as_ref()
-            .ok_or_else(|| JsValue::from_str("No style loaded"))?;
-
-        let info = serde_json::json!({
-            "title": style.info.title,
-            "id": style.info.id,
-            "defaultLocale": style.default_locale,
-            "class": match style.class {
-                crate::csl::style::StyleClass::InText => "in-text",
-                crate::csl::style::StyleClass::Note => "note",
-            },
-            "hasBibliography": style.bibliography.is_some(),
-            "hasCitation": style.citation.is_some(),
-        });
-
-        serde_json::to_string(&info)
-            .map_err(|e| JsValue::from_str(&e.to_string()))
+        if let Some(style) = self.style.as_ref() {
+            let info = serde_json::json!({
+                "title": style.info.title,
+                "id": style.info.id,
+                "defaultLocale": style.default_locale,
+                "class": match style.class {
+                    crate::csl::style::StyleClass::InText => "in-text",
+                    crate::csl::style::StyleClass::Note => "note",
+                },
+                "hasBibliography": style.bibliography.is_some(),
+                "hasCitation": style.citation.is_some(),
+            });
+            serde_json::to_string(&info)
+                .map_err(|e| JsValue::from_str(&e.to_string()))
+        } else if let Some(ref xml) = self.style_xml {
+            // Fallback: extract basic info from raw XML
+            let title = xml.split("<title>").nth(1)
+                .and_then(|s| s.split("</title>").next())
+                .unwrap_or("Unknown");
+            let info = serde_json::json!({ "title": title, "id": "", "hasBibliography": true, "hasCitation": true });
+            serde_json::to_string(&info)
+                .map_err(|e| JsValue::from_str(&e.to_string()))
+        } else {
+            Err(JsValue::from_str("No style loaded"))
+        }
     }
 
     /// Get item count

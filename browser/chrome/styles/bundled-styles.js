@@ -1,5 +1,5 @@
 // Auto-generated — do not edit. Run: node scripts/generate-style-registry.js
-// 67 bundled styles (complex styles redirect to simplified parser-compatible versions)
+// 67 bundled styles (using official CSL files for hayagriva rendering)
 
 export const BUNDLED_STYLES = {
   "associacao-brasileira-de-normas-tecnicas": {
@@ -75,13 +75,13 @@ export const BUNDLED_STYLES = {
     "field": "psychology"
   },
   "apa-6th-edition": {
-    "path": "styles/csl/apa6.csl",
+    "path": "styles/csl/apa-6th-edition.csl",
     "name": "APA 6th Edition",
     "group": "APA",
     "field": "psychology"
   },
   "apa": {
-    "path": "styles/csl/apa7.csl",
+    "path": "styles/csl/apa.csl",
     "name": "APA 7th Edition",
     "group": "APA",
     "field": "psychology"
@@ -141,13 +141,13 @@ export const BUNDLED_STYLES = {
     "field": "biology"
   },
   "chicago-author-date-16th-edition": {
-    "path": "styles/csl/chicago16-author-date.csl",
+    "path": "styles/csl/chicago-author-date-16th-edition.csl",
     "name": "Chicago 16th (Author-Date)",
     "group": "Chicago",
     "field": "generic"
   },
   "chicago-author-date": {
-    "path": "styles/csl/chicago17-author-date.csl",
+    "path": "styles/csl/chicago-author-date.csl",
     "name": "Chicago 17th (Author-Date)",
     "group": "Chicago",
     "field": "generic"
@@ -213,7 +213,7 @@ export const BUNDLED_STYLES = {
     "field": "generic"
   },
   "harvard-cite-them-right": {
-    "path": "styles/csl/harvard.csl",
+    "path": "styles/csl/harvard-cite-them-right.csl",
     "name": "Harvard - Cite Them Right",
     "group": "Harvard",
     "field": "generic"
@@ -261,7 +261,7 @@ export const BUNDLED_STYLES = {
     "field": "science"
   },
   "modern-language-association": {
-    "path": "styles/csl/mla9.csl",
+    "path": "styles/csl/modern-language-association.csl",
     "name": "MLA 9th Edition",
     "group": "MLA",
     "field": "humanities"
