@@ -53,15 +53,22 @@ Run through these before each release.
 44. [Custom Dialogs](#44-custom-dialogs)
 45. [Smart Date Input](#45-smart-date-input)
 46. [Non-Academic Site Filtering](#46-non-academic-site-filtering)
-47. [WASM Fallback](#47-wasm-fallback)
+47. [WASM / Hayagriva CSL Renderer](#47-wasm--hayagriva-csl-renderer)
 48. [DOI Cleaning](#48-doi-cleaning)
-49. [Library Copy with Style](#49-library-copy-with-style)
+49. [Library Inline Preview](#49-library-inline-preview)
 50. [Library Tab Switching](#50-library-tab-switching)
 51. [Dropdown Mutual Exclusion](#51-dropdown-mutual-exclusion)
 52. [N.D. Toggle Button](#52-nd-toggle-button)
 53. [Engine Status in Settings](#53-engine-status-in-settings)
-54. [Rust CSL Renderer](#54-rust-csl-renderer)
+54. [On-Demand Style Download](#54-on-demand-style-download)
 55. [DOI Enhance Field Position](#55-doi-enhance-field-position)
+56. [Shared Citation Formatter](#56-shared-citation-formatter)
+57. [Local PDF / File URL Handling](#57-local-pdf--file-url-handling)
+58. [Library Settings (Sidepanel)](#58-library-settings-sidepanel)
+59. [Library Manual Entry](#59-library-manual-entry)
+60. [Library Visit Source Link](#60-library-visit-source-link)
+61. [In-Library Status Bar](#61-in-library-status-bar)
+62. [Import / Export Project Filters](#62-import--export-project-filters)
 
 ---
 
@@ -245,27 +252,40 @@ Run through these before each release.
 2. Click style picker → search "vancouver"
 3. Select Vancouver
 4. Switch to IEEE
-5. Switch to MLA
+5. Switch to MLA 9th Edition
 
-**Expected per style:**
+**Expected per style (popup preview):**
 
 | Style | Author Format | Year | Title | Journal |
 |-------|--------------|------|-------|---------|
 | APA 7 | Last, I. | (2024) | plain | *italic* |
-| MLA 9 | Last, I. | at end | "quoted" | *italic* |
+| MLA 9 | Last, First | at end | "quoted" | *italic* |
 | Chicago | Last, I. | after author | "quoted" | *italic* |
 | Harvard | Last, I. | (2024) | 'single quotes' | *italic* |
 | IEEE | I. Last | at end | "quoted" | *italic* |
 | Vancouver | I. Last | after journal | plain | plain |
 
 - [ ] Style picker shows recent styles at top
-- [ ] Search filters correctly
+- [ ] Search filters by name, ID, field, group
+- [ ] Searchable grouped dropdown with field tags (psychology, engineering, etc.)
 - [ ] Style source badge shows "Global" or "Project"
-- [ ] Citation preview updates immediately on switch
+- [ ] Standard styles (6 families): JS renders instantly, WASM upgrades
+- [ ] Non-standard styles (downloaded): shows "Formatting with..." placeholder, then WASM result
+- [ ] WASM (hayagriva) produces correct et al., title case, volume/issue labels
+- [ ] 74 bundled styles use official CSL files (not simplified versions)
+
+**Multi-author test (Nature article — 12 authors):**
+- URL: `https://www.nature.com/articles/s41586-024-08219-w`
+- [ ] APA bib: `Doughty, B. R., Hinks, M. M., ... & Greenleaf, W. J. (2024)...`
+- [ ] MLA bib: `Doughty, Benjamin R., et al. "Single-Molecule States..."`
+- [ ] APA in-text P: `(Doughty et al., 2024)`
+- [ ] MLA in-text P: `(Doughty et al.)`
 
 ---
 
 ## 13. P/N In-text Toggle
+
+### Popup P/N
 
 **Steps:**
 1. Have a citation loaded (e.g., Smith, 2024)
@@ -275,11 +295,28 @@ Run through these before each release.
 5. Note in-text output changes
 
 **Expected:**
-- [ ] **P (Parenthetical):** `(Smith, 2024)` — everything in parens
-- [ ] **N (Narrative):** `Smith (2024)` — author outside, year in parens
+- [ ] **P (Parenthetical):** `(Smith, 2024)` — WASM (hayagriva) renders, JS fallback
+- [ ] **N (Narrative):** `Smith (2024)` — JS always (WASM doesn't support narrative)
 - [ ] Active button highlighted saffron
-- [ ] Tooltips show on hover: "Parenthetical: (Smith, 2024)" / "Narrative: Smith (2024)"
+- [ ] WASM P result not overwritten when N is selected and back to P
 - [ ] IEEE/Vancouver always show `[1]` regardless of P/N
+- [ ] 3+ authors: P shows `(Author et al., 2024)`, N shows `Author et al. (2024)`
+
+### Library Inline Preview P/N
+
+**Steps:**
+1. Open sidepanel → Library → click a citation to open preview
+2. Note P/N toggle buttons between "In-text" label and citation text
+3. Click P → parenthetical format
+4. Click N → narrative format
+
+**Expected:**
+- [ ] P/N toggle visible in each inline preview
+- [ ] P: `(Doughty et al., 2024)` for APA with 3+ authors
+- [ ] N: `Doughty et al. (2024)` for APA with 3+ authors
+- [ ] Toggle state preserved per-citation (each preview independent)
+- [ ] Copy In-text button copies the currently selected P/N format
+- [ ] Style change resets to P but respects current toggle state
 
 ---
 
@@ -872,18 +909,47 @@ ER  -
 
 ---
 
-## 47. WASM Fallback
+## 47. WASM / Hayagriva CSL Renderer
 
-**To test (if WASM fails to load):**
+### Architecture
+
+The WASM engine now uses **hayagriva** (Typst's CSL processor) with en-US locale for rendering.
+
+| Component | Bib (bibliography) | In-text P (parenthetical) | In-text N (narrative) |
+|---|---|---|---|
+| **Primary** | WASM (hayagriva) | WASM (hayagriva) | JS (6-family) |
+| **Fallback** | JS 6-family | JS 6-family | — (JS is primary) |
+
+### WASM rendering tests
+
+**Steps:**
+1. Open popup on `https://www.nature.com/articles/s41586-024-08219-w`
+2. Select MLA 9th Edition style
+3. Check bib preview and in-text P
+
+**Expected:**
+- [ ] Bib: `Doughty, Benjamin R., et al. "Single-Molecule States Link Transcription Factor Binding to Gene Expression." Nature, vol. 636, no. 8043, Dec. 2024, pp. 745–54, https://doi.org/10.1038/s41586-024-08219-w.`
+- [ ] In-text P: `(Doughty et al.)` — NOT all 12 authors listed
+- [ ] In-text N: `Doughty et al.` (JS formatter, narrative)
+- [ ] No ANSI escape codes (`[0m`) in output
+- [ ] Bundled styles use official CSL files (not simplified hand-written versions)
+
+### Hayagriva-specific checks
+
+- [ ] Et al. works correctly (MLA: 3+, APA: 3+ in-text / 21+ in bib)
+- [ ] Title case applied (MLA: "Single-Molecule States..." not "Single-molecule states...")
+- [ ] Volume/issue labels correct (MLA: "vol. 636, no. 8043" not "volume 636, issue 8043")
+- [ ] Page range compression (MLA: "pp. 745–54" not "pp. 745-754")
+- [ ] En-dash in page ranges (745–54 not 745-54)
+- [ ] Month names from locale (Nov., Dec., etc.)
+- [ ] "et al." term from en-US locale
+
+### WASM fallback (if WASM fails to load)
 
 **Import should still work for:**
 - [ ] BibTeX → JS fallback parser
 - [ ] RIS → JS fallback parser
 - [ ] CSL-JSON → JS JSON.parse
-
-**Import shows error for (WASM-only formats):**
-- [ ] EndNote XML → "requires citation engine"
-- [ ] MEDLINE → "requires citation engine"
 
 **Export should still work for:**
 - [ ] BibTeX → JS fallback serializer
@@ -891,9 +957,11 @@ ER  -
 - [ ] CSL-JSON → JSON.stringify
 - [ ] CSV → JS fallback serializer
 
-**Citation formatting:**
-- [ ] JS formatter is primary for popup (instant, no delay)
-- [ ] WASM is used for import/export parsing
+**Citation formatting when WASM unavailable:**
+- [ ] JS 6-family formatter renders instantly (sync)
+- [ ] No blank/broken preview — JS always available as fallback
+- [ ] Standard styles (APA/MLA/Chicago/Harvard/IEEE/Vancouver) mapped correctly
+- [ ] Non-standard styles fall back to closest JS family via `resolveStyleFamily()`
 
 ---
 
@@ -918,24 +986,42 @@ ER  -
 
 ---
 
-## 49. Library Copy with Style
+## 49. Library Inline Preview
 
 **Steps:**
 1. Add 2+ citations to library
 2. Open side panel → Library tab
-3. Note the style dropdown in toolbar (default: APA)
-4. Click the clipboard icon on a citation
+3. Click a citation title to expand the inline preview
 
 **Expected:**
-- [ ] Citation copied in APA format to clipboard
-- [ ] Clipboard icon flashes green checkmark
+- [ ] Preview expands below the citation row
+- [ ] Shows: style picker | "Preview" label | Copy Bib | Copy In-text
+- [ ] Bib output in top section, separated by border from in-text section
+- [ ] In-text section has "In-text" label, P/N toggle, and citation text
+- [ ] Default style is APA
 
-5. Change style dropdown to IEEE
-6. Click clipboard icon on same citation
+### Style picker in preview
 
-**Expected:**
-- [ ] Citation now copied in IEEE format: `[1] I. Last, "Title," ...`
-- [ ] All 6 styles produce correct output: APA, MLA, Chicago, Harvard, IEEE, Vancouver
+- [ ] Searchable dropdown with recent styles, grouped categories, field tags
+- [ ] Same look as popup style picker (not a plain `<select>`)
+- [ ] Changing style updates both bib and in-text via WASM
+- [ ] Downloaded styles (e.g., PLOS) render correctly via hayagriva
+- [ ] Only one preview open at a time (others collapse)
+
+### Copy buttons
+
+- [ ] "Copy Bib" copies bibliography in selected style
+- [ ] "Copy In-text" copies in-text in selected P/N mode
+- [ ] Rich text option: if Settings → Copy format = "Rich text", copies HTML with formatting
+- [ ] Button shows "Copied!" flash for 1.5 seconds
+
+### P/N toggle in preview
+
+- [ ] P button active by default (saffron)
+- [ ] Click N → narrative in-text shown
+- [ ] Click P → parenthetical in-text shown
+- [ ] Toggle state independent per citation
+- [ ] 3+ authors: P shows `(Author et al., 2024)`, N shows `Author et al. (2024)`
 
 ---
 
@@ -1016,22 +1102,35 @@ ER  -
 
 ---
 
-## 54. Rust CSL Renderer
-
-**Verify the choose/if/else parser works:**
-
-The WASM CSL engine should now handle conditional styles. While the popup uses JS formatter for speed, the WASM engine is used for import/export and can be tested:
+## 54. On-Demand Style Download
 
 **Steps:**
-1. Check Settings → About → Citation Engine shows "Rust/WASM active"
-2. Import a BibTeX file → entries parse correctly
-3. Export as BibTeX → output is valid
+1. Open any style picker (popup or inline preview)
+2. Search for "plos" (not in 74 bundled styles)
+3. Wait for "Searching 2600+ CSL styles online..." message
+4. See online results appear (plos, plos-biology, plos-computational-biology, etc.)
+5. Click download on "Public Library of Science"
 
-**Internal verification (automated):**
-- [ ] `cargo test` passes all 182 Rust tests
-- [ ] `<choose>/<if>/<else>` conditions now assembled correctly
-- [ ] Variable conditions check date and name variables (not just strings)
-- [ ] APA7 style renders year from `issued` date (not "n.d." when date exists)
+**Expected:**
+- [ ] Remote search fetches GitHub CSL file tree (cached for session)
+- [ ] Results show style name + "download" badge
+- [ ] Click download → "Downloading..." → style selected
+- [ ] Downloaded style renders correctly via hayagriva
+- [ ] Style appears in "Downloaded" group on future visits
+- [ ] Works offline after first download (cached in chrome.storage.local)
+- [ ] No new permissions needed (fetch to public GitHub URL)
+
+**Also test:**
+- [ ] Search "jama" → find and download JAMA style
+- [ ] Search "turabian" → find Turabian styles
+- [ ] Search "nonexistent-style-xyz" → "No styles found" message
+- [ ] Offline search → "Search unavailable offline" message
+- [ ] Invalid CSL ID → "Style not found" error
+
+**Validation:**
+- [ ] Downloaded XML validated: must contain `<style` and `purl.org/net/xbiblio/csl`
+- [ ] Style metadata extracted from XML (title, field)
+- [ ] 10-second timeout on downloads
 
 ---
 
@@ -1177,42 +1276,238 @@ Use [ZoteroBib](https://zbib.org) as the reference — paste each DOI there and 
 
 ---
 
+## 56. Shared Citation Formatter
+
+The `shared/citation-formatter.js` module provides a unified API used by both popup and sidepanel.
+
+**API tests:**
+- [ ] `CitationFormatter.formatBibSync(item, 'apa')` — instant JS, returns string
+- [ ] `CitationFormatter.formatBib(item, 'apa')` — async, WASM primary + JS fallback
+- [ ] `CitationFormatter.formatIntextSync(item, 'apa', false)` — instant JS parenthetical
+- [ ] `CitationFormatter.formatIntextSync(item, 'apa', true)` — instant JS narrative
+- [ ] `CitationFormatter.formatIntext(item, 'apa', false)` — async, WASM for P
+- [ ] `CitationFormatter.formatIntext(item, 'apa', true)` — always JS for N
+- [ ] `CitationFormatter.formatBoth(item, styleId, {html:true})` — bib+intext, WASM bib + correct intext
+- [ ] `CitationFormatter.resolveStyleFamily('nature')` → `'vancouver'`
+- [ ] `CitationFormatter.resolveStyleFamily('plos')` → `'vancouver'`
+- [ ] `CitationFormatter.resolveStyleFamily('unknown-style')` → `'apa'`
+
+**Style picker component:**
+- [ ] `CitationFormatter.createStylePicker(container, opts)` — creates searchable dropdown
+- [ ] `dropUp: true` — dropdown opens above button (for inline previews)
+- [ ] `dropUp: false` — dropdown opens below button (for toolbars)
+- [ ] `onSelect(styleId, name)` callback fires on selection
+- [ ] `picker.getSelectedId()` returns current style ID
+- [ ] `picker.destroy()` cleans up event listeners
+
+---
+
+## 57. Local PDF / File URL Handling
+
+**Steps:**
+1. Open a local PDF in Chrome: `file:///C:/path/to/paper.pdf`
+2. Click the Ibid extension icon
+
+**Expected (without file access permission):**
+- [ ] Shows hint: "Local file detected. To auto-extract, enable 'Allow access to file URLs'..."
+- [ ] Title extracted from filename (hyphens/underscores → spaces)
+- [ ] Type set to "document"
+- [ ] DOI field empty (user can paste and Enhance)
+
+**Expected (with file access permission enabled):**
+- [ ] Shows hint: "Local file detected. Metadata extracted from filename..."
+- [ ] PDF extractor injected, tries to get title from Chrome PDF viewer
+- [ ] Enhance button works with pasted DOI
+
+**Also test:**
+- [ ] `file:///C:/path/s44187-026-00833-z.pdf` → title: "s44187 026 00833 z"
+- [ ] `chrome://extensions/` → restricted page hint (not file handling)
+- [ ] Regular HTTP URL → normal extraction (no file hints)
+
+---
+
+## 58. Library Settings (Sidepanel)
+
+**Steps:**
+1. Open sidepanel → click gear icon in header (next to tabs)
+
+**Expected:**
+- [ ] Settings dropdown opens with "Library Settings" header
+- [ ] Default sort selector syncs with toolbar sort dropdown
+- [ ] Copy format: Plain text / Rich text (HTML)
+- [ ] Theme: System / Light / Dark
+- [ ] "Advanced Settings" link opens options page
+- [ ] Settings persist across sessions (chrome.storage.local)
+- [ ] Changing theme applies immediately
+- [ ] Dropdown closes on outside click
+- [ ] Only one dropdown open at a time (gear vs style pickers)
+
+---
+
+## 59. Library Manual Entry
+
+**Steps:**
+1. Click the `+` button in library toolbar
+2. Fill in entry form
+
+**Expected:**
+- [ ] Form appears below toolbar with type, title, authors, year, etc.
+- [ ] Type dropdown: Journal, Book, Chapter, Webpage, Thesis, Report, Conference
+- [ ] Title is required (focus on empty submit)
+- [ ] Authors format: "Last, First; Last, First"
+- [ ] DOI/URL field with Enhance button (auto-fills from CrossRef)
+- [ ] Cancel button clears and hides form
+- [ ] "Add to Library" saves entry with `_projectIds: ['default']`
+- [ ] Entry appears in library immediately after save
+- [ ] Form clears after successful save
+
+**Enhance in manual entry:**
+- [ ] Paste DOI `10.1038/s41586-024-08219-w` → click Enhance
+- [ ] Title, authors, year, journal, volume, issue, pages fill automatically
+- [ ] Only empty fields are filled (user edits not overwritten)
+
+---
+
+## 60. Library Visit Source Link
+
+**Steps:**
+1. Add a citation from a web page (has URL)
+2. Open sidepanel → Library
+3. Look for link icon (↗) on the citation row
+
+**Expected:**
+- [ ] Link icon visible only for entries with URL, DOI, or source URL
+- [ ] Click opens source page in new tab
+- [ ] DOI entries open `https://doi.org/{DOI}`
+- [ ] Manual entries without URL → no link icon shown
+- [ ] Icon is blue on hover, small and unobtrusive
+
+---
+
+## 61. In-Library Status Bar
+
+**Steps:**
+1. Add a citation to "My Bibliography" project
+2. Visit the same page again → open popup
+
+**Expected:**
+- [ ] Compact bar: `✓ In "My Bibliography"  View · Update`
+- [ ] Green background, emerald accent
+- [ ] "View" opens sidepanel
+- [ ] "Update" saves current edits to existing entry
+- [ ] Shows which project the entry is in (e.g., `In "Thesis"`)
+- [ ] Add button stays as "Add" (for adding to different project)
+- [ ] Bar hidden when entry not in library
+
+---
+
+## 62. Import / Export Project Filters
+
+### Export filters
+
+**Steps:**
+1. Open sidepanel → Export tab
+2. Check project and scope dropdowns
+
+**Expected:**
+- [ ] Project dropdown: "All Projects", "My Bibliography", + custom projects
+- [ ] Scope dropdown: "All entries", "Starred only", "Journals only", "Books only", "Webpages only"
+- [ ] Count updates dynamically: "X citations will be exported"
+- [ ] Project filter works with both `_projectIds` (array) and `_project` (legacy)
+- [ ] Entries without project field default to "My Bibliography"
+
+### Import project selector
+
+**Steps:**
+1. Open sidepanel → Import tab
+2. Parse some BibTeX entries
+3. Note "Import to:" project dropdown above Import button
+
+**Expected:**
+- [ ] Default: "My Bibliography"
+- [ ] Custom projects listed
+- [ ] Imported entries get `_projectIds: [selectedProject]`
+- [ ] Entries appear in correct project after import
+
+---
+
 ## Quick Smoke Test (5 minutes)
 
 Run this before every release:
 
-1. [ ] Open `https://www.nature.com/articles/nature12373` → click Ibid → fields fill → copy citation
-2. [ ] Paste `10.1371/journal.pone.0185809` on any page → Enhance → 12 authors fill
-3. [ ] Switch style to IEEE → preview changes to `[1] J. Author, "Title," ...`
-4. [ ] Click P/N toggle → in-text changes between `(Author, Year)` and `Author (Year)`
-5. [ ] Click Add → saved to library
-6. [ ] Open Library side panel → citation appears → click copy icon → clipboard has formatted citation
-7. [ ] Change library style to MLA → copy again → MLA format
-8. [ ] Import tab → paste BibTeX → Parse → Import → appears in library
-9. [ ] Export tab → BibTeX → Download → file saves, RIS date has no trailing `///`
-10. [ ] Close popup → reopen on same page → fields restored from cache, hint says "Restored..."
-11. [ ] Click Rescan Page → fields reset to fresh extraction
-12. [ ] `chrome://extensions/` → popup opens → empty form, no crash, no console errors
-13. [ ] Settings → About → Engine shows green "Rust/WASM active"
-14. [ ] All custom dialogs (delete, duplicate, clear) are styled — no native browser confirms
+1. [ ] Open `https://www.nature.com/articles/s41586-024-08219-w` → click Ibid → 12 authors fill
+2. [ ] Select MLA 9th → bib shows `Doughty, Benjamin R., et al.` (not all 12 authors)
+3. [ ] In-text P shows `(Doughty et al.)` — not all 12 names listed
+4. [ ] Click N → in-text shows `Doughty et al.` (narrative)
+5. [ ] Switch to APA 7 → bib changes, in-text shows `(Doughty et al., 2024)`
+6. [ ] Click Add → saved to library
+7. [ ] Open Library side panel → citation appears with link icon (↗)
+8. [ ] Click citation title → inline preview opens with style picker and P/N toggle
+9. [ ] Change preview style to IEEE → output updates via hayagriva
+10. [ ] Search "plos" in style picker → remote results appear → download PLOS
+11. [ ] PLOS renders correctly (numbered style, no et al. issues)
+12. [ ] Click + in toolbar → manual entry form → fill title/DOI → Enhance → Add to Library
+13. [ ] Import tab → select project → paste BibTeX → Parse → Import → appears in correct project
+14. [ ] Export tab → filter by project → BibTeX → Download → file saves
+15. [ ] Close popup → reopen on same page → "In library" bar shows with View · Update
+16. [ ] Sidepanel gear → change theme to Dark → applies immediately
+17. [ ] `chrome://extensions/` → popup opens → restricted page hint, no crash
+18. [ ] Local PDF `file:///` → "Local file detected" hint
+19. [ ] All custom dialogs are styled — no native browser confirms
 
 ---
 
 ## Automated Test Suite
 
-Run before submission:
+### Rust tests (WASM engine)
 
 ```bash
-# All offline tests (Rust + JS + Styles) — ~10 seconds
-npm test
-
-# Including real-world URL tests (needs network) — ~30 seconds
-npm run test:all
+cd crates/ibid-core && cargo test
 ```
 
-Current counts:
-- Rust: 182 tests (CSL engine, parsers, serializers, choose/if/else)
-- JS: 202 tests (extractor, popup, resolver, validation, fallback, phase 4)
-- Style formatting: 89 tests (APA, MLA, Chicago, Harvard, IEEE, Vancouver)
-- Real-world URLs: 38 tests (Wikipedia, CrossRef, PubMed, Reuters)
+Current counts: **188+ tests**
+- CSL parser: style XML parsing, choose/if/else, group delimiters, date-parts
+- CSL renderer (custom): names, dates, labels, groups, et-al, initials, punctuation dedup
+- Hayagriva integration: MLA et-al (12 authors → "et al."), CSL-JSON → Entry conversion
+- Parsers: BibTeX, RIS, CSL-JSON, EndNote XML, MEDLINE, CSV
+- Serializers: BibTeX, RIS, CSL-JSON, CSV, TSV, YAML, Word XML
+- Types: ItemType roundtrip, Name fields, DateVariable, StringOrNumber
+
+### Key Rust test cases
+
+| Test | What it verifies |
+|------|-----------------|
+| `test_mla_et_al_citation` | 12-author MLA: bib has "et al.", in-text has "et al." |
+| `test_apa_bib_author_initials` | Authors as "Smith, J. A." not "Smith, John Andrew" |
+| `test_apa_bib_group_delimiters` | ". " between author/year/title/source groups |
+| `test_apa_citation_et_al_many_authors` | 5 authors → "Smith et al." in citation |
+| `test_apa_bib_volume_issue_format` | "13(3)" not "volume 13, issue 3" |
+| `test_hyphenated_name_initials` | "Jean-Pierre" → "J.-P." |
+| `test_initialize_given_name` | "Benjamin Robert" → "B. R." with ". " delimiter |
+| `test_roundtrip_bibtex` | BibTeX parse → serialize → parse roundtrip |
+| `test_roundtrip_ris` | RIS parse → serialize → parse roundtrip |
+
+### WASM build
+
+```bash
+cd crates/ibid-core && wasm-pack build --target web --out-dir ../../browser/chrome/wasm
+```
+
+- [ ] Build succeeds without errors
+- [ ] WASM size: ~1.8MB (hayagriva + en-US locale, no wasm-opt)
+- [ ] `.wasm`, `.js`, `.d.ts` files generated in `browser/chrome/wasm/`
+
+### JS tests (extension)
+
+```bash
+npm test        # offline tests
+npm run test:all # including network tests
+```
+
+- Extractor: metadata extraction from HTML
+- Popup: field population, validation, style switching
+- Resolver: DOI/ISBN/PMID/arXiv resolution
+- Fallback parsers: BibTeX, RIS, CSL-JSON (when WASM unavailable)
+- Citation formatter: 6-family JS rendering, style resolution
+- Real-world URLs: Wikipedia, CrossRef, PubMed, Reuters
 - **Total: 473+ tests**

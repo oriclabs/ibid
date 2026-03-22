@@ -33,7 +33,8 @@ for (const btn of $$('.tab-btn')) {
     $('#bulk-bar').classList.toggle('hidden', !isLibrary || selectedIds.size === 0);
     // Reload data when switching tabs
     if (btn.dataset.tab === 'library') loadCitations();
-    if (btn.dataset.tab === 'export') updateExportCount();
+    if (btn.dataset.tab === 'export') { populateExportProjects(); updateExportCount(); }
+    if (btn.dataset.tab === 'import') populateImportProject();
   });
 }
 
@@ -838,11 +839,13 @@ async function importSelected() {
   const indices = Array.from($$('.import-checkbox:checked')).map((cb) => parseInt(cb.dataset.index));
   if (indices.length === 0) { showImportStatus('error', 'No entries selected.'); return; }
 
+  const importProjectId = $('#import-project')?.value || 'default';
   const toImport = indices.map((i) => ({
     ...parsedEntries[i],
     id: parsedEntries[i].id || crypto.randomUUID(),
     _dateAdded: new Date().toISOString(),
     _importSource: 'import',
+    _projectIds: [importProjectId],
   }));
 
   const { citations = [] } = await chrome.storage.local.get(['citations']);
@@ -969,10 +972,45 @@ $('#export-format').addEventListener('change', () => {
   updateExportCount();
 });
 $('#export-scope').addEventListener('change', updateExportCount);
+$('#export-project').addEventListener('change', updateExportCount);
 
 async function updateExportCount() {
   const items = await getExportItems();
   $('#export-count').textContent = `${items.length} citation${items.length !== 1 ? 's' : ''} will be exported`;
+}
+
+function populateImportProject() {
+  const sel = $('#import-project');
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="default">My Bibliography</option>';
+  chrome.storage.local.get(['projects']).then(({ projects = [] }) => {
+    for (const p of projects) {
+      if (p.id === 'default') continue;
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name;
+      sel.appendChild(opt);
+    }
+    sel.value = current || 'default';
+  });
+}
+
+function populateExportProjects() {
+  const sel = $('#export-project');
+  const current = sel.value;
+  sel.innerHTML = '<option value="all">All Projects</option><option value="default">My Bibliography</option>';
+  // Reuse projects from storage
+  chrome.storage.local.get(['projects']).then(({ projects = [] }) => {
+    for (const p of projects) {
+      if (p.id === 'default') continue;
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name;
+      sel.appendChild(opt);
+    }
+    sel.value = current || 'all';
+  });
 }
 
 async function getExportItems() {
@@ -982,8 +1020,26 @@ async function getExportItems() {
     const stored = await chrome.storage.local.get(['citations']);
     citations = stored.citations || [];
   }
+
+  // Apply project filter
+  const projectId = $('#export-project').value;
+  if (projectId !== 'all') {
+    citations = citations.filter(c =>
+      c._projectIds?.includes(projectId) ||
+      c._project === projectId ||
+      (!c._projectIds && !c._project && projectId === 'default')
+    );
+  }
+
+  // Apply scope filter
   const scope = $('#export-scope').value;
-  if (scope === 'starred') return citations.filter((c) => c._starred);
+  if (scope === 'starred') {
+    citations = citations.filter(c => c._starred);
+  } else if (scope !== 'all') {
+    // Type filter (article-journal, book, webpage)
+    citations = citations.filter(c => c.type === scope);
+  }
+
   return citations;
 }
 

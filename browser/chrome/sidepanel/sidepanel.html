@@ -355,7 +355,13 @@
         </div>
       </div>
       <div id="preview-list" class="space-y-1 max-h-[300px] overflow-y-auto"></div>
-      <button id="btn-import-selected" class="mt-3 w-full px-3 py-2 rounded-lg bg-saffron-500 hover:bg-saffron-600 text-white font-medium text-sm transition-colors">Import Selected</button>
+      <div class="mt-2 flex items-center gap-2">
+        <label class="text-[10px] text-zinc-400 shrink-0">Import to:</label>
+        <select id="import-project" class="flex-1 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-xs">
+          <option value="default">My Bibliography</option>
+        </select>
+      </div>
+      <button id="btn-import-selected" class="mt-2 w-full px-3 py-2 rounded-lg bg-saffron-500 hover:bg-saffron-600 text-white font-medium text-sm transition-colors">Import Selected</button>
     </div>
   </div>
 
@@ -383,12 +389,21 @@
           </optgroup>
         </select>
       </div>
-      <div>
-        <label class="block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-1">Scope</label>
-        <select id="export-scope" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm">
-          <option value="all">All citations</option>
-          <option value="starred">Starred only</option>
-        </select>
+      <div class="space-y-1.5">
+        <label class="block text-[10px] font-medium text-zinc-400 uppercase tracking-wider">Scope</label>
+        <div class="flex gap-1.5">
+          <select id="export-project" class="flex-1 px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-xs">
+            <option value="all">All Projects</option>
+            <option value="default">My Bibliography</option>
+          </select>
+          <select id="export-scope" class="flex-1 px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-xs">
+            <option value="all">All entries</option>
+            <option value="starred">Starred only</option>
+            <option value="article-journal">Journals only</option>
+            <option value="book">Books only</option>
+            <option value="webpage">Webpages only</option>
+          </select>
+        </div>
       </div>
       <!-- Format-specific options (shown for BibTeX) -->
       <div id="export-bibtex-opts" class="space-y-1">

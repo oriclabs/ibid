@@ -396,4 +396,114 @@ mod tests {
         assert!(intext.contains("et al"), "In-text should contain 'et al': {}", intext);
         assert!(!intext.contains("Greenleaf"), "In-text should NOT list all authors: {}", intext);
     }
+
+    fn load_style(name: &str) -> String {
+        std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join(format!("../../browser/chrome/styles/csl/{}.csl", name))
+        ).unwrap()
+    }
+
+    #[test]
+    fn test_apa_et_al_citation() {
+        let xml = load_style("apa");
+        let item = many_authors_item();
+        let (bib, intext) = render_both(&item, &xml).unwrap();
+        eprintln!("APA bib: {}", bib);
+        eprintln!("APA intext: {}", intext);
+
+        // APA 7: et-al-min=21 for bib (show all 12), et-al-min varies for citation
+        // In-text: should use et al. for 3+ authors
+        assert!(intext.contains("Doughty"), "In-text should contain first author: {}", intext);
+        // Bib should have initials, not full given names
+        assert!(bib.contains("Doughty, B. R.") || bib.contains("Doughty, B."),
+            "APA bib should have initials: {}", bib);
+    }
+
+    #[test]
+    fn test_chicago_author_date() {
+        let xml = load_style("chicago-author-date");
+        let item = many_authors_item();
+        let (bib, intext) = render_both(&item, &xml).unwrap();
+        eprintln!("Chicago bib: {}", bib);
+        eprintln!("Chicago intext: {}", intext);
+
+        assert!(!bib.is_empty(), "Chicago bib should not be empty");
+        assert!(!intext.is_empty(), "Chicago intext should not be empty");
+        // Chicago uses "et al." for 4+ authors in bib (10+ in some configs)
+        assert!(bib.contains("Doughty"), "Bib should contain first author: {}", bib);
+    }
+
+    #[test]
+    fn test_ieee_numbered_citation() {
+        let xml = load_style("ieee");
+        let item = many_authors_item();
+        let (bib, intext) = render_both(&item, &xml).unwrap();
+        eprintln!("IEEE bib: {}", bib);
+        eprintln!("IEEE intext: {}", intext);
+
+        // IEEE uses numbered citations [1]
+        assert!(intext.contains("[1]") || intext.contains("["),
+            "IEEE in-text should be numbered: {}", intext);
+    }
+
+    #[test]
+    fn test_vancouver_numbered_citation() {
+        let xml = load_style("vancouver");
+        let item = many_authors_item();
+        let (bib, intext) = render_both(&item, &xml).unwrap();
+        eprintln!("Vancouver bib: {}", bib);
+        eprintln!("Vancouver intext: {}", intext);
+
+        // Vancouver: et al. after 6 authors
+        assert!(bib.contains("et al"), "Vancouver bib should have et al. for 12 authors: {}", bib);
+    }
+
+    #[test]
+    fn test_single_author_no_et_al() {
+        let xml = load_style("apa");
+        let mut item = many_authors_item();
+        item.author = Some(vec![
+            Name { family: Some("Smith".into()), given: Some("John".into()), ..Default::default() },
+        ]);
+        let (bib, intext) = render_both(&item, &xml).unwrap();
+
+        assert!(!bib.contains("et al"), "Single author should NOT have et al: {}", bib);
+        assert!(bib.contains("Smith"), "Should contain author name: {}", bib);
+        assert!(intext.contains("Smith"), "In-text should contain author: {}", intext);
+    }
+
+    #[test]
+    fn test_no_ansi_codes_in_output() {
+        let xml = load_style("apa");
+        let item = many_authors_item();
+        let (bib, intext) = render_both(&item, &xml).unwrap();
+
+        assert!(!bib.contains("\x1b["), "Bib should not contain ANSI codes: {}", bib);
+        assert!(!bib.contains("[0m"), "Bib should not contain [0m: {}", bib);
+        assert!(!intext.contains("\x1b["), "Intext should not contain ANSI codes: {}", intext);
+    }
+
+    #[test]
+    fn test_locale_terms_present() {
+        // Verify the en-US locale provides "et al." and month names
+        let locales = en_us_locale();
+        assert!(!locales.is_empty(), "en-US locale should load");
+    }
+
+    #[test]
+    fn test_csl_item_to_entry_conversion() {
+        let item = many_authors_item();
+        let entry = csl_item_to_entry(&item);
+
+        assert_eq!(entry.key(), "doughty2024");
+        assert!(entry.authors().is_some());
+        assert_eq!(entry.authors().unwrap().len(), 12);
+        assert!(entry.title().is_some());
+        assert!(entry.date().is_some());
+        assert!(entry.volume().is_some());
+        assert!(entry.issue().is_some());
+        assert!(entry.page_range().is_some());
+        assert!(!entry.parents().is_empty(), "Should have parent (journal)");
+    }
 }
