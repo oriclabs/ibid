@@ -162,6 +162,32 @@
     </div>
   </section>
 
+  <!-- How it works -->
+  <section style="padding: 3rem 0; text-align: center;">
+    <div class="container">
+      <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem;">Why Rust/WebAssembly?</h2>
+      <p style="color: #71717a; max-width: 600px; margin: 0 auto 2rem; font-size: 0.95rem; line-height: 1.7;">
+        Citation files can contain thousands of entries in complex formats (BibTeX, RIS, XML). Ibid uses a
+        <strong style="color: #18181b;">Rust engine compiled to WebAssembly</strong> to parse and serialize these formats
+        directly in your browser — no server roundtrips, no data leaving your machine.
+      </p>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; max-width: 700px; margin: 0 auto;">
+        <div style="padding: 1.25rem; border: 1px solid #e4e4e7; border-radius: 0.75rem; text-align: left;">
+          <strong style="display: block; font-size: 0.875rem; margin-bottom: 0.25rem;">Import/Export Engine</strong>
+          <span style="font-size: 0.8rem; color: #71717a;">BibTeX, RIS, EndNote XML, MEDLINE, CSV — parsed in Rust/WASM. 1,000 entries in under 100ms.</span>
+        </div>
+        <div style="padding: 1.25rem; border: 1px solid #e4e4e7; border-radius: 0.75rem; text-align: left;">
+          <strong style="display: block; font-size: 0.875rem; margin-bottom: 0.25rem;">100% Local</strong>
+          <span style="font-size: 0.8rem; color: #71717a;">Everything runs in your browser's sandbox. Your citations never touch a server — not ours, not anyone's.</span>
+        </div>
+        <div style="padding: 1.25rem; border: 1px solid #e4e4e7; border-radius: 0.75rem; text-align: left;">
+          <strong style="display: block; font-size: 0.875rem; margin-bottom: 0.25rem;">JS Fallback</strong>
+          <span style="font-size: 0.8rem; color: #71717a;">If WASM can't load, JavaScript fallback parsers handle BibTeX, RIS, and CSL-JSON seamlessly.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- Privacy summary -->
   <section class="privacy-section">
     <div class="container">
