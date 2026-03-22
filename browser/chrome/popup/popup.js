@@ -9,6 +9,7 @@ let currentMetadata = null;
 let currentStyle = 'apa7';
 let globalStyle = 'apa7';
 let projects = [];
+let intextMode = 'parenthetical';
 let currentProjectId = 'default';
 
 // ---------------------------------------------------------------------------
@@ -136,14 +137,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#style-selector').addEventListener('change', onStyleChange);
   $('#source-type').addEventListener('change', onSourceTypeChange);
 
-  // In-text toggle
+  // In-text toggle — P (parenthetical) / N (narrative)
   $('#btn-parenthetical').addEventListener('click', () => {
-    $('#btn-parenthetical').className = 'text-[10px] px-2 py-0.5 bg-saffron-500 text-white';
-    $('#btn-narrative').className = 'text-[10px] px-2 py-0.5 bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300';
+    intextMode = 'parenthetical';
+    $('#btn-parenthetical').setAttribute('class', 'text-[9px] px-1.5 py-0.5 bg-saffron-500 text-white');
+    $('#btn-narrative').setAttribute('class', 'text-[9px] px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300');
+    updatePreview();
   });
   $('#btn-narrative').addEventListener('click', () => {
-    $('#btn-narrative').className = 'text-[10px] px-2 py-0.5 bg-saffron-500 text-white';
-    $('#btn-parenthetical').className = 'text-[10px] px-2 py-0.5 bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300';
+    intextMode = 'narrative';
+    $('#btn-narrative').setAttribute('class', 'text-[9px] px-1.5 py-0.5 bg-saffron-500 text-white');
+    $('#btn-parenthetical').setAttribute('class', 'text-[9px] px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300');
+    updatePreview();
   });
 
   // Auto-update citation on field change
@@ -193,35 +198,49 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Injection failed — restricted page or already injected
       }
 
-      chrome.tabs.sendMessage(tab.id, { action: 'extractMetadata' }, (response) => {
-        if (chrome.runtime.lastError || !response?.metadata) {
-          currentMetadata = {
-            title: tab.title || '',
-            URL: tab.url || '',
-            type: 'webpage',
-          };
-          populateFields(currentMetadata);
-          showHint('sparse', 'Could not read this page. Fields pre-filled from tab info — review and complete manually.');
-        } else {
-          currentMetadata = response.metadata;
-          populateFields(currentMetadata);
+      // Check if we have cached enhanced data for this URL
+      const cacheKey = `ibid_cache_${tab.id}`;
+      const cached = await chrome.storage.session.get([cacheKey]);
+      const cachedData = cached[cacheKey];
 
-          const hasAuthor = currentMetadata.author?.length > 0;
-          const hasDate = !!currentMetadata.issued;
-          const hasDoi = !!currentMetadata.DOI;
-          const hasTitle = !!currentMetadata.title;
-
-          if (hasTitle && hasAuthor && hasDate) {
-            // Good extraction — no hint
-          } else if (hasTitle && !hasAuthor && !hasDoi) {
-            showHint('sparse', 'Limited metadata found (missing author). If you have a DOI, paste it below and click Enhance.');
-          } else if (hasTitle && !hasAuthor && hasDoi) {
-            showHint('enhancing', 'Author not found on page — looking up via DOI...');
-          }
-        }
+      if (cachedData && cachedData.url === tab.url) {
+        // Restore cached fields — user reopened popup on same page
+        currentMetadata = cachedData.metadata;
+        populateFields(currentMetadata);
         showState('ready');
-        tryAutoEnhance();
-      });
+        showHint('info', 'Restored from previous session on this page.');
+      } else {
+        // Fresh extraction
+        chrome.tabs.sendMessage(tab.id, { action: 'extractMetadata' }, (response) => {
+          if (chrome.runtime.lastError || !response?.metadata) {
+            currentMetadata = {
+              title: tab.title || '',
+              URL: tab.url || '',
+              type: 'webpage',
+            };
+            populateFields(currentMetadata);
+            showHint('sparse', 'Could not read this page. Fields pre-filled from tab info — review and complete manually.');
+          } else {
+            currentMetadata = response.metadata;
+            populateFields(currentMetadata);
+
+            const hasAuthor = currentMetadata.author?.length > 0;
+            const hasDate = !!currentMetadata.issued;
+            const hasDoi = !!currentMetadata.DOI;
+            const hasTitle = !!currentMetadata.title;
+
+            if (hasTitle && hasAuthor && hasDate) {
+              // Good extraction — no hint
+            } else if (hasTitle && !hasAuthor && !hasDoi) {
+              showHint('sparse', 'Limited metadata found (missing author). If you have a DOI, paste it below and click Enhance.');
+            } else if (hasTitle && !hasAuthor && hasDoi) {
+              showHint('enhancing', 'Author not found on page — looking up via DOI...');
+            }
+          }
+          showState('ready');
+          tryAutoEnhance();
+        });
+      }
     } else {
       showState('ready');
       showHint('restricted', 'No active tab found. Enter citation details manually.');
@@ -410,16 +429,27 @@ function formatIntext(item, styleId) {
   const name = first?.family || first?.literal || (item.title ? item.title.split(' ').slice(0, 3).join(' ') : 'Unknown');
   const year = item.issued?.['date-parts']?.[0]?.[0] || 'n.d.';
   const authorCount = (item.author || []).length;
+  const narrative = intextMode === 'narrative';
 
   switch (style) {
     case 'apa':
     case 'chicago':
     case 'harvard':
+      if (narrative) {
+        if (authorCount >= 3) return `${name} et al. (${year})`;
+        if (authorCount === 2) return `${name} & ${item.author[1].family || ''} (${year})`;
+        return `${name} (${year})`;
+      }
       if (authorCount >= 3) return `(${name} et al., ${year})`;
       if (authorCount === 2) return `(${name} & ${item.author[1].family || ''}, ${year})`;
       return `(${name}, ${year})`;
     case 'mla':
-      if (authorCount >= 3) return `(${name} et al. ${item.page || ''})`.trim() + ')';
+      if (narrative) {
+        if (authorCount >= 3) return `${name} et al.`;
+        if (authorCount === 2) return `${name} and ${item.author[1].family || ''}`;
+        return name;
+      }
+      if (authorCount >= 3) return `(${name} et al. ${item.page || ''})`.trim();
       if (authorCount === 2) return `(${name} and ${item.author[1].family || ''} ${item.page || ''})`.trim();
       return `(${name} ${item.page || ''})`.trim();
     case 'ieee':
@@ -684,6 +714,7 @@ async function enhanceMetadata() {
       // Re-validate to clear stale warnings
       validateSourceType();
       updateFieldRelevance();
+      cacheCurrentFields();
     } else {
       showEnhanceResult('info', `Resolved via ${res.source}, but all fields already filled.`);
     }
@@ -839,6 +870,8 @@ async function tryAutoEnhance() {
       validateSourceType();
       updateFieldRelevance();
       updatePreview();
+      // Cache enhanced data for this tab
+      cacheCurrentFields();
     }
   } catch {
     // Silent fail — auto-enhance is best-effort
@@ -1517,6 +1550,10 @@ async function rescanPage() {
       return;
     }
 
+    // Clear cache for this tab — force fresh extraction
+    const cacheKey = `ibid_cache_${tab.id}`;
+    await chrome.storage.session.remove([cacheKey]);
+
     // Re-inject and re-extract
     try {
       await chrome.scripting.executeScript({
@@ -1538,6 +1575,43 @@ async function rescanPage() {
     });
   } catch (err) {
     showHint('sparse', `Rescan failed: ${err.message}`);
+  }
+}
+
+// Cache current field values for this tab (survives popup close/reopen)
+async function cacheCurrentFields() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) return;
+
+    const cacheKey = `ibid_cache_${tab.id}`;
+    const metadata = {
+      ...currentMetadata,
+      // Capture current field values (may have been edited or enhanced)
+      title: $('#field-title').value || currentMetadata?.title,
+      author: parseAuthorsInput($('#field-authors').value),
+      issued: parseDateInput($('#field-date').value),
+      publisher: $('#field-publisher').value || undefined,
+      'container-title': $('#field-container').value || undefined,
+      volume: $('#field-volume').value || undefined,
+      issue: $('#field-issue').value || undefined,
+      page: $('#field-pages').value || undefined,
+      type: $('#source-type').value,
+    };
+
+    // Extract DOI/URL from field
+    const doiVal = $('#field-doi').value.trim();
+    if (doiVal.match(/^10\./)) {
+      metadata.DOI = doiVal.replace(/[?#].*$/, '');
+    } else if (doiVal) {
+      metadata.URL = doiVal;
+    }
+
+    await chrome.storage.session.set({
+      [cacheKey]: { url: tab.url, metadata, timestamp: Date.now() }
+    });
+  } catch {
+    // session storage might not be available — silent fail
   }
 }
 

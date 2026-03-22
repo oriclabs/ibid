@@ -171,8 +171,23 @@
       </div>
     </div>
 
-    <!-- Editable metadata fields — labels get required dots based on source type -->
+    <!-- Editable metadata fields — DOI/Enhance first, then details -->
     <div class="px-4 py-2 space-y-2">
+      <!-- DOI/Enhance at top — paste identifier, fill everything below -->
+      <div data-field="DOI">
+        <label class="field-label block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-0.5">DOI / ISBN / PMID / URL <span class="req-dot hidden text-saffron-500">*</span></label>
+        <div class="flex gap-1.5">
+          <input id="field-doi" type="text" placeholder="Paste DOI, ISBN, PMID, or URL to auto-fill" class="flex-1 px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 focus:border-saffron-500 outline-none transition-colors">
+          <button id="btn-enhance" class="px-2.5 py-1.5 rounded border border-saffron-300 dark:border-saffron-700 bg-saffron-50 dark:bg-saffron-900/20 text-saffron-600 dark:text-saffron-400 hover:bg-saffron-100 dark:hover:bg-saffron-900/40 text-xs font-medium transition-colors flex items-center gap-1 shrink-0" title="Look up metadata from DOI, ISBN, PMID, or arXiv ID">
+            <svg id="enhance-icon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <svg id="enhance-spinner" class="w-3.5 h-3.5 animate-spin hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v4m0 12v4m-7.07-3.93l2.83-2.83m8.49-8.49l2.83-2.83M2 12h4m12 0h4M4.93 4.93l2.83 2.83m8.49 8.49l2.83 2.83"/></svg>
+            Enhance
+          </button>
+        </div>
+      </div>
+      <!-- Enhance result banner -->
+      <div id="enhance-result" class="hidden px-2.5 py-1.5 rounded text-xs flex items-center gap-1.5"></div>
+      <!-- Metadata fields -->
       <div data-field="title">
         <label class="field-label block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-0.5">Title <span class="req-dot hidden text-saffron-500">*</span></label>
         <input id="field-title" type="text" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 focus:border-saffron-500 outline-none transition-colors">
@@ -220,24 +235,11 @@
           <input id="field-pages" type="text" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 focus:border-saffron-500 outline-none transition-colors">
         </div>
       </div>
-      <div data-field="DOI">
-        <label class="field-label block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-0.5">DOI / ISBN / PMID / URL <span class="req-dot hidden text-saffron-500">*</span></label>
-        <div class="flex gap-1.5">
-          <input id="field-doi" type="text" placeholder="10.xxxx/..., 978..., PMID:..., URL" class="flex-1 px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 focus:border-saffron-500 outline-none transition-colors">
-          <button id="btn-enhance" class="px-2.5 py-1.5 rounded border border-saffron-300 dark:border-saffron-700 bg-saffron-50 dark:bg-saffron-900/20 text-saffron-600 dark:text-saffron-400 hover:bg-saffron-100 dark:hover:bg-saffron-900/40 text-xs font-medium transition-colors flex items-center gap-1 shrink-0" title="Look up metadata from DOI, ISBN, PMID, or arXiv ID">
-            <svg id="enhance-icon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-            <svg id="enhance-spinner" class="w-3.5 h-3.5 animate-spin hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v4m0 12v4m-7.07-3.93l2.83-2.83m8.49-8.49l2.83-2.83M2 12h4m12 0h4M4.93 4.93l2.83 2.83m8.49 8.49l2.83 2.83"/></svg>
-            Enhance
-          </button>
-        </div>
-      </div>
-      <!-- Enhance result banner -->
-      <div id="enhance-result" class="hidden px-2.5 py-1.5 rounded text-xs flex items-center gap-1.5"></div>
     </div>
     </div><!-- end scrollable middle -->
 
     <!-- Sticky bottom: compact citation output + add -->
-    <div class="shrink-0 border-t border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900">
+    <div class="shrink-0 border-t-2 border-saffron-200 dark:border-saffron-800 bg-saffron-50/30 dark:bg-zinc-800/80 shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
 
     <!-- Citation preview — compact: bib + in-text side by side -->
     <div class="px-4 pt-2 pb-1">
@@ -254,8 +256,8 @@
           <span class="text-zinc-400 italic">(Author, Year)</span>
         </div>
         <div class="flex rounded overflow-hidden border border-zinc-200 dark:border-zinc-700 shrink-0">
-          <button id="btn-parenthetical" class="text-[9px] px-1.5 py-0.5 bg-saffron-500 text-white">P</button>
-          <button id="btn-narrative" class="text-[9px] px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300">N</button>
+          <button id="btn-parenthetical" class="text-[9px] px-1.5 py-0.5 bg-saffron-500 text-white" title="Parenthetical: (Smith, 2024)">P</button>
+          <button id="btn-narrative" class="text-[9px] px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300" title="Narrative: Smith (2024)">N</button>
         </div>
         <button id="btn-copy-intext" class="shrink-0 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 text-[10px] text-zinc-500 hover:text-saffron-600 hover:border-saffron-400 transition-colors">Copy</button>
       </div>
