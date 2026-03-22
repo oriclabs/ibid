@@ -32,8 +32,8 @@ async function initWasm() {
 
 initWasm();
 
-// Initialize IndexedDB and migrate from chrome.storage if needed
-initDB().then(() => migrateFromChromeStorage()).catch(err => {
+// Initialize IndexedDB (ready for future use, not primary storage yet)
+initDB().catch(err => {
   console.error('[Ibid] DB init failed:', err);
 });
 
@@ -101,22 +101,13 @@ chrome.runtime.onInstalled.addListener((details) => {
 
 // Badge: show citation count on extension icon
 async function updateBadge() {
-  try {
-    const citations = await getAllCitations();
-    const count = citations.length;
-    if (count > 0) {
-      chrome.action.setBadgeText({ text: count > 999 ? '999+' : count.toString() });
-      chrome.action.setBadgeBackgroundColor({ color: '#f49707' });
-    } else {
-      chrome.action.setBadgeText({ text: '' });
-    }
-  } catch {
-    // DB not ready yet — try chrome.storage fallback
-    const { citations = [] } = await chrome.storage.local.get(['citations']);
-    if (citations.length > 0) {
-      chrome.action.setBadgeText({ text: citations.length > 999 ? '999+' : citations.length.toString() });
-      chrome.action.setBadgeBackgroundColor({ color: '#f49707' });
-    }
+  // Use chrome.storage.local as single source of truth (consistent with popup + side panel)
+  const { citations = [] } = await chrome.storage.local.get(['citations']);
+  if (citations.length > 0) {
+    chrome.action.setBadgeText({ text: citations.length > 999 ? '999+' : citations.length.toString() });
+    chrome.action.setBadgeBackgroundColor({ color: '#f49707' });
+  } else {
+    chrome.action.setBadgeText({ text: '' });
   }
 }
 
