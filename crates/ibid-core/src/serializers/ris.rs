@@ -50,12 +50,14 @@ pub fn serialize_item(item: &CslItem) -> String {
                 let y = first.first().copied().unwrap_or(0);
                 let m = first.get(1).copied();
                 let d = first.get(2).copied();
-                lines.push(format!(
-                    "PY  - {}/{}/{}/",
-                    y,
-                    m.map(|v| format!("{:02}", v)).unwrap_or_default(),
-                    d.map(|v| format!("{:02}", v)).unwrap_or_default()
-                ));
+                let mut date_str = format!("{}", y);
+                if let Some(mv) = m {
+                    date_str.push_str(&format!("/{:02}", mv));
+                    if let Some(dv) = d {
+                        date_str.push_str(&format!("/{:02}", dv));
+                    }
+                }
+                lines.push(format!("PY  - {}", date_str));
             }
         }
     }
@@ -237,7 +239,7 @@ mod tests {
         assert!(ris.contains("AU  - Smith, John"));
         assert!(ris.contains("TI  - Test Article"));
         assert!(ris.contains("JO  - Nature"));
-        assert!(ris.contains("PY  - 2024/03/15/"));
+        assert!(ris.contains("PY  - 2024/03/15"));
         assert!(ris.contains("DO  - 10.1038/test"));
         assert!(ris.ends_with("ER  - "));
     }

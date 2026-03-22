@@ -790,7 +790,12 @@ async function updateExportCount() {
 }
 
 async function getExportItems() {
-  const { citations = [] } = await chrome.storage.local.get(['citations']);
+  // Use cached allCitations first, fall back to storage
+  let citations = allCitations;
+  if (!citations || citations.length === 0) {
+    const stored = await chrome.storage.local.get(['citations']);
+    citations = stored.citations || [];
+  }
   const scope = $('#export-scope').value;
   if (scope === 'starred') return citations.filter((c) => c._starred);
   return citations;
