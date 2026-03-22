@@ -17,12 +17,8 @@ let currentProjectId = 'default';
 // ---------------------------------------------------------------------------
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // Get version and WASM status from background
+  // Check WASM status
   chrome.runtime.sendMessage({ action: 'getVersion' }, (res) => {
-    if (res?.version) {
-      const vEl = $('#engine-version');
-      if (vEl) vEl.textContent = `v${res.version}`;
-    }
     if (res?.wasmError) {
       showHint('restricted', `Citation engine failed to load. Citations will use basic formatting. Try reloading the extension.`);
     }
@@ -68,9 +64,32 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Smart date input
   $('#field-date').addEventListener('input', onDateInput);
   $('#date-precision').addEventListener('change', onDatePrecisionChange);
+  // n.d. toggle — disables date input when active
+  let noDateActive = false;
   $('#btn-no-date').addEventListener('click', () => {
-    $('#field-date').value = '';
-    setDateHint('info', 'No date — will show as "n.d." in citation');
+    noDateActive = !noDateActive;
+    const dateInput = $('#field-date');
+    const precision = $('#date-precision');
+    const btn = $('#btn-no-date');
+
+    if (noDateActive) {
+      dateInput.value = '';
+      dateInput.disabled = true;
+      dateInput.classList.add('opacity-40');
+      precision.disabled = true;
+      precision.classList.add('opacity-40');
+      btn.classList.add('bg-saffron-500', 'text-white', 'border-saffron-500');
+      btn.classList.remove('text-zinc-400', 'bg-zinc-50', 'dark:bg-zinc-800');
+      setDateHint('info', 'No date — citation will show "n.d."');
+    } else {
+      dateInput.disabled = false;
+      dateInput.classList.remove('opacity-40');
+      precision.disabled = false;
+      precision.classList.remove('opacity-40');
+      btn.classList.remove('bg-saffron-500', 'text-white', 'border-saffron-500');
+      btn.classList.add('text-zinc-400', 'bg-zinc-50', 'dark:bg-zinc-800');
+      clearDateHint();
+    }
     updatePreview();
   });
 
@@ -94,6 +113,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Quick settings dropdown toggle
   $('#btn-settings').addEventListener('click', (e) => {
     e.stopPropagation();
+    // Close style picker if open
+    $('#style-picker-dropdown').classList.add('hidden');
     $('#quick-settings').classList.toggle('hidden');
   });
   // Close dropdown when clicking outside
@@ -381,11 +402,9 @@ async function updatePreview() {
     return;
   }
 
-  // Use JS style-aware formatter (reliable) instead of WASM CSL engine (still maturing)
-  const bib = formatBibliography(item, currentStyle);
-  const intext = formatIntext(item, currentStyle);
-  $('#citation-preview').innerHTML = bib;
-  $('#intext-preview').textContent = intext;
+  // Show instantly with JS formatter (no delay)
+  $('#citation-preview').innerHTML = formatBibliography(item, currentStyle);
+  $('#intext-preview').textContent = formatIntext(item, currentStyle);
 }
 
 // ---------------------------------------------------------------------------
@@ -662,6 +681,11 @@ async function enhanceMetadata() {
 
     if (resolved.issued && !$('#field-date').value.trim()) {
       $('#field-date').value = formatDateForInput(resolved.issued);
+      // Update precision to match
+      if (resolved.issued['date-parts']?.[0]) {
+        const len = resolved.issued['date-parts'][0].length;
+        $('#date-precision').value = len >= 3 ? 'day' : len === 2 ? 'month' : 'year';
+      }
       filled.push('date');
     }
 
@@ -690,12 +714,10 @@ async function enhanceMetadata() {
       filled.push('pages');
     }
 
-    // Update DOI field if we got a proper DOI
     if (resolved.DOI) {
       $('#field-doi').value = resolved.DOI;
     }
 
-    // Update source type if detected
     if (resolved.type) {
       const typeSelect = $('#source-type');
       const option = typeSelect.querySelector(`option[value="${resolved.type}"]`);
@@ -705,14 +727,12 @@ async function enhanceMetadata() {
       }
     }
 
-    // Highlight enhanced fields briefly
     highlightFields(filled);
 
     if (filled.length > 0) {
       showEnhanceResult('success',
         `Enhanced ${filled.length} field${filled.length > 1 ? 's' : ''} via ${res.source}: ${filled.join(', ')}`
       );
-      // Re-validate to clear stale warnings
       validateSourceType();
       updateFieldRelevance();
       cacheCurrentFields();
@@ -831,6 +851,10 @@ async function tryAutoEnhance() {
     }
     if (resolved.issued && missingDate) {
       $('#field-date').value = formatDateForInput(resolved.issued);
+      if (resolved.issued['date-parts']?.[0]) {
+        const len = resolved.issued['date-parts'][0].length;
+        $('#date-precision').value = len >= 3 ? 'day' : len === 2 ? 'month' : 'year';
+      }
       filled.push('date');
     }
     if (resolved['container-title'] && missingContainer) {
@@ -1373,6 +1397,8 @@ async function initStylePicker() {
 // Toggle dropdown
 $('#style-picker-btn').addEventListener('click', (e) => {
   e.stopPropagation();
+  // Close settings dropdown if open
+  $('#quick-settings').classList.add('hidden');
   const dd = $('#style-picker-dropdown');
   dd.classList.toggle('hidden');
   if (!dd.classList.contains('hidden')) {

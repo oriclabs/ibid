@@ -568,6 +568,16 @@ impl Style {
         // Stack to track pending NameConfig from <name> child elements
         let mut pending_name_config: Option<NameConfig> = None;
 
+        // Choose/if/else tracking
+        #[derive(Default)]
+        struct ChooseBuilder {
+            if_condition: Option<Condition>,
+            else_ifs: Vec<Condition>,
+            else_elements: Option<Vec<Element>>,
+        }
+        let mut choose_stack: Vec<ChooseBuilder> = Vec::new();
+        let mut pending_condition_attrs: Vec<HashMap<String, String>> = Vec::new();
+
         loop {
             match reader.read_event_into(&mut buf) {
                 Ok(Event::Start(ref e)) => {
@@ -692,12 +702,35 @@ impl Style {
                                 continue;
                             }
 
+                            // Handle choose/if/else-if/else specially
+                            if tag == "choose" {
+                                choose_stack.push(ChooseBuilder::default());
+                                context_stack.push(tag.clone());
+                                continue;
+                            }
+                            if tag == "if" || tag == "else-if" {
+                                element_stack.push(Vec::new());
+                                pending_condition_attrs.push(attrs.clone());
+                                context_stack.push(tag.clone());
+                                continue;
+                            }
+                            if tag == "else" {
+                                element_stack.push(Vec::new());
+                                context_stack.push(tag.clone());
+                                continue;
+                            }
+                            if tag == "substitute" {
+                                element_stack.push(Vec::new());
+                                context_stack.push(tag.clone());
+                                continue;
+                            }
+
                             if let Some(elem) =
                                 parse_element_start(&tag, &attrs, &mut context_stack)
                             {
                                 // For container elements, push new level
                                 match &elem {
-                                    Element::Group(_) | Element::Choose(_) => {
+                                    Element::Group(_) => {
                                         element_stack.push(Vec::new());
                                     }
                                     Element::Names(ne) => {
@@ -709,8 +742,7 @@ impl Style {
                                 // Push element to current level for non-containers
                                 match &elem {
                                     Element::Group(_)
-                                    | Element::Names(_)
-                                    | Element::Choose(_) => {
+                                    | Element::Names(_) => {
                                         // These will collect children and be assembled on End
                                     }
                                     _ => {
@@ -871,8 +903,51 @@ impl Style {
                             }
                             context_stack.pop();
                         }
-                        "choose" | "if" | "else-if" | "else" | "substitute" | "text" | "number"
-                        | "label" | "date" | "date-part" | "name" | "et-al" => {
+                        "if" => {
+                            let children = element_stack.pop().unwrap_or_default();
+                            let cond_attrs = pending_condition_attrs.pop().unwrap_or_default();
+                            let condition = parse_condition(&cond_attrs, children);
+                            if let Some(builder) = choose_stack.last_mut() {
+                                builder.if_condition = Some(condition);
+                            }
+                            context_stack.pop();
+                        }
+                        "else-if" => {
+                            let children = element_stack.pop().unwrap_or_default();
+                            let cond_attrs = pending_condition_attrs.pop().unwrap_or_default();
+                            let condition = parse_condition(&cond_attrs, children);
+                            if let Some(builder) = choose_stack.last_mut() {
+                                builder.else_ifs.push(condition);
+                            }
+                            context_stack.pop();
+                        }
+                        "else" => {
+                            let children = element_stack.pop().unwrap_or_default();
+                            if let Some(builder) = choose_stack.last_mut() {
+                                builder.else_elements = Some(children);
+                            }
+                            context_stack.pop();
+                        }
+                        "choose" => {
+                            if let Some(builder) = choose_stack.pop() {
+                                let choose = Element::Choose(ChooseElement {
+                                    if_: builder.if_condition.unwrap_or_default(),
+                                    else_if: builder.else_ifs,
+                                    else_: builder.else_elements,
+                                });
+                                if let Some(current) = element_stack.last_mut() {
+                                    current.push(choose);
+                                }
+                            }
+                            context_stack.pop();
+                        }
+                        "substitute" => {
+                            // Substitute children go into the parent names element
+                            let _children = element_stack.pop().unwrap_or_default();
+                            // TODO: wire substitute into NamesElement
+                            context_stack.pop();
+                        }
+                        "text" | "number" | "label" | "date" | "date-part" | "name" | "et-al" => {
                             context_stack.pop();
                         }
                         _ => {
@@ -1165,6 +1240,49 @@ fn parse_number_element(attrs: &HashMap<String, String>) -> NumberElement {
         suffix: attrs.get("suffix").cloned(),
         text_case: parse_text_case(attrs),
     }
+}
+
+fn parse_condition(attrs: &HashMap<String, String>, elements: Vec<Element>) -> Condition {
+    let match_ = match attrs.get("match").map(|s| s.as_str()) {
+        Some("any") => ConditionMatch::Any,
+        Some("none") => ConditionMatch::None,
+        _ => ConditionMatch::All,
+    };
+
+    let mut tests = Vec::new();
+
+    if let Some(types) = attrs.get("type") {
+        tests.push(ConditionTest::Type(
+            types.split_whitespace().map(String::from).collect()
+        ));
+    }
+    if let Some(vars) = attrs.get("variable") {
+        tests.push(ConditionTest::Variable(
+            vars.split_whitespace().map(String::from).collect()
+        ));
+    }
+    if let Some(vars) = attrs.get("is-numeric") {
+        tests.push(ConditionTest::IsNumeric(
+            vars.split_whitespace().map(String::from).collect()
+        ));
+    }
+    if let Some(vars) = attrs.get("is-uncertain-date") {
+        tests.push(ConditionTest::IsUncertainDate(
+            vars.split_whitespace().map(String::from).collect()
+        ));
+    }
+    if let Some(locs) = attrs.get("locator") {
+        tests.push(ConditionTest::Locator(
+            locs.split_whitespace().map(String::from).collect()
+        ));
+    }
+    if let Some(pos) = attrs.get("position") {
+        tests.push(ConditionTest::Position(
+            pos.split_whitespace().map(String::from).collect()
+        ));
+    }
+
+    Condition { match_, tests, elements }
 }
 
 fn parse_name_config(attrs: &HashMap<String, String>) -> NameConfig {

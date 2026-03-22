@@ -20,3 +20,8 @@ browser/chrome/styles/ibid.css
 
 # Package lock
 package-lock.json
+
+# Internal docs
+requirements.txt
+reviews/
+cl.bat

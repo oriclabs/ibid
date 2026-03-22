@@ -54,6 +54,14 @@ Run through these before each release.
 45. [Smart Date Input](#45-smart-date-input)
 46. [Non-Academic Site Filtering](#46-non-academic-site-filtering)
 47. [WASM Fallback](#47-wasm-fallback)
+48. [DOI Cleaning](#48-doi-cleaning)
+49. [Library Copy with Style](#49-library-copy-with-style)
+50. [Library Tab Switching](#50-library-tab-switching)
+51. [Dropdown Mutual Exclusion](#51-dropdown-mutual-exclusion)
+52. [N.D. Toggle Button](#52-nd-toggle-button)
+53. [Engine Status in Settings](#53-engine-status-in-settings)
+54. [Rust CSL Renderer](#54-rust-csl-renderer)
+55. [DOI Enhance Field Position](#55-doi-enhance-field-position)
 
 ---
 
@@ -884,7 +892,288 @@ ER  -
 - [ ] CSV → JS fallback serializer
 
 **Citation formatting:**
-- [ ] Always uses JS formatter (not affected by WASM status)
+- [ ] JS formatter is primary for popup (instant, no delay)
+- [ ] WASM is used for import/export parsing
+
+---
+
+## 48. DOI Cleaning
+
+**URL:** `https://journals.asm.org/doi/epdf/10.1128/mr.59.3.423-450.1995`
+
+**Steps:**
+1. Open popup on the URL above
+2. Check the DOI field
+
+**Expected:**
+- [ ] DOI shows `10.1128/mr.59.3.423-450.1995` (NOT `10.1128/mr.59.3.423-450.1995?download=true`)
+- [ ] No `?query=`, `#fragment`, or trailing punctuation in DOI
+- [ ] Enhance works with the cleaned DOI
+- [ ] CrossRef returns valid data
+
+**Also test:**
+- `10.1038/nature12373?ref=pdf` → cleaned to `10.1038/nature12373`
+- `10.1038/nature12373#section1` → cleaned to `10.1038/nature12373`
+- `10.1038/nature12373.` → cleaned to `10.1038/nature12373`
+
+---
+
+## 49. Library Copy with Style
+
+**Steps:**
+1. Add 2+ citations to library
+2. Open side panel → Library tab
+3. Note the style dropdown in toolbar (default: APA)
+4. Click the clipboard icon on a citation
+
+**Expected:**
+- [ ] Citation copied in APA format to clipboard
+- [ ] Clipboard icon flashes green checkmark
+
+5. Change style dropdown to IEEE
+6. Click clipboard icon on same citation
+
+**Expected:**
+- [ ] Citation now copied in IEEE format: `[1] I. Last, "Title," ...`
+- [ ] All 6 styles produce correct output: APA, MLA, Chicago, Harvard, IEEE, Vancouver
+
+---
+
+## 50. Library Tab Switching
+
+**Steps:**
+1. Open side panel → Library tab (shows citations)
+2. Switch to Import tab
+3. Switch to Export tab
+4. Switch back to Library tab
+
+**Expected:**
+- [ ] Library shows all citations when switching back (not empty)
+- [ ] Search bar hidden on Import/Export tabs
+- [ ] Search bar visible on Library tab
+- [ ] Export count updates when switching to Export tab
+
+---
+
+## 51. Dropdown Mutual Exclusion
+
+**Steps:**
+1. Click gear icon → settings dropdown opens
+2. Click style picker button (without closing settings first)
+
+**Expected:**
+- [ ] Settings dropdown closes
+- [ ] Style picker opens
+- [ ] Only one dropdown open at a time
+
+**Also test reverse:**
+1. Open style picker
+2. Click gear icon
+
+**Expected:**
+- [ ] Style picker closes
+- [ ] Settings opens
+
+---
+
+## 52. N.D. Toggle Button
+
+**Steps:**
+1. Open popup with a citation that has a date
+2. Click "n.d." button
+
+**Expected:**
+- [ ] Date input clears and becomes **disabled** (grayed out)
+- [ ] Precision dropdown becomes **disabled**
+- [ ] n.d. button turns saffron (active state)
+- [ ] Hint shows: "No date — citation will show n.d."
+- [ ] Citation preview shows "n.d." for year
+
+3. Click "n.d." button again (toggle off)
+
+**Expected:**
+- [ ] Date input re-enabled
+- [ ] Precision dropdown re-enabled
+- [ ] n.d. button returns to normal
+- [ ] Can type a date again
+
+---
+
+## 53. Engine Status in Settings
+
+**Steps:**
+1. Open Options page (via Quick Settings → Advanced Settings)
+2. Scroll to About section
+
+**Expected:**
+- [ ] Version number shown (e.g., v0.1.0)
+- [ ] Citation Engine: green dot + "Rust/WASM active" (or red + "WASM failed" if broken)
+- [ ] Formatter: "JavaScript (6 style families)"
+- [ ] Import/Export: "Rust/WASM (7 formats)" (or "JavaScript fallback (3 formats)")
+- [ ] Styles Bundled: "74 offline"
+- [ ] Storage: shows actual usage (e.g., "12.3 KB")
+- [ ] Cloud Sync section is **hidden** (not visible)
+
+---
+
+## 54. Rust CSL Renderer
+
+**Verify the choose/if/else parser works:**
+
+The WASM CSL engine should now handle conditional styles. While the popup uses JS formatter for speed, the WASM engine is used for import/export and can be tested:
+
+**Steps:**
+1. Check Settings → About → Citation Engine shows "Rust/WASM active"
+2. Import a BibTeX file → entries parse correctly
+3. Export as BibTeX → output is valid
+
+**Internal verification (automated):**
+- [ ] `cargo test` passes all 182 Rust tests
+- [ ] `<choose>/<if>/<else>` conditions now assembled correctly
+- [ ] Variable conditions check date and name variables (not just strings)
+- [ ] APA7 style renders year from `issued` date (not "n.d." when date exists)
+
+---
+
+## 55. DOI Enhance Field Position
+
+**Steps:**
+1. Open popup on any page
+
+**Expected:**
+- [ ] DOI/Enhance field is at the **top** of the fields section (first field after style picker)
+- [ ] Placeholder says "Paste DOI, ISBN, PMID, or URL to auto-fill"
+- [ ] Enhance button is inline with DOI field
+- [ ] After enhance, fields below populate (title, authors, date, etc.)
+- [ ] Natural top-down flow: paste identifier → everything fills below
+
+---
+
+## 56. Third-Party Verification
+
+Compare Ibid's output against known-correct sources for accuracy.
+Use [ZoteroBib](https://zbib.org) as the reference — paste each DOI there and compare.
+
+### Paper 1: `10.1128/mr.59.3.423-450.1995` (ASM Microbiology)
+
+**Expected metadata:** Ross, J. (1995). mRNA stability in mammalian cells. Microbiological Reviews, 59(3), 423-450.
+
+| Style | Ibid Output | ZoteroBib Reference | Match? |
+|-------|-------------|---------------------|--------|
+| APA 7 | | | [ ] |
+| MLA 9 | | | [ ] |
+| Chicago 17 | | | [ ] |
+| Harvard | | | [ ] |
+| IEEE | | | [ ] |
+| Vancouver | | | [ ] |
+
+**Verify:** Author name, year, title, journal, volume, issue, pages, DOI
+
+### Paper 2: `10.1038/nature12373` (Nature, 8 authors)
+
+**Expected metadata:** Kucsko, G. et al. (2013). Nanometre-scale thermometry in a living cell. Nature, 500, 54-58.
+
+| Style | Ibid Output | ZoteroBib Reference | Match? |
+|-------|-------------|---------------------|--------|
+| APA 7 | | | [ ] |
+| MLA 9 | | | [ ] |
+| Chicago 17 | | | [ ] |
+| Harvard | | | [ ] |
+| IEEE | | | [ ] |
+| Vancouver | | | [ ] |
+
+**Verify:** Et al. handling (APA: 3+, Vancouver: 7+), all 8 authors in bibliography
+
+### Paper 3: `10.1371/journal.pone.0185809` (PLOS ONE, 12 authors)
+
+**Expected:** 12 authors — tests et al. rules across all styles.
+
+| Style | Ibid Output | ZoteroBib Reference | Match? |
+|-------|-------------|---------------------|--------|
+| APA 7 | | | [ ] |
+| MLA 9 | | | [ ] |
+| Chicago 17 | | | [ ] |
+| Harvard | | | [ ] |
+| IEEE | | | [ ] |
+| Vancouver | | | [ ] |
+
+**Verify:** Et al. in bibliography (Vancouver: after 6), in-text et al. (APA: after 2)
+
+### Paper 4: `10.1126/science.1058040` (Science, book-like DOI)
+
+| Style | Ibid Output | ZoteroBib Reference | Match? |
+|-------|-------------|---------------------|--------|
+| APA 7 | | | [ ] |
+| MLA 9 | | | [ ] |
+| IEEE | | | [ ] |
+
+### Paper 5: ISBN `978-0-201-89683-1` (Knuth, Book)
+
+**Expected:** Knuth, D. E. (1997). The Art of Computer Programming. Addison-Wesley.
+
+| Style | Ibid Output | ZoteroBib Reference | Match? |
+|-------|-------------|---------------------|--------|
+| APA 7 | | | [ ] |
+| MLA 9 | | | [ ] |
+| Chicago 17 | | | [ ] |
+
+**Verify:** Book title italic (in HTML output), publisher, no journal/volume/issue
+
+### Verification checklist per style
+
+**APA 7:**
+- [ ] Author format: Last, I. I.
+- [ ] Ampersand (&) before last author
+- [ ] Year in parentheses after author
+- [ ] Article title in sentence case (not italic)
+- [ ] Journal italic, volume italic, issue in parens
+- [ ] DOI as https://doi.org/... URL
+- [ ] In-text: (Author, Year) or (Author et al., Year)
+
+**MLA 9:**
+- [ ] Author format: Last, First
+- [ ] "and" between 2 authors (not &)
+- [ ] Title in "quotation marks" (articles) or *italic* (books)
+- [ ] Journal in italic
+- [ ] vol./no. labels
+- [ ] pp. before pages
+- [ ] In-text: (Author) or (Author pages)
+
+**Chicago 17 (Author-Date):**
+- [ ] Year after author name (not in parens in bibliography)
+- [ ] Title in "quotation marks" (articles) or *italic* (books)
+- [ ] no. for issue
+- [ ] Colon before pages
+- [ ] In-text: (Author Year)
+
+**Harvard:**
+- [ ] Year in parentheses after author
+- [ ] Title in 'single quotes' (articles) or *italic* (books)
+- [ ] pp. before pages
+- [ ] doi: prefix (not full URL)
+- [ ] Available at: for URLs
+
+**IEEE:**
+- [ ] Numbered: [1]
+- [ ] Author format: I. I. Last
+- [ ] Title in "quotation marks"
+- [ ] vol., no., pp. labels
+- [ ] doi: with space
+
+**Vancouver:**
+- [ ] Numbered: 1.
+- [ ] Author format: I Last (no period after initial in some variants)
+- [ ] Title not italic, not quoted
+- [ ] Year;Volume(Issue):Pages format
+- [ ] Et al. after 6 authors
+
+### Additional verification tools
+
+- **Purdue OWL** (owl.purdue.edu) — authoritative APA/MLA/Chicago format rules
+- **CrossRef API** — `https://api.crossref.org/works/{DOI}` — verify raw metadata
+- **DOI.org** — `https://doi.org/{DOI}` — verify landing page has correct info
+- **JabRef** (free) — open exported .bib files, verify all fields present
+- **Zotero** (free) — import exported .ris/.bib, verify data integrity
 
 ---
 
@@ -897,11 +1186,15 @@ Run this before every release:
 3. [ ] Switch style to IEEE → preview changes to `[1] J. Author, "Title," ...`
 4. [ ] Click P/N toggle → in-text changes between `(Author, Year)` and `Author (Year)`
 5. [ ] Click Add → saved to library
-6. [ ] Open Library side panel → citation appears
-7. [ ] Import tab → paste BibTeX → Parse → Import → appears in library
-8. [ ] Export tab → BibTeX → Download → file saves
-9. [ ] Close popup → reopen on same page → fields restored from cache
-10. [ ] `chrome://extensions/` → popup opens → empty form, no crash
+6. [ ] Open Library side panel → citation appears → click copy icon → clipboard has formatted citation
+7. [ ] Change library style to MLA → copy again → MLA format
+8. [ ] Import tab → paste BibTeX → Parse → Import → appears in library
+9. [ ] Export tab → BibTeX → Download → file saves, RIS date has no trailing `///`
+10. [ ] Close popup → reopen on same page → fields restored from cache, hint says "Restored..."
+11. [ ] Click Rescan Page → fields reset to fresh extraction
+12. [ ] `chrome://extensions/` → popup opens → empty form, no crash, no console errors
+13. [ ] Settings → About → Engine shows green "Rust/WASM active"
+14. [ ] All custom dialogs (delete, duplicate, clear) are styled — no native browser confirms
 
 ---
 
@@ -918,8 +1211,8 @@ npm run test:all
 ```
 
 Current counts:
-- Rust: 182 tests
-- JS: 202 tests
-- Style formatting: 89 tests
-- Real-world URLs: 38 tests
+- Rust: 182 tests (CSL engine, parsers, serializers, choose/if/else)
+- JS: 202 tests (extractor, popup, resolver, validation, fallback, phase 4)
+- Style formatting: 89 tests (APA, MLA, Chicago, Harvard, IEEE, Vancouver)
+- Real-world URLs: 38 tests (Wikipedia, CrossRef, PubMed, Reuters)
 - **Total: 473+ tests**

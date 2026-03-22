@@ -68,8 +68,8 @@
         </div>
       </section>
 
-      <!-- Cloud Sync -->
-      <section class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+      <!-- Cloud Sync — hidden until ready -->
+      <section class="hidden bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
         <h2 class="text-sm font-semibold mb-3">Cloud Sync</h2>
         <p class="text-xs text-zinc-500 dark:text-zinc-400 mb-3">Sync your citation library across devices. Your data is encrypted and only accessible by you.</p>
 
@@ -142,12 +142,43 @@
         </div>
       </section>
 
-      <!-- About -->
+      <!-- About + Engine Status -->
       <section class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
-        <h2 class="text-sm font-semibold mb-1">About Ibid</h2>
-        <p class="text-xs text-zinc-400">Privacy-first citation manager. No telemetry. No ads. No bandwidth abuse.</p>
-        <p class="text-xs text-zinc-400 mt-1">Core engine: Rust/WASM. UI: Tailwind + Vanilla JS.</p>
-        <a href="../help/help.html" target="_blank" class="inline-block mt-3 text-xs text-saffron-600 dark:text-saffron-400 hover:text-saffron-800 font-medium">View Help &amp; Documentation &rarr;</a>
+        <h2 class="text-sm font-semibold mb-3">About Ibid</h2>
+        <p class="text-xs text-zinc-400 mb-3">Privacy-first citation manager. No telemetry. No ads. No bandwidth abuse.</p>
+
+        <!-- Engine status -->
+        <div class="space-y-2 mb-3">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-zinc-500">Version</span>
+            <span id="about-version" class="font-mono text-zinc-600 dark:text-zinc-400">...</span>
+          </div>
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-zinc-500">Citation Engine</span>
+            <span id="about-engine" class="flex items-center gap-1.5">
+              <span id="about-engine-dot" class="w-2 h-2 rounded-full bg-zinc-300"></span>
+              <span id="about-engine-text" class="text-zinc-400">Checking...</span>
+            </span>
+          </div>
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-zinc-500">Formatter</span>
+            <span class="text-zinc-600 dark:text-zinc-400">JavaScript (6 style families)</span>
+          </div>
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-zinc-500">Import/Export</span>
+            <span id="about-parsers" class="text-zinc-600 dark:text-zinc-400">Checking...</span>
+          </div>
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-zinc-500">Styles Bundled</span>
+            <span class="text-zinc-600 dark:text-zinc-400">74 offline</span>
+          </div>
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-zinc-500">Storage</span>
+            <span id="about-storage" class="text-zinc-600 dark:text-zinc-400">Calculating...</span>
+          </div>
+        </div>
+
+        <a href="../help/help.html" target="_blank" class="inline-block text-xs text-saffron-600 dark:text-saffron-400 hover:text-saffron-800 font-medium">View Help &amp; Documentation &rarr;</a>
       </section>
 
     </div>

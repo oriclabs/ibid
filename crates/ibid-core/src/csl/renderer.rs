@@ -669,9 +669,19 @@ impl Renderer {
                 *t == item_type_str
             }),
             ConditionTest::Variable(vars) => vars.iter().any(|v| {
-                self.get_variable(v, item)
-                    .map(|val| !val.is_empty())
-                    .unwrap_or(false)
+                // Check string variables
+                if let Some(val) = self.get_variable(v, item) {
+                    return !val.is_empty();
+                }
+                // Check date variables
+                if self.get_date_variable(v, item).is_some() {
+                    return true;
+                }
+                // Check name variables
+                if self.get_name_variable(v, item).map(|n| !n.is_empty()).unwrap_or(false) {
+                    return true;
+                }
+                false
             }),
             ConditionTest::IsNumeric(vars) => vars.iter().any(|v| {
                 self.get_variable(v, item)

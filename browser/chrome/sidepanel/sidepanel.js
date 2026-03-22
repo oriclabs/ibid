@@ -25,7 +25,12 @@ for (const btn of $$('.tab-btn')) {
     btn.classList.add('active', 'bg-saffron-100', 'dark:bg-saffron-900/30', 'text-saffron-700', 'dark:text-saffron-400');
     btn.classList.remove('text-zinc-500');
     $(`#tab-${btn.dataset.tab}`).classList.remove('hidden');
-    // Reload data when switching to library or export tab
+    // Show/hide search bar and bulk bar — only relevant for Library tab
+    const isLibrary = btn.dataset.tab === 'library';
+    const searchBar = $('#search').closest('.border-b');
+    if (searchBar) searchBar.classList.toggle('hidden', !isLibrary);
+    $('#bulk-bar').classList.toggle('hidden', !isLibrary || selectedIds.size === 0);
+    // Reload data when switching tabs
     if (btn.dataset.tab === 'library') loadCitations();
     if (btn.dataset.tab === 'export') updateExportCount();
   });
@@ -1097,19 +1102,26 @@ function scanDuplicates() {
 // ---------------------------------------------------------------------------
 
 function formatCitationForCopy(item) {
-  const authors = (item.author || [])
-    .map(a => {
+  const style = $('#lib-copy-style')?.value || 'apa';
+
+  const fmtAuthors = (s) => {
+    const aa = (item.author || []).map(a => {
       if (a.literal) return a.literal;
       const f = a.family || '';
       const g = a.given || '';
       const initials = g.split(/[\s.]/).filter(Boolean).map(p => p[0] + '.').join(' ');
+      if (s === 'ieee' || s === 'vancouver') return `${initials} ${f}`.trim();
       return `${f}, ${initials}`.trim();
     });
-  const authorStr = authors.length === 0 ? '' :
-    authors.length === 1 ? authors[0] :
-    authors.length === 2 ? `${authors[0]} & ${authors[1]}` :
-    authors.slice(0, -1).join(', ') + ', & ' + authors[authors.length - 1];
+    if (aa.length === 0) return '';
+    if (aa.length === 1) return aa[0];
+    if (s === 'vancouver' && aa.length > 6) return aa.slice(0, 6).join(', ') + ', et al.';
+    const sep = s === 'mla' ? ', and ' : s === 'apa' ? ', & ' : ', & ';
+    if (aa.length === 2) return `${aa[0]}${sep}${aa[1]}`;
+    return aa.slice(0, -1).join(', ') + sep + aa[aa.length - 1];
+  };
 
+  const a = fmtAuthors(style);
   const year = item.issued?.['date-parts']?.[0]?.[0] || 'n.d.';
   const title = item.title || 'Untitled';
   const container = item['container-title'] || '';
@@ -1119,24 +1131,68 @@ function formatCitationForCopy(item) {
   const doi = item.DOI ? `https://doi.org/${item.DOI}` : '';
   const url = item.URL || '';
   const pub = item.publisher || '';
-
-  // APA-like format (default)
-  let parts = [authorStr || title, `(${year})`];
-  if (authorStr) {
-    const isBook = item.type === 'book' || item.type === 'report' || item.type === 'thesis';
-    parts.push(isBook ? title : title);
-  }
-  if (container) {
-    let c = container;
-    if (vol) c += `, ${vol}`;
-    if (iss) c += `(${iss})`;
-    if (pg) c += `, ${pg}`;
-    parts.push(c);
-  }
-  if (pub) parts.push(pub);
   const access = doi || url;
-  if (access) parts.push(access);
-  return parts.filter(Boolean).join('. ').replace(/\.\./g, '.') + '.';
+
+  switch (style) {
+    case 'apa': {
+      let parts = [a || title, `(${year})`];
+      if (a) parts.push(title);
+      if (container) { let c = container; if (vol) c += `, ${vol}`; if (iss) c += `(${iss})`; if (pg) c += `, ${pg}`; parts.push(c); }
+      if (pub) parts.push(pub);
+      if (access) parts.push(access);
+      return parts.filter(Boolean).join('. ').replace(/\.\./g, '.') + '.';
+    }
+    case 'mla': {
+      let parts = [a || 'Unknown', `"${title}."`];
+      if (container) parts.push(container);
+      let loc = []; if (vol) loc.push(`vol. ${vol}`); if (iss) loc.push(`no. ${iss}`);
+      if (loc.length) parts.push(loc.join(', '));
+      if (pub) parts.push(pub);
+      if (year !== 'n.d.') parts.push(year);
+      if (pg) parts.push(`pp. ${pg}`);
+      if (access) parts.push(access);
+      return parts.filter(Boolean).join(', ') + '.';
+    }
+    case 'chicago': {
+      let parts = [a || 'Unknown', year, `"${title}"`];
+      if (container) { let c = container; if (vol) c += ` ${vol}`; if (iss) c += `, no. ${iss}`; if (pg) c += `: ${pg}`; parts.push(c); }
+      if (pub) parts.push(pub);
+      if (access) parts.push(access);
+      return parts.filter(Boolean).join('. ').replace(/\.\./g, '.') + '.';
+    }
+    case 'harvard': {
+      let parts = [a || 'Unknown', `(${year})`];
+      parts.push(`'${title}'`);
+      if (container) { let c = container; if (vol) c += `, ${vol}`; if (iss) c += `(${iss})`; if (pg) c += `, pp. ${pg}`; parts.push(c); }
+      if (pub) parts.push(pub);
+      if (doi) parts.push(`doi:${item.DOI}`); else if (url) parts.push(`Available at: ${url}`);
+      return parts.filter(Boolean).join('. ').replace(/\.\./g, '.') + '.';
+    }
+    case 'ieee': {
+      let parts = [a, `"${title},"`];
+      if (container) parts.push(container);
+      if (vol) parts.push(`vol. ${vol}`); if (iss) parts.push(`no. ${iss}`);
+      if (pg) parts.push(`pp. ${pg}`);
+      if (year) parts.push(year);
+      if (item.DOI) parts.push(`doi: ${item.DOI}`);
+      return '[1] ' + parts.filter(Boolean).join(', ') + '.';
+    }
+    case 'vancouver': {
+      let parts = [`${a}.`, `${title}.`];
+      if (container) parts.push(`${container}. ${year}${vol ? `;${vol}` : ''}${iss ? `(${iss})` : ''}${pg ? `:${pg}` : ''}.`);
+      else if (year) parts.push(`${year}.`);
+      if (item.DOI) parts.push(`doi: ${item.DOI}`);
+      return '1. ' + parts.filter(Boolean).join(' ');
+    }
+    default: {
+      let parts = [a || title, `(${year})`];
+      if (a) parts.push(title);
+      if (container) { let c = container; if (vol) c += `, ${vol}`; if (iss) c += `(${iss})`; if (pg) c += `, ${pg}`; parts.push(c); }
+      if (pub) parts.push(pub);
+      if (access) parts.push(access);
+      return parts.filter(Boolean).join('. ').replace(/\.\./g, '.') + '.';
+    }
+  }
 }
 
 // Init

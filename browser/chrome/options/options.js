@@ -65,10 +65,45 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Version
+  // Version and engine status
   chrome.runtime.sendMessage({ action: 'getVersion' }, (res) => {
     if (res?.version) {
       $('#version').textContent = `Citation Manager v${res.version}`;
+      const vEl = $('#about-version');
+      if (vEl) vEl.textContent = `v${res.version}`;
+    }
+
+    const dot = $('#about-engine-dot');
+    const text = $('#about-engine-text');
+    const parsers = $('#about-parsers');
+
+    if (dot && text) {
+      if (res?.wasmReady) {
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+        text.textContent = 'Rust/WASM active';
+        text.className = 'text-emerald-600 dark:text-emerald-400 font-medium';
+        if (parsers) parsers.textContent = 'Rust/WASM (7 formats)';
+      } else if (res?.wasmError) {
+        dot.className = 'w-2 h-2 rounded-full bg-red-400';
+        text.textContent = 'WASM failed — JavaScript fallback';
+        text.className = 'text-red-600 dark:text-red-400';
+        if (parsers) parsers.textContent = 'JavaScript fallback (3 formats)';
+      } else {
+        dot.className = 'w-2 h-2 rounded-full bg-amber-400';
+        text.textContent = 'Loading...';
+        text.className = 'text-amber-600 dark:text-amber-400';
+        if (parsers) parsers.textContent = 'Loading...';
+      }
+    }
+  });
+
+  // Storage usage
+  chrome.storage.local.getBytesInUse(null, (bytes) => {
+    const el = $('#about-storage');
+    if (el) {
+      if (bytes < 1024) el.textContent = `${bytes} B`;
+      else if (bytes < 1048576) el.textContent = `${(bytes / 1024).toFixed(1)} KB`;
+      else el.textContent = `${(bytes / 1048576).toFixed(1)} MB`;
     }
   });
 });
