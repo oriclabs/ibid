@@ -25,6 +25,9 @@ for (const btn of $$('.tab-btn')) {
     btn.classList.add('active', 'bg-saffron-100', 'dark:bg-saffron-900/30', 'text-saffron-700', 'dark:text-saffron-400');
     btn.classList.remove('text-zinc-500');
     $(`#tab-${btn.dataset.tab}`).classList.remove('hidden');
+    // Reload data when switching to library or export tab
+    if (btn.dataset.tab === 'library') loadCitations();
+    if (btn.dataset.tab === 'export') updateExportCount();
   });
 }
 
