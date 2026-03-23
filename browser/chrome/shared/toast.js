@@ -36,11 +36,12 @@ export function showToast(message, type = 'info', duration = 3000) {
   toast.innerHTML = `
     <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0">${c.icon}</svg>
     <span style="flex:1">${message}</span>
-    <button style="flex-shrink:0;padding:2px;background:none;border:none;cursor:pointer;color:inherit;opacity:0.5" onclick="this.parentElement.remove()">
+    <button class="toast-dismiss" style="flex-shrink:0;padding:2px;background:none;border:none;cursor:pointer;color:inherit;opacity:0.5">
       <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg>
     </button>
   `;
 
+  toast.querySelector('.toast-dismiss')?.addEventListener('click', () => toast.remove());
   toastContainer.appendChild(toast);
 
   // Animate in

@@ -117,8 +117,14 @@ chrome.runtime.onInstalled.addListener((details) => {
   });
 
   chrome.contextMenus.create({
-    id: 'ibid-cite-selection',
-    title: 'Save quote with citation',
+    id: 'ibid-lookup-selection',
+    title: 'Look up selected DOI/ISBN',
+    contexts: ['selection'],
+  });
+
+  chrome.contextMenus.create({
+    id: 'ibid-import-dois',
+    title: 'Import DOIs from selection',
     contexts: ['selection'],
   });
 });
@@ -143,60 +149,153 @@ chrome.storage.onChanged.addListener((changes) => {
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   // Inject content script on demand
-  try {
-    await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      files: ['content/extractor.js'],
-    });
-  } catch (e) { /* may already be injected or restricted page */ }
+  if (tab?.id > 0) {
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content/extractor.js'],
+      });
+    } catch (e) { /* may already be injected or restricted page */ }
+  }
 
   if (info.menuItemId === 'ibid-cite-page') {
-    chrome.tabs.sendMessage(tab.id, { action: 'extractMetadata' });
+    if (tab?.id > 0) chrome.tabs.sendMessage(tab.id, { action: 'extractMetadata' });
   } else if (info.menuItemId === 'ibid-cite-link') {
-    // Extract metadata from the linked URL
-    console.log('[Ibid] Cite link:', info.linkUrl);
-  } else if (info.menuItemId === 'ibid-cite-selection') {
-    // Save selected text as a quote with the page's citation
-    chrome.tabs.sendMessage(tab.id, { action: 'extractMetadata' }, async (response) => {
-      if (chrome.runtime.lastError || !response?.metadata) return;
+    // Extract DOI or ISBN from the linked URL and resolve metadata
+    if (info.linkUrl) {
+      const doiMatch = info.linkUrl.match(/10\.\d{4,}\/[^\s&?#]+/);
+      const isbnMatch = info.linkUrl.match(/(97[89]\d{10}|\d{9}[\dXx])/);
+      const identifier = doiMatch
+        ? doiMatch[0].replace(/[.,;:)\]}>]+$/, '')
+        : isbnMatch ? isbnMatch[1] : null;
 
-      const meta = response.metadata;
-      const quote = {
-        text: info.selectionText,
-        page: null,
-        timestamp: new Date().toISOString(),
-      };
-
-      // Check if this page's citation already exists
-      const { citations = [] } = await chrome.storage.local.get(['citations']);
-      const existing = citations.find(c => c.URL === meta.URL || (c.DOI && c.DOI === meta.DOI));
-
-      if (existing) {
-        // Add quote to existing citation
-        existing._quotes = existing._quotes || [];
-        existing._quotes.push(quote);
-        existing._dateModified = new Date().toISOString();
+      if (identifier) {
+        try {
+          const res = await resolveIdentifier(identifier);
+          if (res) {
+            const meta = { ...res, _sourceUrl: info.linkUrl };
+            if (doiMatch) meta.DOI = identifier;
+            else if (isbnMatch) meta.ISBN = identifier;
+            await chrome.storage.session.set({ ibid_link_cite: meta });
+            // Try to open popup programmatically
+            try { await chrome.action.openPopup(); } catch {}
+          }
+        } catch {}
       } else {
-        // Create new citation with the quote
-        const item = {
-          id: crypto.randomUUID(),
-          type: meta.type || 'webpage',
-          title: meta.title,
-          author: meta.author,
-          issued: meta.issued,
-          'container-title': meta['container-title'],
-          URL: meta.URL,
-          DOI: meta.DOI,
-          _dateAdded: new Date().toISOString(),
-          _sourceUrl: meta.URL,
-          _quotes: [quote],
-        };
-        citations.push(item);
+        // No DOI in link — open the page so user can cite it with full extraction
+        chrome.tabs.create({ url: info.linkUrl });
       }
+    }
+  } else if (info.menuItemId === 'ibid-lookup-selection') {
+    // Look up selected text as a DOI/ISBN/PMID — extract identifier from messy text
+    let text = (info.selectionText || '').trim();
+    // Extract DOI from anywhere in the selection (handles prefixes, URLs, garbage chars)
+    const doiInText = text.match(/10\.\d{4,}\/[^\s"'<>)\]},;]{3,}/);
+    if (doiInText) {
+      text = doiInText[0].replace(/[.,;:)\]}>]+$/, '');
+    } else {
+      // Try ISBN, PMID patterns
+      const isbnMatch = text.match(/(?:978|979)[\d-]{10,}/);
+      const pmidMatch = text.match(/(?:pmid:?\s*)(\d{5,})/i);
+      if (isbnMatch) text = isbnMatch[0];
+      else if (pmidMatch) text = `PMID:${pmidMatch[1]}`;
+    }
+    if (text) {
+      try {
+        const res = await resolveIdentifier(text);
+        if (res) {
+          await chrome.storage.session.set({ ibid_link_cite: { ...res, _sourceUrl: tab?.url } });
+          try { await chrome.action.openPopup(); } catch {}
+        } else {
+          await chrome.storage.session.set({ ibid_link_cite: { _error: `Could not resolve "${text.substring(0, 50)}". Not a valid DOI, ISBN, or PMID.` } });
+          try { await chrome.action.openPopup(); } catch {}
+        }
+      } catch (e) {
+        await chrome.storage.session.set({ ibid_link_cite: { _error: `Lookup failed: ${e.message || 'network error'}` } });
+        try { await chrome.action.openPopup(); } catch {}
+      }
+    }
+  } else if (info.menuItemId === 'ibid-import-dois') {
+    // Extract all DOIs from selected text
+    // Chrome's selectionText replaces newlines with spaces, breaking DOIs that wrap across lines
+    // e.g. "10.5172/ conu.2009" → rejoin by removing spaces after /
+    const text = (info.selectionText || '')
+      .replace(/[\r\n]+/g, ' ')
+      .replace(/(10\.\d{4,}\/)\s+/g, '$1')
+      .replace(/(doi\.org\/)\s+/g, '$1')
+      .replace(/(\d)\s+(\.)/g, '$1$2')
+      .replace(/\/\s+/g, '/');
+    const dois = [...text.matchAll(/10\.\d{4,}\/[^\s"'<>)\]},;]{3,}/g)]
+      .map(m => m[0].replace(/[.,;:)\]}>]+$/, ''));
+    const unique = [...new Set(dois)];
 
-      await chrome.storage.local.set({ citations });
-      updateBadge();
-    });
+    if (unique.length === 0) {
+      // Flash badge red briefly
+      chrome.action.setBadgeText({ text: '✗' });
+      chrome.action.setBadgeBackgroundColor({ color: '#ef4444' });
+      chrome.action.setTitle({ title: 'Ibid — No DOIs found in selection' });
+      setTimeout(() => { updateBadge(); chrome.action.setTitle({ title: 'Ibid — Cite this page' }); }, 5000);
+      return;
+    }
+
+    // Get existing pending imports and library citations to skip duplicates
+    let pending = [];
+    try {
+      const { ibid_bulk_import: prev } = await chrome.storage.session.get(['ibid_bulk_import']);
+      if (prev) {
+        const parsed = JSON.parse(prev);
+        if (Array.isArray(parsed)) pending = parsed;
+      }
+    } catch {}
+    const { citations: libCitations = [] } = await chrome.storage.local.get(['citations']);
+
+    const alreadyHave = new Set([
+      ...pending.map(e => e.DOI).filter(Boolean),
+      ...libCitations.map(c => c.DOI).filter(Boolean),
+    ]);
+
+    // Filter out DOIs we already have
+    const toResolve = unique.filter(doi => !alreadyHave.has(doi));
+
+    if (toResolve.length === 0 && pending.length > 0) {
+      // All DOIs already pending or in library
+      chrome.action.setBadgeText({ text: `+${pending.length}` });
+      chrome.action.setBadgeBackgroundColor({ color: '#10b981' });
+      chrome.action.setTitle({ title: `Ibid — All DOIs already pending or in library.` });
+      setTimeout(() => { updateBadge(); chrome.action.setTitle({ title: 'Ibid — Cite this page' }); }, 5000);
+      return;
+    }
+
+    // Signal "loading" immediately so sidepanel can show progress
+    if (toResolve.length > 0) {
+      await chrome.storage.session.set({
+        ibid_bulk_import: JSON.stringify({ _loading: true, count: toResolve.length })
+      });
+    }
+
+    // Resolve only new DOIs sequentially with rate limiting
+    const resolved = [];
+    for (let i = 0; i < toResolve.length; i++) {
+      try {
+        const res = await resolveIdentifier(toResolve[i]);
+        if (res) resolved.push({ id: toResolve[i], ...res, DOI: toResolve[i] });
+      } catch {}
+      if (i < toResolve.length - 1) {
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+
+    // Merge with pending
+    const merged = [...pending, ...resolved];
+    if (merged.length > 0) {
+      await chrome.storage.session.set({ ibid_bulk_import: JSON.stringify(merged, null, 2) });
+    }
+
+    // Flash badge green with total pending count
+    chrome.action.setBadgeText({ text: `+${merged.length}` });
+    chrome.action.setBadgeBackgroundColor({ color: '#10b981' });
+    chrome.action.setTitle({ title: `Ibid — ${merged.length} DOI(s) ready. Open Library (Ctrl+Shift+S) to import.` });
+    setTimeout(() => { updateBadge(); chrome.action.setTitle({ title: 'Ibid — Cite this page' }); }, 10000);
   }
 });
 
@@ -466,7 +565,7 @@ async function handleMessage(message) {
           else if (t.startsWith('PMID-')) resultJson = engine.parseMedline(text);
           else if (t.includes('\t') && t.split('\n')[0].split('\t').length >= 3) resultJson = engine.parseCsv(text, '\t');
           else if (t.split('\n')[0].split(',').length >= 3) resultJson = engine.parseCsv(text, ',');
-          else return { error: 'Could not detect format.' };
+          else throw new Error('Unknown format — try JS fallback');
         }
         return JSON.parse(resultJson);
       } catch (err) {
@@ -575,12 +674,18 @@ async function handleMessage(message) {
     }
 
     case 'formatBoth': {
-      const xml = message.styleXml || (await loadStyleXml(message.styleId || 'apa7'));
-      engine.loadStyle(xml);
-      const bib = engine.formatBibliographyEntry(JSON.stringify(message.item));
-      const intext = engine.formatCitation(JSON.stringify([message.item]));
-      console.log('[Ibid] formatBoth result — bib:', bib?.substring(0, 80), '| intext:', intext);
-      return { bibliography: bib, intext };
+      try {
+        const xml = message.styleXml || (await loadStyleXml(message.styleId || 'apa7'));
+        engine.loadStyle(xml);
+        const itemJson = JSON.stringify(message.item);
+        const bib = engine.formatBibliographyEntry(itemJson);
+        const intext = engine.formatCitation(JSON.stringify([message.item]));
+        console.log('[Ibid] formatBoth OK — style:', message.styleId, 'bib length:', bib?.length, 'intext:', intext?.substring(0, 40));
+        return { bibliography: bib, intext };
+      } catch (e) {
+        console.error('[Ibid] formatBoth FAILED — style:', message.styleId, 'error:', e.message || e);
+        return { error: `Render failed: ${e.message || e}` };
+      }
     }
 
     case 'getStyleInfo': {

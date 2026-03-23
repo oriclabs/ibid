@@ -49,6 +49,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#btn-update-existing')?.addEventListener('click', () => {
     if (existingCitationId) addToProject();
   });
+  // Tags toggle — icon button toggles input row + highlight
+  const TAG_OFF = 'px-1.5 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-400 hover:text-saffron-500 hover:border-saffron-300 transition-colors';
+  const TAG_ON = 'px-1.5 py-1.5 rounded border border-saffron-300 dark:border-saffron-700 bg-saffron-100 dark:bg-saffron-900/30 text-saffron-500 transition-colors';
+  $('#btn-show-tags')?.addEventListener('click', () => {
+    const input = $('#field-tags');
+    const btn = $('#btn-show-tags');
+    const opening = input.classList.contains('hidden');
+    input.classList.toggle('hidden');
+    btn.setAttribute('class', opening ? TAG_ON : TAG_OFF);
+    if (opening) input.focus();
+  });
+
   const openHelp = () => chrome.tabs.create({ url: chrome.runtime.getURL('help/help.html') });
   $('#btn-help').addEventListener('click', openHelp);
   $('#btn-help-header').addEventListener('click', openHelp);
@@ -103,16 +115,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Project management
   $('#project-selector').addEventListener('change', onProjectChange);
+  const BTN_OFF = 'px-1.5 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-500 hover:text-saffron-600 hover:border-saffron-300 transition-colors';
+  const BTN_ON = 'px-1.5 py-1.5 rounded border border-saffron-300 dark:border-saffron-700 bg-saffron-100 dark:bg-saffron-900/30 text-saffron-500 transition-colors';
+
   $('#btn-new-project').addEventListener('click', () => {
-    $('#new-project-form').classList.toggle('hidden');
-    if (!$('#new-project-form').classList.contains('hidden')) {
-      $('#new-project-name').focus();
-    }
+    const form = $('#new-project-form');
+    const opening = form.classList.contains('hidden');
+    form.classList.toggle('hidden');
+    $('#btn-new-project').setAttribute('class', opening ? BTN_ON : BTN_OFF);
+    // Hide Add button while project form is open to avoid confusion
+    $('#btn-add-project').classList.toggle('hidden', opening);
+    if (opening) $('#new-project-name').focus();
   });
   $('#btn-cancel-project').addEventListener('click', () => {
     $('#new-project-form').classList.add('hidden');
     $('#new-project-name').value = '';
     $('#new-project-style').value = '';
+    $('#btn-add-project').classList.remove('hidden');
+    $('#btn-new-project').setAttribute('class', BTN_OFF);
   });
   $('#btn-create-project').addEventListener('click', createProject);
   $('#new-project-name').addEventListener('keydown', (e) => {
@@ -164,21 +184,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     const win = await chrome.windows.getCurrent();
     chrome.sidePanel.open({ windowId: win.id });
   });
+
+  // Open sidepanel for import — used by bulk import banner
+  $('#btn-open-library-import')?.addEventListener('click', async () => {
+    const win = await chrome.windows.getCurrent();
+    chrome.sidePanel.open({ windowId: win.id });
+  });
   $('#style-selector').addEventListener('change', onStyleChange);
   $('#source-type').addEventListener('change', onSourceTypeChange);
 
   // In-text toggle — P (parenthetical) / N (narrative)
-  $('#btn-parenthetical').addEventListener('click', () => {
+  $('#btn-parenthetical').addEventListener('click', async () => {
     intextMode = 'parenthetical';
     $('#btn-parenthetical').setAttribute('class', 'text-[9px] px-1.5 py-0.5 bg-saffron-500 text-white');
     $('#btn-narrative').setAttribute('class', 'text-[9px] px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300');
-    updatePreview();
+    const item = buildCslItem();
+    const intext = await CitationFormatter.formatIntext(item, currentStyle, false);
+    if (intext) $('#intext-preview').textContent = intext;
   });
-  $('#btn-narrative').addEventListener('click', () => {
+  $('#btn-narrative').addEventListener('click', async () => {
     intextMode = 'narrative';
     $('#btn-narrative').setAttribute('class', 'text-[9px] px-1.5 py-0.5 bg-saffron-500 text-white');
     $('#btn-parenthetical').setAttribute('class', 'text-[9px] px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300');
-    updatePreview();
+    const item = buildCslItem();
+    const intext = await CitationFormatter.formatIntext(item, currentStyle, true);
+    if (intext) $('#intext-preview').textContent = intext;
   });
 
   // Auto-update citation on field change
@@ -198,6 +228,59 @@ document.addEventListener('DOMContentLoaded', async () => {
       copyBibliography();
     }
   });
+
+  // Check for pending bulk imports (separate banner, not overwritten by hints)
+  try {
+    const { ibid_bulk_import } = await chrome.storage.session.get(['ibid_bulk_import']);
+    if (ibid_bulk_import) {
+      const banner = $('#bulk-import-banner');
+      const text = $('#bulk-import-text');
+      try {
+        const parsed = JSON.parse(ibid_bulk_import);
+        if (parsed._loading) {
+          text.textContent = `${parsed.count} DOI(s) resolving...`;
+        } else if (Array.isArray(parsed)) {
+          text.textContent = `${parsed.length} DOI(s) ready to import.`;
+        } else {
+          text.textContent = 'Pending imports.';
+        }
+      } catch {
+        text.textContent = 'Pending imports.';
+      }
+      banner.classList.remove('hidden');
+    }
+  } catch {}
+
+  // Check if opened via "Cite linked page" context menu
+  try {
+    const linkCite = await chrome.storage.session.get(['ibid_link_cite']);
+    if (linkCite.ibid_link_cite) {
+      const data = linkCite.ibid_link_cite;
+      await chrome.storage.session.remove(['ibid_link_cite']);
+      if (data._error) {
+        showState('ready');
+        showHint('sparse', data._error);
+        return;
+      }
+      if (data._bulkReady) {
+        // Show via the persistent bulk banner instead
+        const banner = $('#bulk-import-banner');
+        const text = $('#bulk-import-text');
+        text.textContent = `${data._count} DOI(s) resolved and ready to import.`;
+        banner.classList.remove('hidden');
+        await chrome.storage.session.remove(['ibid_link_cite']);
+        showState('ready');
+        return;
+      }
+      currentMetadata = data;
+      populateFields(currentMetadata);
+      showState('ready');
+      showHint('info', 'Citation loaded from linked page. Review and click Add.');
+      updatePreview();
+      checkIfInLibrary(currentMetadata);
+      return;
+    }
+  } catch {}
 
   // Extract metadata from current tab
   try {
@@ -270,16 +353,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         showState('ready');
         showHint('info', 'Restored from previous session. Click "Rescan Page" for fresh extraction.');
       } else {
+        // Detect PDF from URL
+        const isPdfUrl = tab.url?.toLowerCase().includes('.pdf') ||
+          tab.url?.includes('pdf.sciencedirectassets') ||
+          tab.url?.includes('/pdf/') ||
+          tab.url?.includes('application/pdf');
+
         // Fresh extraction
         chrome.tabs.sendMessage(tab.id, { action: 'extractMetadata' }, (response) => {
           if (chrome.runtime.lastError || !response?.metadata) {
             currentMetadata = {
               title: tab.title || '',
               URL: tab.url || '',
-              type: 'webpage',
+              type: isPdfUrl ? 'document' : 'webpage',
             };
             populateFields(currentMetadata);
-            showHint('sparse', 'Could not read this page. Fields pre-filled from tab info — review and complete manually.');
+            if (isPdfUrl) {
+              showHint('sparse', 'PDF detected — cannot extract metadata directly. Paste a DOI below and click Enhance. Or right-click: DOI link → <strong>"Cite linked page"</strong>, select a DOI → <strong>"Look up selected DOI"</strong>, select multiple → <strong>"Import DOIs from selection"</strong>.');
+            } else {
+              showHint('sparse', 'Could not read this page. Fields pre-filled from tab info — review and complete manually.');
+            }
           } else {
             currentMetadata = response.metadata;
             populateFields(currentMetadata);
@@ -289,7 +382,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             const hasDoi = !!currentMetadata.DOI;
             const hasTitle = !!currentMetadata.title;
 
-            if (hasTitle && hasAuthor && hasDate) {
+            if (currentMetadata._isPdf || isPdfUrl) {
+              // PDF-specific hints
+              if (hasTitle && hasAuthor && hasDoi) {
+                showHint('info', 'PDF metadata extracted. Review fields and click Enhance for complete details.');
+              } else if (hasDoi) {
+                showHint('info', 'PDF detected — DOI found. Click Enhance to fill all fields.');
+              } else {
+                showHint('sparse', 'PDF detected — limited metadata. Paste a DOI below and click Enhance. Or right-click: DOI link → <strong>"Cite linked page"</strong>, select a DOI → <strong>"Look up selected DOI"</strong>, select multiple → <strong>"Import DOIs from selection"</strong>.');
+              }
+            } else if (hasTitle && hasAuthor && hasDate) {
               // Good extraction — no hint
             } else if (hasTitle && !hasAuthor && !hasDoi) {
               showHint('sparse', 'Limited metadata found (missing author). If you have a DOI, paste it below and click Enhance.');
@@ -331,8 +433,28 @@ function populateFields(meta) {
   $('#field-volume').value = meta.volume || '';
   $('#field-issue').value = meta.issue || '';
   $('#field-pages').value = meta.page || '';
-  $('#field-doi').value = meta.DOI || meta.URL || '';
+  // DOI field: prefer DOI, then ISBN, then short URL
+  const doiVal = meta.DOI || '';
+  if (doiVal) {
+    $('#field-doi').value = doiVal;
+  } else if (meta.ISBN) {
+    $('#field-doi').value = meta.ISBN;
+  } else if (meta.URL && meta.URL.length < 200) {
+    $('#field-doi').value = meta.URL;
+  } else {
+    $('#field-doi').value = '';
+  }
   $('#source-type').value = meta.type || 'webpage';
+  const tags = (meta._tags || []).join(', ');
+  $('#field-tags').value = tags;
+  // Auto-show tags input only if entry has tags
+  if (tags) {
+    $('#field-tags').classList.remove('hidden');
+    $('#btn-show-tags')?.setAttribute('class', 'px-1.5 py-1.5 rounded border border-saffron-300 dark:border-saffron-700 bg-saffron-100 dark:bg-saffron-900/30 text-saffron-500 transition-colors');
+  } else {
+    $('#field-tags').classList.add('hidden');
+    $('#btn-show-tags')?.setAttribute('class', 'px-1.5 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-400 hover:text-saffron-500 hover:border-saffron-300 transition-colors');
+  }
 
   // Delay type validation — auto-enhance may fill missing fields shortly
   clearTimeout(window._validateTimer);
@@ -431,49 +553,43 @@ function parseDateInput(str) {
 // Preview update — sends to WASM via background, falls back to JS
 // ---------------------------------------------------------------------------
 
+let _previewTimer = null;
 async function updatePreview() {
+  // Debounce rapid calls (typing, field changes)
+  clearTimeout(_previewTimer);
+  _previewTimer = setTimeout(() => _doUpdatePreview(), 120);
+}
+
+async function _doUpdatePreview() {
   const item = buildCslItem();
+  const bib = $('#citation-preview');
+  const intext = $('#intext-preview');
 
   const hasContent = item.title || (item.author && item.author.length > 0) || item.DOI || item.URL;
   if (!hasContent) {
-    $('#citation-preview').innerHTML = '<span class="text-zinc-400 italic">Fill in fields above to see citation preview</span>';
-    $('#intext-preview').innerHTML = '<span class="text-zinc-400 italic">(Author, Year)</span>';
+    bib.innerHTML = '<span class="text-zinc-400 italic">Fill in fields above to see citation preview</span>';
+    intext.innerHTML = '<span class="text-zinc-400 italic">(Author, Year)</span>';
+    bib.style.opacity = '1';
+    intext.style.opacity = '1';
     return;
   }
 
-  // Check if current style maps cleanly to a JS family
-  const family = CitationFormatter.resolveStyleFamily(currentStyle);
-  const jsAccurate = ['apa', 'mla', 'chicago', 'harvard', 'ieee', 'vancouver'].includes(currentStyle) ||
-    currentStyle.startsWith(family);
+  // Dim slightly while rendering (not invisible — smooth)
+  bib.style.opacity = '0.5';
+  intext.style.opacity = '0.5';
 
-  if (jsAccurate) {
-    // Standard family — JS is accurate, show instantly
-    $('#citation-preview').innerHTML = CitationFormatter.formatBibSync(item, currentStyle, { html: true });
-    $('#intext-preview').textContent = CitationFormatter.formatIntextSync(item, currentStyle, intextMode === 'narrative');
-  } else {
-    // Non-standard style — show placeholder while WASM renders
-    $('#citation-preview').innerHTML = '<span class="text-zinc-400 italic text-xs">Formatting with ' +
-      ($('#style-picker-label')?.textContent || currentStyle) + '...</span>';
-    $('#intext-preview').innerHTML = '<span class="text-zinc-400 italic text-xs">...</span>';
-  }
-
-  // Always try WASM (hayagriva) for accurate CSL rendering
   try {
     const both = await CitationFormatter.formatBoth(item, currentStyle, { html: true, narrative: intextMode === 'narrative' });
-    if (both.bib) $('#citation-preview').innerHTML = both.bib;
-    // WASM doesn't support narrative mode — always use JS for in-text when narrative
-    if (intextMode === 'narrative') {
-      $('#intext-preview').textContent = CitationFormatter.formatIntextSync(item, currentStyle, true);
-    } else if (both.intext) {
-      $('#intext-preview').textContent = both.intext;
-    }
+    if (both.bib) bib.textContent = both.bib;
+    if (both.intext) intext.textContent = both.intext;
   } catch {
-    // WASM unavailable — show JS fallback if not already shown
-    if (!jsAccurate) {
-      $('#citation-preview').innerHTML = CitationFormatter.formatBibSync(item, currentStyle, { html: true });
-      $('#intext-preview').textContent = CitationFormatter.formatIntextSync(item, currentStyle, intextMode === 'narrative');
-    }
+    bib.innerHTML = CitationFormatter.formatBibSync(item, currentStyle, { html: true });
+    intext.textContent = CitationFormatter.formatIntextSync(item, currentStyle, intextMode === 'narrative');
   }
+
+  // Fade back in
+  bib.style.opacity = '1';
+  intext.style.opacity = '1';
 }
 
 // ---------------------------------------------------------------------------
@@ -810,6 +926,12 @@ async function addToProject() {
   const item = buildCslItem();
   item._sourceUrl = currentMetadata?.URL || '';
 
+  // Parse tags from input
+  const tagsInput = $('#field-tags').value.trim();
+  if (tagsInput) {
+    item._tags = [...new Set(tagsInput.split(',').map(t => t.trim()).filter(Boolean))];
+  }
+
   const projectId = $('#project-selector').value;
   if (projectId !== 'new') {
     item._projectIds = [projectId];
@@ -825,7 +947,10 @@ async function addToProject() {
       item.id = existingCitationId;
       item._dateAdded = citations[idx]._dateAdded;
       item._dateModified = new Date().toISOString();
-      item._tags = citations[idx]._tags;
+      // Merge tags: keep existing + add new from input
+      const existingTags = citations[idx]._tags || [];
+      const newTags = item._tags || [];
+      item._tags = [...new Set([...existingTags, ...newTags])];
       item._notes = citations[idx]._notes;
       item._quotes = citations[idx]._quotes;
       item._starred = citations[idx]._starred;
@@ -860,6 +985,7 @@ async function addToProject() {
   await chrome.storage.local.set({ citations });
 
   flashButton('#btn-add-project', 'Added!', true);
+  checkIfInLibrary(currentMetadata);
 }
 
 function findDuplicate(newItem, existing) {
@@ -1519,7 +1645,7 @@ function showHint(type, message) {
   const s = styles[type] || styles.sparse;
   bar.setAttribute('class', `px-4 py-2 text-xs flex items-start gap-2 border-b ${s.bar}`);
   icon.setAttribute('class', `w-4 h-4 shrink-0 mt-0.5 ${s.icon}`);
-  text.textContent = message;
+  text.innerHTML = message;
   bar.classList.remove('hidden');
 
   // Auto-dismiss "enhancing" hints after auto-enhance completes
@@ -1770,6 +1896,8 @@ async function createProject() {
   $('#new-project-form').classList.add('hidden');
   $('#new-project-name').value = '';
   $('#new-project-style').value = '';
+  $('#btn-add-project').classList.remove('hidden');
+  $('#btn-new-project').setAttribute('class', 'px-1.5 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-500 hover:text-saffron-600 hover:border-saffron-300 transition-colors');
 }
 
 function styleLabel(id) {

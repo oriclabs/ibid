@@ -13,10 +13,12 @@
     "test:js": "node tests/extension/run-all.js",
     "test:styles": "node tests/real-world/test-all-styles.js",
     "test:urls": "node tests/real-world/test-real-urls.js",
+    "test:e2e": "npx playwright test",
     "test": "npm run test:rust && npm run test:js && npm run test:styles",
     "test:all": "npm run test:rust && npm run test:js && npm run test:styles && npm run test:urls"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "sharp": "^0.34.5",
     "tailwindcss": "^3.4.0"
   }

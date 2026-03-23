@@ -45,6 +45,9 @@ window.__ibidExtractorLoaded = true;
     // 6. Site-specific extractors
     extractSiteSpecific(meta);
 
+    // 6b. Generic type detection from page signals (works on any site)
+    detectTypeFromSignals(meta);
+
     // 7. Heuristic fallbacks
     extractHeuristic(meta);
 
@@ -322,8 +325,9 @@ window.__ibidExtractorLoaded = true;
     // DOI from page content (first match) — only on likely academic pages
     if (!meta.DOI) {
       const host = window.location.hostname.toLowerCase();
-      const nonAcademic = /(google\.com|youtube\.com|facebook\.com|twitter\.com|instagram\.com|linkedin\.com|reddit\.com|github\.com|stackoverflow\.com|medium\.com|amazon\.com|ebay\.com)/;
-      if (!nonAcademic.test(host)) {
+      const nonAcademic = /(youtube\.com|facebook\.com|twitter\.com|instagram\.com|linkedin\.com|reddit\.com|github\.com|stackoverflow\.com|medium\.com|amazon\.com|ebay\.com)/;
+      const isGoogleNonBooks = host.includes('google.') && !host.includes('books.google') && !host.includes('scholar.google');
+      if (!nonAcademic.test(host) && !isGoogleNonBooks) {
         const doiMatch = document.body?.textContent?.match(
           /\b(10\.\d{4,}\/[^\s<>"{}|\\^~\[\]`]+)/
         );
@@ -333,6 +337,147 @@ window.__ibidExtractorLoaded = true;
   }
 
   // -------------------------------------------------------------------------
+  // Generic type detection from page signals
+  // -------------------------------------------------------------------------
+
+  function detectTypeFromSignals(meta) {
+    console.log('[Ibid v3] detectTypeFromSignals called, current type:', meta.type);
+
+    const pageText = (document.body?.textContent || '').substring(0, 5000).toLowerCase();
+    const url = window.location.href.toLowerCase();
+
+    // --- Type detection (only if not already set) ---
+    if (meta.type === 'webpage') {
+      const ogType = getMeta('og:type', 'property');
+      if (ogType === 'book' || ogType === 'books.book') meta.type = 'book';
+      else if (ogType === 'video.movie' || ogType === 'video.other') meta.type = 'motion_picture';
+      else if (ogType === 'music.song') meta.type = 'song';
+
+      const isbnMeta = getMeta('book:isbn') || getMeta('isbn') || getMeta('citation_isbn');
+      if (isbnMeta) { meta.type = 'book'; meta.ISBN = meta.ISBN || isbnMeta; }
+
+      const isbnInPage = pageText.match(/isbn[\s:-]*(97[89][\s-]?\d[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d)/i);
+      if (isbnInPage) { meta.type = 'book'; if (!meta.ISBN) meta.ISBN = isbnInPage[1].replace(/[\s-]/g, ''); }
+
+      const isbn10InPage = pageText.match(/isbn[\s:-]*(\d{9}[\dxX])/i);
+      if (isbn10InPage && meta.type === 'webpage') { meta.type = 'book'; if (!meta.ISBN) meta.ISBN = isbn10InPage[1]; }
+
+      if (url.includes('/book/') || url.includes('/books/') || url.includes('/isbn/') || url.includes('/works/')) meta.type = 'book';
+      if (url.includes('/thesis') || url.includes('/dissertation') || url.includes('/etd/')) meta.type = 'thesis';
+      if (url.includes('/patent/') || url.includes('patents.')) meta.type = 'patent';
+
+      const hasBookKeywords = /\b(hardcover|paperback|kindle|print length|pages)\b/i.test(pageText);
+      const hasBookIds = /\b(publisher|asin|isbn)\b/i.test(pageText);
+      if (hasBookKeywords && hasBookIds) meta.type = 'book';
+    }
+
+    // --- DOM key-value extraction (last resort, fills gaps for any type) ---
+    const strip = (s) => (s || '').replace(/[\u200e\u200f\u200b-\u200d\u2060\ufeff]/g, '').trim();
+
+    const v = (key) => {
+      const skip = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'HEAD', 'META', 'LINK', 'TITLE']);
+      // Find the smallest element whose own text contains the key
+      const xpath = `//*[text()[contains(normalize-space(.), "${key}")]]`;
+      const results = document.evaluate(xpath, document.body, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+      let best = null, bestLen = Infinity;
+      for (let i = 0; i < results.snapshotLength; i++) {
+        const node = results.snapshotItem(i);
+        if (skip.has(node.tagName)) continue;
+        const text = strip(node.textContent);
+        if (text.length < key.length + 30 && text.length < bestLen) {
+          best = node; bestLen = text.length;
+        }
+      }
+      if (!best) return null;
+
+      // Helper: extract short text value from an element (direct text nodes preferred)
+      const getText = (el) => {
+        if (!el || skip.has(el.tagName)) return null;
+        const t = strip(el.textContent);
+        // Skip if empty, too long, or contains the key itself
+        if (!t || t.length > 200 || t.toLowerCase().includes(key.toLowerCase())) return null;
+        return t;
+      };
+
+      // Walk outward from the key element: self → parent → grandparent → ...
+      // At each level, check siblings that come AFTER the key-containing element
+      let anchor = best;
+      for (let depth = 0; depth < 4; depth++) {
+        // 1. Next sibling elements of the anchor
+        let sib = anchor.nextElementSibling;
+        while (sib) {
+          const val = getText(sib);
+          if (val) return val;
+          // Check first-level children of the sibling
+          for (const child of sib.children) {
+            const cv = getText(child);
+            if (cv) return cv;
+          }
+          sib = sib.nextElementSibling;
+        }
+
+        // 2. Adjacent text node after the anchor
+        let next = anchor.nextSibling;
+        while (next && next.nodeType !== 3 && next.nodeType !== 1) next = next.nextSibling;
+        if (next?.nodeType === 3) {
+          const t = strip(next.textContent);
+          if (t.length > 0 && t.length < 200) return t;
+        }
+
+        // Walk up one level
+        const parent = anchor.parentElement;
+        if (!parent || parent === document.body) break;
+        anchor = parent;
+      }
+
+      return null;
+    };
+
+    if (meta.type === 'book') {
+
+      // Book-specific fields
+      if (!meta.publisher) { const p = v('Publisher'); if (p) meta.publisher = p; }
+      if (!meta.issued) { const d = v('Publication date') || v('Published'); if (d) meta.issued = parseDate(d); }
+      if (!meta.language) { const l = v('Language'); if (l) meta.language = l; }
+
+      const isbn13 = v('ISBN-13') || v('ISBN 13');
+      if (isbn13 && !meta.ISBN) meta.ISBN = isbn13.replace(/[\s-]/g, '').match(/97[89]\d{10}/)?.[0];
+
+      if (!meta.ISBN) {
+        const isbn10 = v('ISBN-10') || v('ISBN 10');
+        if (isbn10) meta.ISBN = isbn10.replace(/[\s-]/g, '').match(/\d{9}[\dXx]/)?.[0];
+      }
+
+      if (!meta.ISBN) {
+        const asin = v('ASIN');
+        if (asin) meta._asin = asin.match(/[A-Z0-9]{10}/i)?.[0];
+      }
+
+      const pages = v('Print length') || v('Pages') || v('Page count');
+      if (pages) { const n = pages.match(/(\d+)/); if (n) meta['number-of-pages'] = n[1]; }
+
+      if (!meta.edition) { const e = v('Edition'); if (e) meta.edition = e; }
+    }
+
+    // Journal-specific fields
+    if (meta.type === 'article-journal') {
+      if (!meta['container-title']) { const j = v('Journal') || v('Publication'); if (j) meta['container-title'] = j; }
+      if (!meta.volume) { const vol = v('Volume'); if (vol) meta.volume = vol; }
+      if (!meta.issue) { const iss = v('Issue') || v('Number'); if (iss) meta.issue = iss; }
+      if (!meta.page) { const pg = v('Pages') || v('Page range'); if (pg) meta.page = pg; }
+    }
+
+    // Thesis-specific fields
+    if (meta.type === 'thesis') {
+      if (!meta.publisher) { const u = v('University') || v('Institution') || v('School'); if (u) meta.publisher = u; }
+      if (!meta.genre) { const d = v('Degree') || v('Department'); if (d) meta.genre = d; }
+    }
+
+    // Common fields for any type — fill gaps
+    if (!meta.publisher) { const p = v('Publisher') || v('Published by') || v('Organization'); if (p) meta.publisher = p; }
+    if (!meta.issued) { const d = v('Date') || v('Published') || v('Publication date') || v('Year'); if (d) meta.issued = parseDate(d); }
+  }
+
   // Site-specific extractors
   // -------------------------------------------------------------------------
 
@@ -340,118 +485,22 @@ window.__ibidExtractorLoaded = true;
     const host = window.location.hostname.toLowerCase();
     const url = window.location.href;
 
-    // Google Scholar
-    if (host.includes('scholar.google')) {
-      const titleEl = document.querySelector('#gsc_oci_title_gg a, .gsc_oci_title_link, h3.gs_rt a');
-      if (titleEl) meta.title = meta.title || titleEl.textContent.trim();
-      // Authors from the citation info line
-      const infoEl = document.querySelector('.gs_a, .gsc_oci_value');
-      if (infoEl && meta.author.length === 0) {
-        const authorText = infoEl.textContent.split('-')[0].trim();
-        authorText.split(',').forEach(n => {
-          n = n.trim();
-          if (n && n.length < 50) meta.author.push(parseName(n));
-        });
-      }
-      if (meta.type === 'webpage') meta.type = 'article-journal';
+    // --- Type detection from known academic/book hosts (no content parsing) ---
+    const academicHosts = [
+      'scholar.google', 'researchgate.net', 'scopus.com', 'pubmed.ncbi.nlm.nih.gov',
+      'semanticscholar.org', 'jstor.org', 'ieeexplore.ieee.org', 'sciencedirect.com',
+      'link.springer.com', 'onlinelibrary.wiley.com', 'tandfonline.com',
+    ];
+    if (meta.type === 'webpage' && academicHosts.some(h => host.includes(h))) {
+      meta.type = 'article-journal';
     }
-
-    // ResearchGate
-    if (host.includes('researchgate.net')) {
-      const titleEl = document.querySelector('h1.research-detail-header-section__title, h1[itemprop="name"]');
-      if (titleEl) meta.title = meta.title || titleEl.textContent.trim();
-      const authorEls = document.querySelectorAll('a[itemprop="author"] span, .nova-legacy-v-person-list-item__title a');
-      if (authorEls.length && meta.author.length === 0) {
-        authorEls.forEach(el => meta.author.push(parseName(el.textContent.trim())));
-      }
-      if (meta.type === 'webpage') meta.type = 'article-journal';
-    }
-
-    // Scopus
-    if (host.includes('scopus.com')) {
-      const titleEl = document.querySelector('#abstracts h2, .Highlight-module__content');
-      if (titleEl) meta.title = meta.title || titleEl.textContent.trim();
-      if (meta.type === 'webpage') meta.type = 'article-journal';
-    }
-
-    // SSRN
-    if (host.includes('ssrn.com')) {
-      const titleEl = document.querySelector('h1.title, .abstract-title');
-      if (titleEl) meta.title = meta.title || titleEl.textContent.trim();
-      const authorEls = document.querySelectorAll('.authors-list a, a[data-abstract-id]');
-      if (authorEls.length && meta.author.length === 0) {
-        authorEls.forEach(el => {
-          const name = el.textContent.trim();
-          if (name && name.length < 50 && !name.includes('http')) meta.author.push(parseName(name));
-        });
-      }
-      if (meta.type === 'webpage') meta.type = 'report';
-    }
-
-    // arXiv
-    if (host.includes('arxiv.org')) {
-      const titleEl = document.querySelector('.title.mathjax');
-      if (titleEl) meta.title = meta.title || titleEl.textContent.replace('Title:', '').trim();
-      const authorEls = document.querySelectorAll('.authors a');
-      if (authorEls.length && meta.author.length === 0) {
-        authorEls.forEach(el => meta.author.push(parseName(el.textContent.trim())));
-      }
-      // Extract arXiv ID from URL
-      const arxivMatch = url.match(/arxiv\.org\/abs\/(\d{4}\.\d{4,5})/);
-      if (arxivMatch && !meta.DOI) {
-        meta._arxivId = arxivMatch[1];
-      }
-      if (meta.type === 'webpage') meta.type = 'article';
-    }
-
-    // PubMed
-    if (host.includes('pubmed.ncbi.nlm.nih.gov')) {
-      // PubMed uses citation_authors (single meta with all names)
-      const authorsTag = getMeta('citation_authors');
-      if (authorsTag && meta.author.length === 0) {
-        authorsTag.split(',').forEach(n => {
-          n = n.trim();
-          if (n) meta.author.push(parseName(n));
-        });
-      }
-      if (meta.type === 'webpage') meta.type = 'article-journal';
-    }
-
-    // Semantic Scholar
-    if (host.includes('semanticscholar.org')) {
-      const titleEl = document.querySelector('h1[data-test-id="paper-detail-title"]');
-      if (titleEl) meta.title = meta.title || titleEl.textContent.trim();
-      if (meta.type === 'webpage') meta.type = 'article-journal';
-    }
-
-    // JSTOR
-    if (host.includes('jstor.org')) {
-      if (meta.type === 'webpage') meta.type = 'article-journal';
-    }
-
-    // IEEE Xplore
-    if (host.includes('ieeexplore.ieee.org')) {
-      if (meta.type === 'webpage') meta.type = 'article-journal';
-    }
-
-    // ScienceDirect / Elsevier
-    if (host.includes('sciencedirect.com')) {
-      if (meta.type === 'webpage') meta.type = 'article-journal';
-    }
-
-    // SpringerLink
-    if (host.includes('link.springer.com')) {
-      if (meta.type === 'webpage') meta.type = 'article-journal';
-    }
-
-    // Wiley
-    if (host.includes('onlinelibrary.wiley.com')) {
-      if (meta.type === 'webpage') meta.type = 'article-journal';
-    }
-
-    // Taylor & Francis
-    if (host.includes('tandfonline.com')) {
-      if (meta.type === 'webpage') meta.type = 'article-journal';
+    if (host.includes('ssrn.com') && meta.type === 'webpage') meta.type = 'report';
+    if (host.includes('arxiv.org') && meta.type === 'webpage') meta.type = 'article';
+    if (host.includes('amazon.') && meta.type === 'webpage') meta.type = 'book';
+    if ((host.includes('openlibrary.org') || host.includes('isbnsearch.org') ||
+         host.includes('worldcat.org') || host.includes('goodreads.com') ||
+         host.includes('books.google')) && meta.type === 'webpage') {
+      meta.type = 'book';
     }
 
     // Generic academic journal hosting patterns — auto-detect as journal article
@@ -555,7 +604,12 @@ window.__ibidExtractorLoaded = true;
 
   function parseName(str) {
     if (!str) return { literal: '' };
-    str = str.trim().replace(/^by\s+/i, '');
+    str = str.trim()
+      .replace(/^by\s+/i, '')
+      .replace(/\s*\((Author|Editor|Contributor|Translator|Illustrator|Narrator|Creator|Compiler)\)\s*/gi, '')
+      .replace(/\s*\(ed\.?\)\s*/gi, '')
+      .replace(/\s*\(eds\.?\)\s*/gi, '')
+      .trim();
 
     // "Last, First" format
     if (str.includes(',')) {

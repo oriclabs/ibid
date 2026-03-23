@@ -56,12 +56,13 @@ function populateProjectFilter(projects) {
   const current = sel.value;
   sel.innerHTML = '<option value="all">All Projects</option><option value="default">My Bibliography</option>';
   for (const p of projects) {
-    if (p.id === 'default') continue; // already added above
+    if (p.id === 'default') continue;
     const opt = document.createElement('option');
     opt.value = p.id;
     opt.textContent = p.name;
     sel.appendChild(opt);
   }
+  sel.innerHTML += '<option value="__new__">+ New Project</option>';
   sel.value = current || 'all';
 }
 
@@ -87,7 +88,9 @@ function applyFiltersAndRender() {
       c.DOI?.toLowerCase().includes(query) ||
       c.type?.toLowerCase().replace(/-/g, ' ').includes(query) ||
       c['container-title']?.toLowerCase().includes(query) ||
-      c.keyword?.toLowerCase().includes(query)
+      c.keyword?.toLowerCase().includes(query) ||
+      c._tags?.some(t => t.toLowerCase().includes(query)) ||
+      c._notes?.toLowerCase().includes(query)
     );
   }
 
@@ -265,7 +268,6 @@ function renderCitationRow(item) {
               <div class="preview-style-picker shrink-0" data-id="${item.id}" style="min-width:140px;max-width:180px"></div>
               <span class="text-[9px] text-zinc-400 flex-1">Preview</span>
               <button class="preview-copy-bib text-[9px] text-saffron-600 dark:text-saffron-400 hover:text-saffron-800 font-medium" data-id="${item.id}">Copy Bib</button>
-              <button class="preview-copy-intext text-[9px] text-zinc-500 hover:text-saffron-600 font-medium" data-id="${item.id}">Copy In-text</button>
             </div>
             <div class="preview-bib-output text-[11px] leading-relaxed text-zinc-700 dark:text-zinc-300 mb-1.5 pb-1.5 border-b border-zinc-200 dark:border-zinc-700 select-all">${CitationFormatter.formatBibSync(item, 'apa')}</div>
             <div class="flex items-center gap-1.5">
@@ -275,6 +277,7 @@ function renderCitationRow(item) {
                 <button class="preview-pn-btn text-[8px] px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300" data-id="${item.id}" data-mode="narrative">N</button>
               </div>
               <div class="preview-intext-output text-[11px] text-zinc-500 dark:text-zinc-400 select-all flex-1">${CitationFormatter.formatIntextSync(item, 'apa')}</div>
+              <button class="preview-copy-intext text-[8px] px-2 py-0.5 rounded bg-saffron-100 dark:bg-saffron-900/30 text-saffron-600 dark:text-saffron-400 hover:bg-saffron-200 dark:hover:bg-saffron-900/50 font-medium shrink-0 transition-colors" data-id="${item.id}">Copy</button>
             </div>
           </div>
         </div>`;
@@ -321,6 +324,16 @@ function bindCitationEvents() {
       e.stopPropagation();
       const id = btn.dataset.id;
       const { citations = [] } = await chrome.storage.local.get(['citations']);
+      const item = citations.find(c => c.id === id);
+      const title = item?.title || 'this citation';
+
+      const confirmed = await ibidConfirm(
+        'Delete Citation',
+        `Delete "${title.length > 60 ? title.substring(0, 60) + '...' : title}"?`,
+        { confirmText: 'Delete', danger: true }
+      );
+      if (!confirmed) return;
+
       const updated = citations.filter((c) => c.id !== id);
       selectedIds.delete(id);
       await chrome.storage.local.set({ citations: updated });
@@ -556,6 +569,16 @@ async function openEditPanel(id) {
   $('#edit-tags').value = (item._tags || []).join(', ');
   $('#edit-notes').value = item._notes || '';
 
+  // Populate project selector
+  const editProjSel = $('#edit-project');
+  const { projects: editProjects = [] } = await chrome.storage.local.get(['projects']);
+  editProjSel.innerHTML = '<option value="default">My Bibliography</option>';
+  for (const p of editProjects) {
+    if (p.id === 'default') continue;
+    editProjSel.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+  }
+  editProjSel.value = item._projectIds?.[0] || item._project || 'default';
+
   // Quotes
   const quotes = item._quotes || [];
   const quotesSection = $('#edit-quotes-section');
@@ -668,7 +691,7 @@ $('#edit-save').addEventListener('click', async () => {
 
   // Tags
   const tagsStr = $('#edit-tags').value.trim();
-  item._tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(Boolean) : undefined;
+  item._tags = tagsStr ? [...new Set(tagsStr.split(',').map(t => t.trim()).filter(Boolean))] : undefined;
 
   // Notes
   const notesStr = $('#edit-notes').value.trim();
@@ -689,9 +712,27 @@ $('#edit-save').addEventListener('click', async () => {
     }
   }
 
+  // Project
+  const editProjVal = $('#edit-project').value;
+  item._projectIds = [editProjVal];
+
   await chrome.storage.local.set({ citations });
+
+  // Show success
+  const status = $('#edit-status');
+  status.textContent = 'Saved!';
+  status.setAttribute('class', 'mt-1.5 text-xs rounded px-3 py-1.5 text-center bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400');
+  setTimeout(() => {
+    status.classList.add('hidden');
+    $('#edit-panel').classList.add('hidden');
+    applyFiltersAndRender();
+  }, 800);
+});
+
+// Cancel edit
+$('#edit-cancel').addEventListener('click', () => {
   $('#edit-panel').classList.add('hidden');
-  applyFiltersAndRender();
+  $('#edit-status').classList.add('hidden');
 });
 
 // ---------------------------------------------------------------------------
@@ -705,7 +746,167 @@ $('#search').addEventListener('input', () => applyFiltersAndRender());
 $('#lib-sort').addEventListener('change', () => applyFiltersAndRender());
 
 // Project filter
-$('#lib-project-filter').addEventListener('change', () => applyFiltersAndRender());
+$('#lib-project-filter').addEventListener('change', () => {
+  const val = $('#lib-project-filter').value;
+  if (val === '__new__') {
+    showNewProjectInput();
+  } else {
+    applyFiltersAndRender();
+  }
+  updateProjectActions();
+});
+
+function updateProjectActions() {
+  const val = $('#lib-project-filter').value;
+  const showActions = val !== 'all' && val !== 'default' && val !== '__new__';
+  $('#project-actions')?.classList.toggle('hidden', !showActions);
+}
+
+// Project actions menu
+$('#btn-project-actions')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  $('#project-actions-menu').classList.toggle('hidden');
+});
+
+document.addEventListener('click', (e) => {
+  const menu = $('#project-actions-menu');
+  if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target) && e.target !== $('#btn-project-actions')) {
+    menu.classList.add('hidden');
+  }
+});
+
+$('#btn-rename-project')?.addEventListener('click', async () => {
+  $('#project-actions-menu').classList.add('hidden');
+  const projId = $('#lib-project-filter').value;
+  const { projects = [] } = await chrome.storage.local.get(['projects']);
+  const proj = projects.find(p => p.id === projId);
+  if (!proj) return;
+
+  const sel = $('#lib-project-filter');
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.maxLength = 50;
+  input.value = proj.name;
+  input.setAttribute('class', sel.getAttribute('class') + ' text-xs');
+  sel.parentNode.insertBefore(input, sel);
+  sel.classList.add('hidden');
+  $('#project-actions').classList.add('hidden');
+  input.focus();
+  input.select();
+
+  let saved = false;
+  async function save() {
+    if (saved) return;
+    saved = true;
+    const name = input.value.trim().substring(0, 50);
+    if (input.parentNode) input.remove();
+    sel.classList.remove('hidden');
+    $('#project-actions').classList.remove('hidden');
+
+    if (name && name !== proj.name) {
+      if (projects.some(p => p.id !== projId && p.name.toLowerCase() === name.toLowerCase())) return;
+      proj.name = name;
+      await chrome.storage.local.set({ projects });
+      populateProjectFilter(projects);
+      sel.value = projId;
+      updateProjectActions();
+    }
+  }
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') save();
+    if (e.key === 'Escape') { input.value = proj.name; save(); }
+  });
+  input.addEventListener('blur', save);
+});
+
+$('#btn-delete-project')?.addEventListener('click', async () => {
+  $('#project-actions-menu').classList.add('hidden');
+  const projId = $('#lib-project-filter').value;
+  const { projects = [] } = await chrome.storage.local.get(['projects']);
+  const proj = projects.find(p => p.id === projId);
+  if (!proj) return;
+
+  const { citations = [] } = await chrome.storage.local.get(['citations']);
+  const affectedCount = citations.filter(c =>
+    c._projectIds?.includes(projId) || c._project === projId
+  ).length;
+
+  const message = affectedCount > 0
+    ? `Delete "${proj.name}"? ${affectedCount} citation${affectedCount !== 1 ? 's' : ''} will be moved to My Bibliography.`
+    : `Delete "${proj.name}"? This project has no citations.`;
+
+  const confirmed = await ibidConfirm(
+    'Delete Project',
+    message,
+    { confirmText: 'Delete', danger: true }
+  );
+  if (!confirmed) return;
+  for (const c of citations) {
+    if (c._projectIds?.includes(projId)) {
+      c._projectIds = c._projectIds.filter(id => id !== projId);
+      if (c._projectIds.length === 0) c._projectIds = ['default'];
+    }
+    if (c._project === projId) c._project = 'default';
+  }
+
+  // Remove project
+  const updated = projects.filter(p => p.id !== projId);
+  await chrome.storage.local.set({ projects: updated, citations });
+
+  populateProjectFilter(updated);
+  $('#lib-project-filter').value = 'all';
+  $('#project-actions').classList.add('hidden');
+  applyFiltersAndRender();
+});
+
+function showNewProjectInput() {
+  const sel = $('#lib-project-filter');
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.maxLength = 50;
+  input.placeholder = 'Project name...';
+  input.setAttribute('class', sel.getAttribute('class') + ' text-xs');
+  sel.parentNode.insertBefore(input, sel);
+  sel.classList.add('hidden');
+  input.focus();
+
+  let saved = false;
+  async function save() {
+    if (saved) return;
+    saved = true;
+    const name = input.value.trim().substring(0, 50);
+    if (input.parentNode) input.remove();
+    sel.classList.remove('hidden');
+
+    if (!name) {
+      sel.value = 'all';
+      applyFiltersAndRender();
+      return;
+    }
+
+    const { projects = [] } = await chrome.storage.local.get(['projects']);
+    if (projects.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+      sel.value = 'all';
+      applyFiltersAndRender();
+      return;
+    }
+
+    const id = 'proj_' + Date.now();
+    projects.push({ id, name, defaultStyle: 'apa' });
+    await chrome.storage.local.set({ projects });
+    populateProjectFilter(projects);
+    sel.value = id;
+    applyFiltersAndRender();
+    updateProjectActions();
+  }
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') save();
+    if (e.key === 'Escape') { input.value = ''; save(); }
+  });
+  input.addEventListener('blur', save);
+}
 
 // Filter chips — toggle on click
 for (const chip of $$('.lib-chip')) {
@@ -783,6 +984,11 @@ $('#btn-select-none').addEventListener('click', () => {
   for (const cb of $$('.import-checkbox')) cb.checked = false;
 });
 $('#btn-import-selected').addEventListener('click', importSelected);
+$('#btn-import-cancel').addEventListener('click', () => {
+  resetImportForm();
+  showImportStatus('', '');
+  $('#import-status').classList.add('hidden');
+});
 
 function detectFormatFromFilename(name) {
   const n = name.toLowerCase();
@@ -808,6 +1014,31 @@ async function parseAndPreview(text, format) {
       showImportStatus('error', `No entries found.${errCount ? ` ${errCount} error(s).` : ''}`);
       return;
     }
+
+    // If entries are DOI/ISBN placeholders, resolve them
+    if (res._doiList && parsedEntries.some(e => e._needsEnhance)) {
+      showImportStatus('info', `Resolving ${parsedEntries.length} identifier(s)...`);
+      const resolved = [];
+      for (let i = 0; i < parsedEntries.length; i++) {
+        const identifier = parsedEntries[i].DOI || parsedEntries[i].ISBN;
+        try {
+          const r = await chrome.runtime.sendMessage({ action: 'resolve', identifier });
+          if (r?.resolved) {
+            resolved.push({ id: identifier, ...r.resolved, DOI: parsedEntries[i].DOI, ISBN: parsedEntries[i].ISBN });
+          } else {
+            resolved.push(parsedEntries[i]); // keep placeholder
+          }
+        } catch {
+          resolved.push(parsedEntries[i]);
+        }
+        // Rate limit
+        if (i < parsedEntries.length - 1) {
+          await new Promise(r => setTimeout(r, 500));
+        }
+      }
+      parsedEntries = resolved;
+    }
+
     showImportStatus('success', `Parsed ${parsedEntries.length} entr${parsedEntries.length === 1 ? 'y' : 'ies'}${errCount ? `, ${errCount} error(s)` : ''}`);
     renderPreviewList(parsedEntries);
   } catch (err) {
@@ -823,12 +1054,15 @@ function renderPreviewList(entries) {
       const authors = (item.author || []).map((a) => a.family || a.literal || '').filter(Boolean).join(', ');
       const year = item.issued?.['date-parts']?.[0]?.[0] || '';
       const typeLabel = (item.type || 'document').replace(/-/g, ' ');
+      const doi = item.DOI || item.doi || '';
+      const doiLink = doi ? `<a href="https://doi.org/${doi}" target="_blank" class="text-[9px] text-saffron-500 hover:text-saffron-700 truncate block" title="${doi}">doi:${doi}</a>` : '';
       return `
         <label class="flex items-start gap-2 px-2 py-2 rounded hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer">
           <input type="checkbox" class="import-checkbox mt-0.5 rounded text-saffron-500 focus:ring-saffron-500" data-index="${i}" checked>
           <div class="min-w-0 flex-1">
             <p class="text-sm font-medium truncate">${item.title || 'Untitled'}</p>
             <p class="text-[10px] text-zinc-500 truncate"><span class="uppercase bg-zinc-100 dark:bg-zinc-800 px-1 rounded">${typeLabel}</span> ${authors}${year ? ` (${year})` : ''}</p>
+            ${doiLink}
           </div>
         </label>`;
     })
@@ -864,6 +1098,7 @@ async function importSelected() {
 
   if (newItems.length === 0 && dupCount > 0) {
     showImportStatus('info', `All ${dupCount} entries are duplicates. Nothing imported.`);
+    resetImportForm();
     return;
   }
 
@@ -872,9 +1107,7 @@ async function importSelected() {
 
   const dupMsg = dupCount > 0 ? `, ${dupCount} duplicate${dupCount > 1 ? 's' : ''} skipped` : '';
   showImportStatus('success', `Imported ${newItems.length} entr${newItems.length === 1 ? 'y' : 'ies'}${dupMsg}.`);
-  parsedEntries = [];
-  $('#import-preview').classList.add('hidden');
-  $('#import-text').value = '';
+  resetImportForm();
   loadCitations();
 }
 
@@ -889,6 +1122,13 @@ function findDuplicate(newItem, existing) {
     }
   }
   return null;
+}
+
+function resetImportForm() {
+  parsedEntries = [];
+  $('#import-preview').classList.add('hidden');
+  $('#import-text').value = '';
+  $('#preview-list').innerHTML = '';
 }
 
 function showImportStatus(type, message) {
@@ -1318,6 +1558,7 @@ loadCitations();
 updateExportCount();
 initSidepanelSettings();
 initManualEntry();
+checkBulkImport();
 
 chrome.storage.onChanged.addListener((changes) => {
   if (changes.citations) {
@@ -1331,6 +1572,26 @@ chrome.storage.onChanged.addListener((changes) => {
   }
   if (changes.projects) {
     populateProjectFilter(changes.projects.newValue || []);
+    updateProjectActions();
+  }
+});
+
+// Listen for bulk import data arriving (when sidepanel is already open)
+chrome.storage.session.onChanged.addListener((changes) => {
+  if (changes.ibid_bulk_import?.newValue) {
+    const data = changes.ibid_bulk_import.newValue;
+    // Check if it's a loading signal or actual data
+    try {
+      const parsed = JSON.parse(data);
+      if (parsed._loading) {
+        // Show loading state — switch to import tab with spinner
+        _showBulkLoading(parsed.count);
+        return; // don't consume — wait for actual data
+      }
+    } catch {}
+    // Actual data arrived
+    chrome.storage.session.remove(['ibid_bulk_import']);
+    _processBulkImport(data);
   }
 });
 
@@ -1416,11 +1677,20 @@ function applyTheme(theme) {
 
 function initManualEntry() {
   $('#btn-add-manual').addEventListener('click', () => {
-    $('#manual-entry-form').classList.toggle('hidden');
+    const form = $('#manual-entry-form');
+    const opening = form.classList.contains('hidden');
+    form.classList.toggle('hidden');
+    const btn = $('#btn-add-manual');
+    if (opening) {
+      btn.setAttribute('class', 'p-1 rounded border border-saffron-300 dark:border-saffron-700 bg-saffron-100 dark:bg-saffron-900/30 text-saffron-500 transition-colors shrink-0');
+    } else {
+      btn.setAttribute('class', 'p-1 rounded border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-saffron-600 hover:border-saffron-400 transition-colors shrink-0');
+    }
   });
 
   $('#btn-cancel-manual').addEventListener('click', () => {
     $('#manual-entry-form').classList.add('hidden');
+    $('#btn-add-manual').setAttribute('class', 'p-1 rounded border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-saffron-600 hover:border-saffron-400 transition-colors shrink-0');
     clearManualForm();
   });
 
@@ -1515,8 +1785,55 @@ function initManualEntry() {
 
     // Done
     $('#manual-entry-form').classList.add('hidden');
+    $('#btn-add-manual').setAttribute('class', 'p-1 rounded border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-saffron-600 hover:border-saffron-400 transition-colors shrink-0');
     clearManualForm();
   });
+}
+
+async function checkBulkImport() {
+  const { ibid_bulk_import } = await chrome.storage.session.get(['ibid_bulk_import']);
+  if (!ibid_bulk_import) return;
+  // Check if still loading
+  try {
+    const parsed = JSON.parse(ibid_bulk_import);
+    if (parsed._loading) {
+      _showBulkLoading(parsed.count);
+      return; // storage listener will pick up the real data
+    }
+  } catch {}
+  await chrome.storage.session.remove(['ibid_bulk_import']);
+  await _processBulkImport(ibid_bulk_import);
+}
+
+function _showBulkLoading(count) {
+  // Switch to import tab
+  for (const b of $$('.tab-btn')) b.classList.remove('active', 'bg-saffron-100', 'dark:bg-saffron-900/30', 'text-saffron-700', 'dark:text-saffron-400');
+  $('[data-tab="import"]')?.classList.add('active', 'bg-saffron-100', 'dark:bg-saffron-900/30', 'text-saffron-700', 'dark:text-saffron-400');
+  for (const tc of $$('.tab-content')) tc.classList.add('hidden');
+  $('#tab-import')?.classList.remove('hidden');
+  const searchBar = $('#search')?.closest('.border-b');
+  if (searchBar) searchBar.classList.add('hidden');
+  showImportStatus('info', `Resolving ${count} DOI(s) via CrossRef... Please wait.`);
+}
+
+async function _processBulkImport(ibid_bulk_import) {
+  try {
+
+    // Switch to import tab
+    for (const b of $$('.tab-btn')) b.classList.remove('active', 'bg-saffron-100', 'dark:bg-saffron-900/30', 'text-saffron-700', 'dark:text-saffron-400');
+    const importBtn = $('[data-tab="import"]');
+    importBtn?.classList.add('active', 'bg-saffron-100', 'dark:bg-saffron-900/30', 'text-saffron-700', 'dark:text-saffron-400');
+    for (const tc of $$('.tab-content')) tc.classList.add('hidden');
+    $('#tab-import')?.classList.remove('hidden');
+    const searchBar = $('#search')?.closest('.border-b');
+    if (searchBar) searchBar.classList.add('hidden');
+
+    // Prefill textarea and auto-parse
+    $('#import-text').value = ibid_bulk_import;
+    // Detect format — if it starts with [ it's CSL-JSON (resolved DOIs)
+    const format = ibid_bulk_import.trimStart().startsWith('[') ? 'json' : 'auto';
+    await parseAndPreview(ibid_bulk_import, format);
+  } catch {}
 }
 
 function clearManualForm() {

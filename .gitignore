@@ -24,4 +24,4 @@ package-lock.json
 # Internal docs
 requirements.txt
 reviews/
-cl.bat
+*.bat

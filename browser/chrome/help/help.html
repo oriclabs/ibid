@@ -43,6 +43,9 @@
         <li><a href="#import" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Importing</a></li>
         <li><a href="#export" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Exporting</a></li>
         <li><a href="#duplicates" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Duplicates</a></li>
+        <li><a href="#tags" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Tags</a></li>
+        <li><a href="#in-library" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">In Library</a></li>
+        <li><a href="#local-files" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Local PDFs</a></li>
         <li><a href="#quick-settings" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Quick Settings</a></li>
         <li><a href="#keyboard" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Shortcuts</a></li>
         <li><a href="#context-menu" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Context Menu</a></li>
@@ -58,12 +61,12 @@
 
       <section id="getting-started" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
         <h2 class="text-base font-semibold mb-3">Getting Started</h2>
-        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-3">Ibid is a citation manager that runs entirely in your browser. All processing happens locally via a Rust/WebAssembly engine &mdash; no data is sent to any server.</p>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-3">Ibid (from Latin <em>ibidem</em> &mdash; "in the same place") is a citation manager that runs entirely in your browser. All citation processing happens locally via a Rust/WebAssembly engine powered by <strong>Hayagriva</strong>, supporting 2,600+ official CSL citation styles.</p>
         <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside">
           <li><strong>Popup</strong> &mdash; Click the Ibid icon on any page to cite it</li>
           <li><strong>Side Panel</strong> &mdash; Click "Library" for full citation management</li>
           <li><strong>Context Menu</strong> &mdash; Right-click for quick cite options</li>
-          <li><strong>Settings</strong> &mdash; Gear icon for style, locale, theme</li>
+          <li><strong>Settings</strong> &mdash; Gear icon (popup and sidepanel) for style, theme, preferences</li>
         </ul>
       </section>
 
@@ -77,6 +80,7 @@
           <li>Click <strong>Copy</strong> for bibliography or in-text citation.</li>
           <li>Click <strong>Add to Project</strong> to save.</li>
         </ol>
+        <img src="images/popup-citation.png" alt="Popup with citation" class="mt-3 rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-sm max-w-[360px]">
         <div class="mt-3 p-3 bg-saffron-50 dark:bg-saffron-900/10 rounded text-xs text-saffron-800 dark:text-saffron-300">
           <strong>Tip:</strong> On restricted pages (chrome://), the form opens empty for manual entry. Paste a DOI and click Enhance.
         </div>
@@ -118,40 +122,97 @@
 
       <section id="styles" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
         <h2 class="text-base font-semibold mb-3">Citation Styles</h2>
-        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-3">9 styles bundled (grouped by edition), plus 10,000+ downloadable from the CSL repository:</p>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-3">74 official CSL styles are bundled offline, including:</p>
         <div class="grid grid-cols-3 gap-2 text-xs mb-3">
-          <div class="px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800">APA 7th</div>
-          <div class="px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800">APA 6th</div>
+          <div class="px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800">APA 7th / 6th</div>
           <div class="px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800">MLA 9th</div>
-          <div class="px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800">MLA 8th</div>
-          <div class="px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800">Chicago 17th</div>
-          <div class="px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800">Chicago 16th</div>
-          <div class="px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800">Harvard</div>
+          <div class="px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800">Chicago 17th / 16th</div>
+          <div class="px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800">Harvard variants</div>
           <div class="px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800">IEEE</div>
           <div class="px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800">Vancouver</div>
+          <div class="px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800">Nature / Science / Cell</div>
+          <div class="px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800">AMA / Lancet / NEJM</div>
+          <div class="px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800">ACM / Springer / Elsevier</div>
         </div>
-        <p class="text-sm text-zinc-600 dark:text-zinc-400">Click <strong>"Search 10,000+ styles..."</strong> below the selector to find any journal or institutional style (Nature, Lancet, OSCOLA, Bluebook, etc.). Downloaded styles are cached locally.</p>
+        <h3 class="text-sm font-medium mb-1">On-demand download</h3>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">2,600+ additional styles from the official CSL repository can be downloaded with one click. Search for any journal or style name in the picker &mdash; if not bundled, results from the online repository appear automatically.</p>
+        <div class="p-3 bg-saffron-50 dark:bg-saffron-900/10 rounded text-xs text-saffron-800 dark:text-saffron-300">
+          <strong>Tip:</strong> Downloaded styles are cached locally and work offline after the first download.
+        </div>
+        <img src="images/popup-style-picker.png" alt="Style picker with search" class="mt-3 rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-sm max-w-[360px]">
       </section>
 
       <section id="projects" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
-        <h2 class="text-base font-semibold mb-3">Projects &amp; Per-Project Styles</h2>
-        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">Click <strong>+</strong> next to the project selector to create a project with its own citation style.</p>
+        <h2 class="text-base font-semibold mb-3">Projects</h2>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">Organize citations into projects (e.g., "Thesis Chapter 2", "Review Article").</p>
+        <h3 class="text-sm font-medium mb-1">Creating projects</h3>
+        <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside mb-2">
+          <li><strong>Popup:</strong> Click <strong>+</strong> next to the project dropdown</li>
+          <li><strong>Library:</strong> Select <strong>"+ New Project"</strong> from the project filter dropdown</li>
+        </ul>
+        <h3 class="text-sm font-medium mb-1">Managing projects</h3>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">In the library, select a custom project &rarr; click the <strong>&#8942;</strong> (three dots) button:</p>
+        <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside mb-2">
+          <li><strong>Rename</strong> &mdash; inline edit, press Enter to save</li>
+          <li><strong>Delete</strong> &mdash; citations are moved to "My Bibliography"</li>
+        </ul>
+        <h3 class="text-sm font-medium mb-1">Per-project styles</h3>
         <div class="text-sm text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800 rounded px-3 py-2 font-mono text-xs mb-2">
           Manual override &gt; Project style &gt; Global default
         </div>
-        <p class="text-sm text-zinc-600 dark:text-zinc-400">A badge shows <span class="px-1 py-0.5 rounded bg-saffron-100 text-saffron-600 text-xs">Project</span> or <span class="px-1 py-0.5 rounded bg-zinc-100 text-zinc-500 text-xs">Global</span> to indicate which style is active. Switching projects auto-switches the style.</p>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400">A badge shows <span class="px-1 py-0.5 rounded bg-saffron-100 text-saffron-600 text-xs">Project</span> or <span class="px-1 py-0.5 rounded bg-zinc-100 text-zinc-500 text-xs">Global</span> to indicate which style is active.</p>
       </section>
 
       <section id="library" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
         <h2 class="text-base font-semibold mb-3">Library Management</h2>
         <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">Click <strong>Library</strong> in the popup header to open the side panel:</p>
-        <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside">
-          <li><strong>Search</strong> &mdash; by title, author, DOI, type, journal, keyword</li>
+        <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside mb-3">
+          <li><strong>Search</strong> &mdash; by title, author, DOI, type, journal, keyword, tags, or notes</li>
+          <li><strong>Filter</strong> &mdash; by project, type chips (Journal, Book, Web, Chapter, Thesis), starred</li>
+          <li><strong>Sort</strong> &mdash; newest, oldest, author A-Z, title A-Z, year, type</li>
           <li><strong>Star</strong> &mdash; click star icon to mark favorites</li>
           <li><strong>Select</strong> &mdash; checkboxes for bulk operations (Star, Unstar, Delete)</li>
-          <li><strong>Edit</strong> &mdash; click any citation to open edit panel</li>
+          <li><strong>Edit</strong> &mdash; pencil icon to open edit panel</li>
+          <li><strong>Visit source</strong> &mdash; link icon (&#8599;) opens the original page</li>
           <li><strong>Delete</strong> &mdash; X icon or bulk delete</li>
         </ul>
+        <h3 class="text-sm font-medium mb-1">Inline preview</h3>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">Click any citation title to expand the inline preview:</p>
+        <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside mb-3">
+          <li><strong>Style picker</strong> &mdash; searchable dropdown with all 74+ styles, per-citation</li>
+          <li><strong>Bibliography</strong> &mdash; formatted reference in the selected style</li>
+          <li><strong>In-text</strong> &mdash; with <strong>P</strong> (parenthetical) / <strong>N</strong> (narrative) toggle</li>
+          <li><strong>Copy Bib</strong> and <strong>Copy</strong> buttons for one-click clipboard</li>
+        </ul>
+        <h3 class="text-sm font-medium mb-1">Manual entry</h3>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">Click the <strong>+</strong> button in the toolbar to add a citation manually. Fill in title, authors, year, DOI/URL, and other fields. The <strong>Enhance</strong> button auto-fills from a DOI.</p>
+        <h3 class="text-sm font-medium mb-1">Settings</h3>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400">Click the <strong>gear icon</strong> (&#9881;) in the header for library settings: default sort, copy format (plain text / rich text), theme (light / dark / system), and a link to advanced settings.</p>
+        <div class="mt-3 grid grid-cols-2 gap-3">
+          <div>
+            <p class="text-[10px] text-zinc-400 mb-1">Library with inline preview</p>
+            <img src="images/library-inline-preview.png" alt="Library with inline preview" class="rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-sm w-full">
+          </div>
+          <div>
+            <p class="text-[10px] text-zinc-400 mb-1">Preview detail</p>
+            <img src="images/library-preview-detail.png" alt="Inline preview detail" class="rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-sm w-full">
+          </div>
+        </div>
+        <div class="mt-3 grid grid-cols-3 gap-3">
+          <div>
+            <p class="text-[10px] text-zinc-400 mb-1">Manual entry</p>
+            <img src="images/library-manual-entry.png" alt="Manual entry form" class="rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-sm w-full">
+          </div>
+          <div>
+            <p class="text-[10px] text-zinc-400 mb-1">Settings</p>
+            <img src="images/library-settings.png" alt="Library settings" class="rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-sm w-full">
+          </div>
+          <div>
+            <p class="text-[10px] text-zinc-400 mb-1">P/N in-text toggle</p>
+            <img src="images/popup-pn-parenthetical.png" alt="Parenthetical" class="rounded border border-zinc-200 dark:border-zinc-700 shadow-sm w-full mb-1">
+            <img src="images/popup-pn-narrative.png" alt="Narrative" class="rounded border border-zinc-200 dark:border-zinc-700 shadow-sm w-full">
+          </div>
+        </div>
       </section>
 
       <section id="editing" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
@@ -166,9 +227,14 @@
         <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside">
           <li><strong>Drag &amp; drop</strong> .bib, .ris, or .json files</li>
           <li><strong>Browse files</strong> via file picker</li>
-          <li><strong>Paste</strong> BibTeX, RIS, or CSL-JSON (format auto-detected)</li>
+          <li><strong>Paste</strong> BibTeX, RIS, CSL-JSON, or plain text with DOIs (format auto-detected)</li>
+          <li><strong>Bulk DOI import</strong> &mdash; paste any text containing DOIs, they're extracted and resolved via CrossRef</li>
         </ul>
-        <p class="text-sm text-zinc-600 dark:text-zinc-400 mt-2">Preview shows parsed entries with checkboxes for selective import. Duplicates auto-skipped.</p>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mt-2">Preview shows parsed entries with checkboxes for selective import. Choose which project to import into with the <strong>"Import to"</strong> dropdown. Duplicates are auto-skipped.</p>
+        <div class="mt-2 p-3 bg-saffron-50 dark:bg-saffron-900/10 rounded text-xs text-saffron-800 dark:text-saffron-300">
+          <strong>Supported formats:</strong> BibTeX, RIS, CSL-JSON, EndNote XML, MEDLINE, CSV, TSV
+        </div>
+        <img src="images/import-tab.png" alt="Import tab" class="mt-3 rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-sm max-w-[360px]">
       </section>
 
       <section id="export" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
@@ -182,7 +248,8 @@
           <div class="px-2 py-1.5 bg-zinc-50 dark:bg-zinc-800 rounded">HTML (.html)</div>
           <div class="px-2 py-1.5 bg-zinc-50 dark:bg-zinc-800 rounded">Markdown (.md)</div>
         </div>
-        <p class="text-sm text-zinc-600 dark:text-zinc-400">Scope: All or Starred. BibTeX: toggle abstract/keywords. Text/HTML/Markdown: choose citation style. Download or copy to clipboard.</p>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">Filter by project and scope (all entries, starred only, journals only, books only, webpages only). BibTeX: toggle abstract/keywords. Download or copy to clipboard.</p>
+        <img src="images/export-tab.png" alt="Export tab" class="mt-3 rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-sm max-w-[360px]">
       </section>
 
       <section id="duplicates" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
@@ -195,6 +262,56 @@
           <li>Normalized title (letters+digits only, &gt;10 chars)</li>
         </ul>
         <p class="text-sm text-zinc-600 dark:text-zinc-400 mt-2"><strong>Popup:</strong> confirm dialog. <strong>Import:</strong> silently skipped with count.</p>
+      </section>
+
+      <section id="tags" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-base font-semibold mb-3">Tags</h2>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">Add tags when saving a citation from the popup:</p>
+        <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside mb-2">
+          <li>Click the <strong>tag icon</strong> (&#127991;) next to the Add button</li>
+          <li>Enter comma-separated tags: <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">thesis, chapter-3, review</code></li>
+          <li>Tags are searchable in the library</li>
+          <li>Tags merge on update (new + existing, no duplicates)</li>
+        </ul>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400">You can also manage tags from the library edit panel.</p>
+        <img src="images/popup-tags.png" alt="Tags input in popup" class="mt-3 rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-sm max-w-[360px]">
+      </section>
+
+      <section id="in-library" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-base font-semibold mb-3">Already in Library</h2>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">When you visit a page that's already in your library, the popup shows a compact status bar:</p>
+        <div class="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/10 rounded text-xs mb-2">
+          <span class="text-emerald-500">&#10003;</span>
+          <span class="text-emerald-600">In "My Bibliography"</span>
+          <span class="text-saffron-600 font-medium">View</span>
+          <span class="text-zinc-300">&middot;</span>
+          <span class="text-emerald-600 font-medium">Update</span>
+        </div>
+        <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside">
+          <li><strong>View</strong> &mdash; opens the library side panel</li>
+          <li><strong>Update</strong> &mdash; saves current edits to the existing entry</li>
+          <li>The <strong>Add</strong> button remains available to add to a different project</li>
+        </ul>
+      </section>
+
+      <section id="local-files" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-base font-semibold mb-3">PDFs &amp; Local Files</h2>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">Ibid extracts metadata from PDF files when possible:</p>
+        <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside mb-2">
+          <li><strong>PDF metadata</strong> &mdash; title, author, date, keywords from the PDF info dictionary</li>
+          <li><strong>DOI detection</strong> &mdash; scans the first pages for DOI patterns</li>
+          <li><strong>ISBN detection</strong> &mdash; scans for ISBN-10/ISBN-13 (sets type to Book)</li>
+          <li><strong>Enhance</strong> &mdash; paste a DOI or ISBN and click Enhance to fill all fields</li>
+        </ul>
+        <h3 class="text-sm font-medium mb-1">Right-click options on PDFs</h3>
+        <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside mb-2">
+          <li>Right-click a DOI link &rarr; <strong>"Cite linked page"</strong> &mdash; resolves via CrossRef</li>
+          <li>Right-click an ISBN link &rarr; <strong>"Cite linked page"</strong> &mdash; resolves via Open Library</li>
+          <li>Select a DOI/ISBN text &rarr; <strong>"Look up selected DOI/ISBN"</strong></li>
+          <li>Select text with multiple DOIs &rarr; <strong>"Import DOIs from selection"</strong> &mdash; bulk import via Library</li>
+        </ul>
+        <h3 class="text-sm font-medium mb-1">Local files</h3>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">For <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">file:///</code> URLs, enable <strong>"Allow access to file URLs"</strong> in <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">chrome://extensions</code> for auto-extraction.</p>
       </section>
 
       <section id="quick-settings" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
@@ -219,12 +336,16 @@
       </section>
 
       <section id="context-menu" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
-        <h2 class="text-base font-semibold mb-3">Context Menu</h2>
+        <h2 class="text-base font-semibold mb-3">Context Menu (Right-Click)</h2>
         <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside">
-          <li><strong>Cite this page</strong> &mdash; extract metadata</li>
-          <li><strong>Cite linked page</strong> &mdash; right-click a link</li>
-          <li><strong>Save quote with citation</strong> &mdash; select text, right-click</li>
+          <li><strong>Cite this page</strong> &mdash; extract metadata from current page</li>
+          <li><strong>Cite linked page</strong> &mdash; right-click a DOI or ISBN link, resolves metadata automatically</li>
+          <li><strong>Look up selected DOI/ISBN</strong> &mdash; select any identifier text, resolves via CrossRef or Open Library</li>
+          <li><strong>Import DOIs from selection</strong> &mdash; select text containing multiple DOIs, bulk resolve and import via Library</li>
         </ul>
+        <div class="mt-2 p-3 bg-saffron-50 dark:bg-saffron-900/10 rounded text-xs text-saffron-800 dark:text-saffron-300">
+          <strong>Tip:</strong> Bulk import works great with reference lists in PDFs or emails. Select the text, right-click, and all DOIs are extracted and resolved automatically.
+        </div>
       </section>
 
       <section id="backup" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
@@ -244,7 +365,7 @@
           <li>All processing local (Rust/WASM)</li>
           <li>No bandwidth abuse</li>
           <li>Minimal permissions: activeTab, storage, sidePanel, contextMenus</li>
-          <li>Network calls only when you trigger Enhance</li>
+          <li>Network calls only for DOI/ISBN lookups (Enhance) and optional style downloads from GitHub</li>
           <li>No account required</li>
         </ul>
       </section>
@@ -279,7 +400,11 @@
           <tbody class="text-zinc-600 dark:text-zinc-400">
             <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1">BibTeX / BibLaTeX</td><td>.bib</td><td>Starts with @</td></tr>
             <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1">RIS</td><td>.ris</td><td>Starts with TY  -</td></tr>
-            <tr><td class="py-1">CSL-JSON</td><td>.json</td><td>Starts with [ or {</td></tr>
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1">CSL-JSON</td><td>.json</td><td>Starts with [ or {</td></tr>
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1">EndNote XML</td><td>.xml</td><td>WASM engine</td></tr>
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1">MEDLINE / PubMed</td><td>.nbib</td><td>WASM engine</td></tr>
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1">CSV</td><td>.csv</td><td>Comma-separated</td></tr>
+            <tr><td class="py-1">TSV</td><td>.tsv</td><td>Tab-separated</td></tr>
           </tbody>
         </table>
         <h3 class="text-sm font-medium mb-2">Export</h3>
@@ -291,7 +416,11 @@
             <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1">CSL-JSON</td><td>.json</td><td>Native, lossless</td></tr>
             <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1">Text</td><td>.txt</td><td>Rendered via CSL engine</td></tr>
             <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1">HTML</td><td>.html</td><td>Styled document</td></tr>
-            <tr><td class="py-1">Markdown</td><td>.md</td><td>Numbered list</td></tr>
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1">Markdown</td><td>.md</td><td>Numbered list</td></tr>
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1">CSV</td><td>.csv</td><td>Spreadsheet import</td></tr>
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1">TSV</td><td>.tsv</td><td>Tab-separated</td></tr>
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1">YAML</td><td>.yaml</td><td>Hayagriva native</td></tr>
+            <tr><td class="py-1">Word XML</td><td>.xml</td><td>Word bibliography</td></tr>
           </tbody>
         </table>
         <h3 class="text-sm font-medium mb-2">Source types</h3>
@@ -318,8 +447,9 @@
 
       <!-- Footer -->
       <div class="text-center text-xs text-zinc-400 py-4">
-        <p>Ibid Citation Manager &mdash; Privacy-first. No telemetry. No ads.</p>
-        <p class="mt-1">Core engine: Rust/WebAssembly &bull; UI: Tailwind + Vanilla JS</p>
+        <p><em>Ibid</em> &mdash; from Latin <em>ibidem</em>, "in the same place."</p>
+        <p class="mt-1">Privacy-first citation manager &bull; Powered by Rust/WebAssembly (Hayagriva)</p>
+        <p class="mt-1"><a href="https://ibid.tools" class="text-saffron-500 hover:text-saffron-600">ibid.tools</a> &bull; <a href="https://github.com/oriclabs/ibid" class="text-saffron-500 hover:text-saffron-600">GitHub</a></p>
       </div>
 
     </main>
@@ -330,43 +460,6 @@
     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 15l7-7 7 7"/></svg>
   </button>
 
-  <script>
-    // Back to top
-    const btnTop = document.getElementById('btn-top');
-    window.addEventListener('scroll', () => {
-      btnTop.classList.toggle('hidden', window.scrollY < 300);
-      btnTop.classList.toggle('flex', window.scrollY >= 300);
-    });
-    btnTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
-
-    // Active sidebar link tracking
-    const sections = document.querySelectorAll('section[id]');
-    const links = document.querySelectorAll('.sidebar-link');
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          links.forEach((link) => link.classList.remove('active'));
-          const active = document.querySelector(`.sidebar-link[href="#${entry.target.id}"]`);
-          if (active) active.classList.add('active');
-        }
-      });
-    }, { rootMargin: '-20% 0px -70% 0px' });
-    sections.forEach((s) => observer.observe(s));
-
-    // Mobile TOC toggle
-    document.getElementById('toc-toggle').addEventListener('click', () => {
-      const sidebar = document.getElementById('sidebar');
-      sidebar.classList.toggle('hidden');
-      sidebar.classList.toggle('fixed');
-      sidebar.classList.toggle('left-0');
-      sidebar.classList.toggle('top-14');
-      sidebar.classList.toggle('bg-white');
-      sidebar.classList.toggle('dark:bg-zinc-900');
-      sidebar.classList.toggle('z-50');
-      sidebar.classList.toggle('border-r');
-      sidebar.classList.toggle('border-zinc-200');
-      sidebar.classList.toggle('shadow-lg');
-    });
-  </script>
+  <script src="help.js"></script>
 </body>
 </html>

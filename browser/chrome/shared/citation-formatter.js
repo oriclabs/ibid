@@ -37,6 +37,10 @@ const CitationFormatter = (() => {
       if (a.literal) return a.literal;
       const f = a.family || '';
       const g = a.given || '';
+      if (style === 'mla' || style === 'chicago') {
+        // MLA/Chicago use full given names
+        return `${f}, ${g}`.trim().replace(/,$/, '');
+      }
       const initials = g.split(/[\s.]/).filter(Boolean).map(p => p[0] + '.').join(' ');
       if (style === 'ieee' || style === 'vancouver') return `${initials} ${f}`.trim();
       return `${f}, ${initials}`.trim();
@@ -45,6 +49,10 @@ const CitationFormatter = (() => {
     if (authors.length === 2) {
       const sep = style === 'apa' ? ' & ' : style === 'mla' ? ', and ' : ' and ';
       return `${fmt(authors[0])}${sep}${fmt(authors[1])}`;
+    }
+    // Et al. rules per style for 3+ authors in bibliography
+    if (style === 'mla' && authors.length >= 3) {
+      return fmt(authors[0]) + ', et al.';
     }
     if (style === 'vancouver' && authors.length > 6) {
       return authors.slice(0, 6).map(fmt).join(', ') + ', et al.';
@@ -58,17 +66,24 @@ const CitationFormatter = (() => {
   // JS bibliography formatters (HTML output — use textContent to strip tags)
   // -------------------------------------------------------------------------
 
+  function esc(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   function jsBibHtml(item, style) {
-    const a = formatAuthors(item.author, style);
+    const a = esc(formatAuthors(item.author, style));
     const year = item.issued?.['date-parts']?.[0]?.[0] || 'n.d.';
-    const title = item.title || 'Untitled';
-    const container = item['container-title'] || '';
-    const vol = item.volume || '';
-    const iss = item.issue || '';
-    const pg = item.page || '';
-    const doi = item.DOI ? `https://doi.org/${item.DOI}` : '';
-    const url = item.URL || '';
-    const pub = item.publisher || '';
+    const title = esc(item.title || 'Untitled');
+    const container = esc(item['container-title'] || '');
+    const vol = esc(String(item.volume || ''));
+    const iss = esc(String(item.issue || ''));
+    // Convert page hyphens to en-dashes for proper typography
+    const pg = esc((item.page || '').replace(/(\d)-(\d)/g, '$1\u2013$2'));
+    const doi = item.DOI ? `https://doi.org/${esc(item.DOI)}` : '';
+    const url = esc(item.URL || '');
+    const isJournal = item.type === 'article-journal' || item.type === 'article' || item.type === 'article-magazine';
+    const pub = esc(item.publisher || '');
     const access = doi || url;
 
     switch (style) {
@@ -77,7 +92,7 @@ const CitationFormatter = (() => {
         let parts = [a || title, `(${year})`];
         if (a) parts.push(isBookLike ? `<i>${title}</i>` : title);
         if (container) { let c = `<i>${container}</i>`; if (vol) c += `, <i>${vol}</i>`; if (iss) c += `(${iss})`; if (pg) c += `, ${pg}`; parts.push(c); }
-        if (pub) parts.push(pub);
+        if (pub && !isJournal) parts.push(pub);
         if (access) parts.push(access);
         return parts.filter(Boolean).join('. ').replace(/\.\./g, '.').replace(/\. \./g, '.') + '.';
       }
@@ -87,7 +102,8 @@ const CitationFormatter = (() => {
         if (container) parts.push(`<i>${container}</i>`);
         let loc = []; if (vol) loc.push(`vol. ${vol}`); if (iss) loc.push(`no. ${iss}`);
         if (loc.length) parts.push(loc.join(', '));
-        if (pub) parts.push(pub);
+        // MLA: publisher only for books, not journals
+        if (pub && !isJournal) parts.push(pub);
         if (year !== 'n.d.') parts.push(year);
         if (pg) parts.push(`pp. ${pg}`);
         if (access) parts.push(access);
@@ -252,14 +268,18 @@ const CitationFormatter = (() => {
   }
 
   /**
-   * Format in-text citation. WASM (hayagriva) primary, JS fallback.
-   * Narrative mode uses JS (WASM only renders parenthetical).
+   * Format in-text citation. WASM for parenthetical, JS for narrative.
+   * CSL doesn't define narrative mode — only JS handles it.
    */
   async function formatIntext(item, styleId, narrative = false) {
-    const family = resolveStyleFamily(styleId);
-    if (narrative) return jsIntext(item, family, true);
+    if (narrative) {
+      // Narrative is not a CSL concept — JS handles it
+      const family = resolveStyleFamily(styleId);
+      return jsIntext(item, family, true);
+    }
     const wasm = await wasmFormatBoth(item, styleId);
     if (wasm?.intext) return wasm.intext;
+    const family = resolveStyleFamily(styleId);
     return jsIntext(item, family, false);
   }
 

@@ -63,9 +63,9 @@
       </div>
       <div style="display: flex; gap: 1.5rem; font-size: 0.875rem;">
         <a href="#features" style="color: #52525b;">Features</a>
+        <a href="#why" style="color: #52525b;">Why Ibid</a>
         <a href="#styles" style="color: #52525b;">Styles</a>
         <a href="privacy.html" style="color: #52525b;">Privacy</a>
-        <a href="https://github.com/oriclabs/ibid#features" style="color: #52525b;">Docs</a>
       </div>
     </div>
   </nav>
@@ -76,7 +76,7 @@
       <img src="icons/icon-128.png" alt="Ibid" width="80" height="80" style="border-radius: 16px; margin: 0 auto 1.5rem; display: block; box-shadow: 0 4px 12px rgba(244,151,7,0.2);">
       <p style="font-size: 0.8rem; color: #a1a1aa; font-style: italic; margin-bottom: 0.75rem;">From Latin <em>ibidem</em> — "in the same place"</p>
       <h1>Citations done right.<br><span>Finally.</span></h1>
-      <p>Free, privacy-first citation manager for Chrome. 74 styles, one-click citing, smart metadata extraction, and zero data collection. Built with Rust/WebAssembly.</p>
+      <p>Free, privacy-first citation manager for Chrome. 2,600+ citation styles, one-click citing, smart metadata extraction, and zero data collection. Powered by Hayagriva &amp; Rust/WebAssembly.</p>
       <a href="#install" class="hero-cta">
         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
         Add to Chrome — Free
@@ -103,7 +103,7 @@
         <div class="card">
           <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           <h3>Actually accurate</h3>
-          <p>Built to address the #1 complaint about every other citation tool: wrong formatting. Our JS formatter handles APA, MLA, Chicago, Harvard, IEEE, and Vancouver correctly.</p>
+          <p>Powered by Hayagriva — the same CSL engine that powers Typst. Supports all 2,600+ official Citation Style Language styles with correct et al., title case, and locale terms.</p>
         </div>
         <div class="card">
           <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
@@ -113,7 +113,7 @@
         <div class="card">
           <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
           <h3>Import & export anything</h3>
-          <p>Import from BibTeX, RIS, CSL-JSON. Export to 6 formats. Drag & drop files or paste text. Selective import with preview.</p>
+          <p>Import from BibTeX, RIS, CSL-JSON, EndNote XML, MEDLINE, CSV. Export to 9 formats. Drag &amp; drop files or paste text. Filter exports by project and type.</p>
         </div>
         <div class="card">
           <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
@@ -127,8 +127,8 @@
   <!-- Styles -->
   <section id="styles" class="styles">
     <div class="container">
-      <h2>74 citation styles, all offline</h2>
-      <p style="text-align: center; color: #71717a; margin-bottom: 1.5rem; font-size: 0.9rem;">Official CSL styles from the citation-style-language repository. No downloads needed.</p>
+      <h2>2,600+ citation styles</h2>
+      <p style="text-align: center; color: #71717a; margin-bottom: 1.5rem; font-size: 0.9rem;">74 styles bundled offline. 2,600+ more downloadable on demand from the official CSL repository. Once downloaded, they work offline too.</p>
       <div class="style-tags">
         <span class="style-tag"><strong>APA 7</strong></span>
         <span class="style-tag">APA 6</span>
@@ -163,27 +163,43 @@
     </div>
   </section>
 
-  <!-- How it works -->
-  <section style="padding: 3rem 0; text-align: center;">
+  <!-- Why Ibid -->
+  <section id="why" style="padding: 3rem 0; text-align: center; background: linear-gradient(180deg, #fff 0%, #fff9eb 100%);">
     <div class="container">
-      <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem;">Why Rust/WebAssembly?</h2>
-      <p style="color: #71717a; max-width: 600px; margin: 0 auto 2rem; font-size: 0.95rem; line-height: 1.7;">
-        Citation files can contain thousands of entries in complex formats (BibTeX, RIS, XML). Ibid uses a
-        <strong style="color: #18181b;">Rust engine compiled to WebAssembly</strong> to parse and serialize these formats
-        directly in your browser — no server roundtrips, no data leaving your machine.
+      <h2 style="font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem;">Why Ibid?</h2>
+      <p style="color: #71717a; max-width: 600px; margin: 0 auto 2.5rem; font-size: 0.95rem;">
+        Built because existing citation tools get formatting wrong, send your data to servers, or lock features behind paywalls.
       </p>
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; max-width: 700px; margin: 0 auto;">
-        <div style="padding: 1.25rem; border: 1px solid #e4e4e7; border-radius: 0.75rem; text-align: left;">
-          <strong style="display: block; font-size: 0.875rem; margin-bottom: 0.25rem;">Import/Export Engine</strong>
-          <span style="font-size: 0.8rem; color: #71717a;">BibTeX, RIS, EndNote XML, MEDLINE, CSV — parsed in Rust/WASM. 1,000 entries in under 100ms.</span>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; max-width: 800px; margin: 0 auto; text-align: left;">
+        <div style="padding: 1.25rem; border: 1px solid #e4e4e7; border-radius: 0.75rem; background: #fff;">
+          <div style="font-size: 1.25rem; margin-bottom: 0.5rem;">&#128274;</div>
+          <strong style="display: block; font-size: 0.925rem; margin-bottom: 0.35rem;">Your data stays with you</strong>
+          <span style="font-size: 0.825rem; color: #71717a; line-height: 1.6;">All citation processing runs locally via WebAssembly. No page data, browsing history, or citation content is ever sent to any server.</span>
         </div>
-        <div style="padding: 1.25rem; border: 1px solid #e4e4e7; border-radius: 0.75rem; text-align: left;">
-          <strong style="display: block; font-size: 0.875rem; margin-bottom: 0.25rem;">100% Local</strong>
-          <span style="font-size: 0.8rem; color: #71717a;">Everything runs in your browser's sandbox. Your citations never touch a server — not ours, not anyone's.</span>
+        <div style="padding: 1.25rem; border: 1px solid #e4e4e7; border-radius: 0.75rem; background: #fff;">
+          <div style="font-size: 1.25rem; margin-bottom: 0.5rem;">&#9989;</div>
+          <strong style="display: block; font-size: 0.925rem; margin-bottom: 0.35rem;">Accurate formatting</strong>
+          <span style="font-size: 0.825rem; color: #71717a; line-height: 1.6;">Powered by Hayagriva — the CSL engine from the Typst project. Handles et al., title case, locale terms, and page ranges correctly across all 2,600+ styles.</span>
         </div>
-        <div style="padding: 1.25rem; border: 1px solid #e4e4e7; border-radius: 0.75rem; text-align: left;">
-          <strong style="display: block; font-size: 0.875rem; margin-bottom: 0.25rem;">JS Fallback</strong>
-          <span style="font-size: 0.8rem; color: #71717a;">If WASM can't load, JavaScript fallback parsers handle BibTeX, RIS, and CSL-JSON seamlessly.</span>
+        <div style="padding: 1.25rem; border: 1px solid #e4e4e7; border-radius: 0.75rem; background: #fff;">
+          <div style="font-size: 1.25rem; margin-bottom: 0.5rem;">&#128275;</div>
+          <strong style="display: block; font-size: 0.925rem; margin-bottom: 0.35rem;">No account, no paywall</strong>
+          <span style="font-size: 0.825rem; color: #71717a; line-height: 1.6;">Every feature works immediately. Import, export, projects, tags, 2,600+ styles — all free. No signup, no premium tier, no limits.</span>
+        </div>
+        <div style="padding: 1.25rem; border: 1px solid #e4e4e7; border-radius: 0.75rem; background: #fff;">
+          <div style="font-size: 1.25rem; margin-bottom: 0.5rem;">&#128737;</div>
+          <strong style="display: block; font-size: 0.925rem; margin-bottom: 0.35rem;">Minimal permissions</strong>
+          <span style="font-size: 0.825rem; color: #71717a; line-height: 1.6;">Only requests access to the page you're on. No host permissions, no browsing history, no background page access. Your browser stays yours.</span>
+        </div>
+        <div style="padding: 1.25rem; border: 1px solid #e4e4e7; border-radius: 0.75rem; background: #fff;">
+          <div style="font-size: 1.25rem; margin-bottom: 0.5rem;">&#128268;</div>
+          <strong style="display: block; font-size: 0.925rem; margin-bottom: 0.35rem;">Works offline</strong>
+          <span style="font-size: 0.825rem; color: #71717a; line-height: 1.6;">74 citation styles bundled. Citation formatting, library management, import/export — all work without an internet connection. DOI lookups need network.</span>
+        </div>
+        <div style="padding: 1.25rem; border: 1px solid #e4e4e7; border-radius: 0.75rem; background: #fff;">
+          <div style="font-size: 1.25rem; margin-bottom: 0.5rem;">&#9881;</div>
+          <strong style="display: block; font-size: 0.925rem; margin-bottom: 0.35rem;">Rust/WebAssembly engine</strong>
+          <span style="font-size: 0.825rem; color: #71717a; line-height: 1.6;">Hayagriva + citationberg compiled to WASM. BibTeX, RIS, EndNote XML, MEDLINE, CSV parsed natively. No server, no delays.</span>
         </div>
       </div>
     </div>

@@ -258,7 +258,23 @@ export function autoDetectAndParse(text) {
   if (firstLine.split(',').length >= 3) {
     return { entries: [], errors: ['CSV import requires the WASM engine. Please reload the extension.'], count: 0 };
   }
-  return { entries: [], errors: ['Could not detect format. Supported: BibTeX, RIS, CSL-JSON.'], count: 0 };
+  // Try extracting DOIs and ISBNs from plain text
+  const cleaned = text.replace(/[\r\n]+/g, ' ').replace(/(10\.\d{4,}\/)\s+/g, '$1').replace(/\/\s+/g, '/');
+  const doiMatches = [...cleaned.matchAll(/10\.\d{4,}\/[^\s"'<>)\]},;]{3,}/g)]
+    .map(m => m[0].replace(/[.,;:)\]}>]+$/, ''));
+  const isbnMatches = [...cleaned.matchAll(/(?:97[89][\s-]?\d[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d)/g)]
+    .map(m => m[0].replace(/[\s-]/g, ''));
+  const uniqueDois = [...new Set(doiMatches)];
+  const uniqueIsbns = [...new Set(isbnMatches)];
+  const entries = [
+    ...uniqueDois.map(doi => ({ id: doi, type: 'article-journal', DOI: doi, title: `DOI: ${doi}`, _needsEnhance: true })),
+    ...uniqueIsbns.map(isbn => ({ id: isbn, type: 'book', ISBN: isbn, title: `ISBN: ${isbn}`, _needsEnhance: true })),
+  ];
+  if (entries.length > 0) {
+    return { entries, errors: [], count: entries.length, _doiList: true };
+  }
+
+  return { entries: [], errors: ['Could not detect format. Supported: BibTeX, RIS, CSL-JSON, or text with DOIs/ISBNs.'], count: 0 };
 }
 
 // =============================================================================

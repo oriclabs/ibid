@@ -101,6 +101,12 @@
     <!-- Scrollable middle: hint + source type + style + fields -->
     <div class="flex-1 overflow-y-auto">
 
+    <!-- Pending bulk imports banner (separate from hint bar, not overwritten) -->
+    <div id="bulk-import-banner" class="hidden px-4 py-1.5 text-xs flex items-center gap-2 border-b bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400">
+      <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+      <span id="bulk-import-text" class="flex-1"></span>
+      <button id="btn-open-library-import" class="font-semibold underline shrink-0">Open Library</button>
+    </div>
     <!-- Context hint bar -->
     <div id="hint-bar" class="hidden px-4 py-2 text-xs flex items-start gap-2 border-b">
       <svg id="hint-icon" class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
@@ -180,7 +186,7 @@
       <div data-field="DOI">
         <label class="field-label block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-0.5">DOI / ISBN / PMID / URL <span class="req-dot hidden text-saffron-500">*</span></label>
         <div class="flex gap-1.5">
-          <input id="field-doi" type="text" placeholder="Paste DOI, ISBN, PMID, or URL to auto-fill" class="flex-1 px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 focus:border-saffron-500 outline-none transition-colors">
+          <input id="field-doi" type="text" maxlength="200" placeholder="Paste DOI, ISBN, PMID, or URL to auto-fill" class="flex-1 px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 focus:border-saffron-500 outline-none transition-colors">
           <button id="btn-enhance" class="px-2.5 py-1.5 rounded border border-saffron-300 dark:border-saffron-700 bg-saffron-50 dark:bg-saffron-900/20 text-saffron-600 dark:text-saffron-400 hover:bg-saffron-100 dark:hover:bg-saffron-900/40 text-xs font-medium transition-colors flex items-center gap-1 shrink-0" title="Look up metadata from DOI, ISBN, PMID, or arXiv ID">
             <svg id="enhance-icon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             <svg id="enhance-spinner" class="w-3.5 h-3.5 animate-spin hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v4m0 12v4m-7.07-3.93l2.83-2.83m8.49-8.49l2.83-2.83M2 12h4m12 0h4M4.93 4.93l2.83 2.83m8.49 8.49l2.83 2.83"/></svg>
@@ -193,17 +199,17 @@
       <!-- Metadata fields -->
       <div data-field="title">
         <label class="field-label block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-0.5">Title <span class="req-dot hidden text-saffron-500">*</span></label>
-        <input id="field-title" type="text" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 focus:border-saffron-500 outline-none transition-colors">
+        <input id="field-title" type="text" maxlength="500" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 focus:border-saffron-500 outline-none transition-colors">
       </div>
       <div data-field="author">
         <label class="field-label block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-0.5">Authors <span class="req-dot hidden text-saffron-500">*</span></label>
-        <input id="field-authors" type="text" placeholder="Last, First; Last, First; ..." class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 focus:border-saffron-500 outline-none transition-colors">
+        <input id="field-authors" type="text" maxlength="2000" placeholder="Last, First; Last, First; ..." class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 focus:border-saffron-500 outline-none transition-colors">
       </div>
       <div class="grid grid-cols-2 gap-2">
         <div data-field="issued">
           <label class="field-label block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-0.5">Date <span class="req-dot hidden text-saffron-500">*</span></label>
           <div class="flex">
-            <input id="field-date" type="text" placeholder="YYYY" class="w-full px-2 py-1.5 rounded-l border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 focus:border-saffron-500 outline-none transition-colors">
+            <input id="field-date" type="text" maxlength="10" pattern="\d{4}(-\d{1,2}){0,2}" placeholder="YYYY" class="w-full px-2 py-1.5 rounded-l border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 focus:border-saffron-500 outline-none transition-colors">
             <select id="date-precision" class="px-0.5 py-1.5 border border-l-0 border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-[9px] text-zinc-500 focus:ring-1 focus:ring-saffron-500 outline-none cursor-pointer" title="Date precision">
               <option value="year">Y</option>
               <option value="month">M</option>
@@ -215,45 +221,45 @@
         </div>
         <div data-field="publisher">
           <label class="field-label block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-0.5">Publisher <span class="req-dot hidden text-saffron-500">*</span></label>
-          <input id="field-publisher" type="text" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 focus:border-saffron-500 outline-none transition-colors">
+          <input id="field-publisher" type="text" maxlength="200" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 focus:border-saffron-500 outline-none transition-colors">
         </div>
       </div>
       <div data-field="container-title">
         <label class="field-label block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-0.5">Container (Journal/Site) <span class="req-dot hidden text-saffron-500">*</span></label>
-        <input id="field-container" type="text" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 focus:border-saffron-500 outline-none transition-colors">
+        <input id="field-container" type="text" maxlength="300" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 focus:border-saffron-500 outline-none transition-colors">
       </div>
       <div class="grid grid-cols-3 gap-2">
         <div data-field="volume">
           <label class="field-label block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-0.5">Volume</label>
-          <input id="field-volume" type="text" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 focus:border-saffron-500 outline-none transition-colors">
+          <input id="field-volume" type="text" maxlength="20" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 focus:border-saffron-500 outline-none transition-colors">
         </div>
         <div data-field="issue">
           <label class="field-label block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-0.5">Issue</label>
-          <input id="field-issue" type="text" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 focus:border-saffron-500 outline-none transition-colors">
+          <input id="field-issue" type="text" maxlength="20" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 focus:border-saffron-500 outline-none transition-colors">
         </div>
         <div data-field="page">
           <label class="field-label block text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-0.5">Pages</label>
-          <input id="field-pages" type="text" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 focus:border-saffron-500 outline-none transition-colors">
+          <input id="field-pages" type="text" maxlength="30" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 focus:border-saffron-500 outline-none transition-colors">
         </div>
       </div>
     </div>
     </div><!-- end scrollable middle -->
 
     <!-- Sticky bottom: compact citation output + add -->
-    <div class="shrink-0 border-t-2 border-saffron-200 dark:border-saffron-800 bg-saffron-50/30 dark:bg-zinc-800/80 shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
+    <div class="shrink-0 border-t-2 border-saffron-300 dark:border-saffron-600 bg-saffron-50/50 dark:bg-zinc-950 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_12px_rgba(0,0,0,0.4)]">
 
     <!-- Citation preview — compact: bib + in-text side by side -->
     <div class="px-4 pt-2 pb-1">
       <!-- Bibliography -->
       <div class="flex items-start justify-between gap-2 mb-1">
-        <div id="citation-preview" class="flex-1 px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs leading-relaxed max-h-[48px] overflow-y-auto select-all">
+        <div id="citation-preview" class="flex-1 px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs leading-relaxed max-h-[48px] overflow-y-auto select-all transition-opacity duration-150">
           <span class="text-zinc-400 italic">Citation preview...</span>
         </div>
         <button id="btn-copy-bib" class="shrink-0 px-2 py-1.5 rounded border border-saffron-300 dark:border-saffron-700 bg-saffron-50 dark:bg-saffron-900/20 text-saffron-600 dark:text-saffron-400 text-[10px] font-medium hover:bg-saffron-100 transition-colors">Copy Bib</button>
       </div>
       <!-- In-text -->
       <div class="flex items-center gap-2">
-        <div id="intext-preview" class="flex-1 px-2 py-1 rounded bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs select-all truncate">
+        <div id="intext-preview" class="flex-1 px-2 py-1 rounded bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs select-all truncate transition-opacity duration-150">
           <span class="text-zinc-400 italic">(Author, Year)</span>
         </div>
         <div class="flex rounded overflow-hidden border border-zinc-200 dark:border-zinc-700 shrink-0">
@@ -264,7 +270,7 @@
       </div>
     </div>
 
-    <!-- Project + Add — single row -->
+    <!-- Project + Tags + Add -->
     <div class="px-4 py-1.5 space-y-1.5">
       <div class="flex gap-1.5">
         <select id="project-selector" class="flex-1 px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-xs focus:ring-1 focus:ring-saffron-500 outline-none cursor-pointer">
@@ -273,11 +279,16 @@
         <button id="btn-new-project" class="px-1.5 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-500 hover:text-saffron-600 hover:border-saffron-300 transition-colors" title="New project">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
         </button>
+        <button id="btn-show-tags" class="px-1.5 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-400 hover:text-saffron-500 hover:border-saffron-300 transition-colors" title="Add tags">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 7h.01M7 3h5a1.99 1.99 0 011.41.59l7 7a2 2 0 010 2.82l-5 5a2 2 0 01-2.82 0l-7-7A2 2 0 013 10V5a2 2 0 012-2z"/></svg>
+        </button>
         <button id="btn-add-project" class="px-4 py-1.5 rounded bg-saffron-500 hover:bg-saffron-600 text-white font-medium text-xs transition-colors flex items-center gap-1 shrink-0">
           <svg id="add-icon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
           <span id="add-label">Add</span>
         </button>
       </div>
+      <!-- Tags input (hidden, toggles via tag icon) -->
+      <input id="field-tags" type="text" maxlength="500" placeholder="Tags (comma-separated, e.g. thesis, review)" class="hidden w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-[10px] focus:ring-1 focus:ring-saffron-500 outline-none">
       <!-- Already in library indicator — compact single line -->
       <div id="in-library-badge" class="hidden px-3 py-1 bg-emerald-50 dark:bg-emerald-900/10 border-t border-emerald-200 dark:border-emerald-800 flex items-center gap-2">
         <svg class="w-3 h-3 text-emerald-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
@@ -288,7 +299,7 @@
       </div>
       <!-- New project form (hidden) -->
       <div id="new-project-form" class="hidden space-y-2 p-2.5 rounded-lg border border-saffron-200 dark:border-saffron-800 bg-saffron-50/50 dark:bg-saffron-900/10">
-        <input id="new-project-name" type="text" placeholder="Project name" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 outline-none">
+        <input id="new-project-name" type="text" maxlength="50" placeholder="Project name" class="w-full px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-saffron-500 outline-none">
         <div>
           <label class="block text-[10px] font-medium text-zinc-400 mb-0.5">Project citation style</label>
           <select id="new-project-style" class="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs focus:ring-1 focus:ring-saffron-500 outline-none cursor-pointer">

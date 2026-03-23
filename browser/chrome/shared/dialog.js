@@ -26,6 +26,7 @@ window.ibidConfirm = function(title, detail, opts = {}) {
     const danger = opts.danger || false;
 
     const overlay = document.createElement('div');
+    overlay.className = 'ibid-dialog-overlay';
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:99999;display:flex;align-items:center;justify-content:center;animation:ibidFadeIn 0.1s ease;';
 
     const btnColor = danger
@@ -81,6 +82,7 @@ window.ibidAlert = function(message, type = 'info') {
     const c = colors[type] || colors.info;
 
     const overlay = document.createElement('div');
+    overlay.className = 'ibid-dialog-overlay';
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:99999;display:flex;align-items:center;justify-content:center;animation:ibidFadeIn 0.1s ease;';
 
     overlay.innerHTML = `

@@ -101,8 +101,9 @@ fn convert_date(date: &Option<DateVariable>) -> Option<Date> {
     let dp = &parts[0];
     Some(Date {
         year: dp[0] as i32,
-        month: dp.get(1).copied().map(|m| m as u8),
-        day: dp.get(2).copied().map(|d| d as u8),
+        // CSL-JSON months are 1-indexed (Jan=1), hayagriva is 0-indexed (Jan=0)
+        month: dp.get(1).copied().map(|m| (m as u8).saturating_sub(1)),
+        day: dp.get(2).copied().map(|d| (d as u8).saturating_sub(1)),
         approximate: false,
         season: None,
     })
@@ -505,5 +506,122 @@ mod tests {
         assert!(entry.issue().is_some());
         assert!(entry.page_range().is_some());
         assert!(!entry.parents().is_empty(), "Should have parent (journal)");
+    }
+
+    #[test]
+    fn test_json_roundtrip_mla() {
+        // Simulate the exact WASM API flow: JSON string → CslItem → hayagriva
+        let json = r#"{
+            "id": "test1",
+            "type": "article-journal",
+            "title": "Single-molecule states link transcription factor binding to gene expression",
+            "author": [
+                {"family": "Doughty", "given": "Benjamin R."},
+                {"family": "Hinks", "given": "Michaela M."},
+                {"family": "Schaepe", "given": "Julia M."},
+                {"family": "Marinov", "given": "Georgi K."},
+                {"family": "Thurm", "given": "Abby R."},
+                {"family": "Rios-Martinez", "given": "Carolina"},
+                {"family": "Parks", "given": "Benjamin E."},
+                {"family": "Tan", "given": "Yingxuan"},
+                {"family": "Marklund", "given": "Emil"},
+                {"family": "Dubocanin", "given": "Danilo"},
+                {"family": "Bintu", "given": "Lacramioara"},
+                {"family": "Greenleaf", "given": "William J."}
+            ],
+            "issued": {"date-parts": [[2024, 11]]},
+            "container-title": "Nature",
+            "volume": 636,
+            "issue": 8043,
+            "page": "745-754",
+            "DOI": "10.1038/s41586-024-08219-w",
+            "publisher": "Nature Publishing Group"
+        }"#;
+
+        let item: CslItem = serde_json::from_str(json).unwrap();
+        let mla_xml = load_style("modern-language-association");
+        let (bib, intext) = render_both(&item, &mla_xml).unwrap();
+
+        eprintln!("JSON→MLA bib: {}", bib);
+        eprintln!("JSON→MLA intext: {}", intext);
+
+        assert!(bib.contains("et al"), "JSON roundtrip MLA bib should have et al: {}", bib);
+        assert!(intext.contains("et al"), "JSON roundtrip MLA intext should have et al: {}", intext);
+    }
+
+    #[test]
+    fn test_apa_ross_article() {
+        // Compare against Zotero reference output
+        let item = CslItem {
+            id: "ross1995".into(),
+            item_type: ItemType::ArticleJournal,
+            title: Some("mRNA stability in mammalian cells".into()),
+            author: Some(vec![
+                Name { family: Some("Ross".into()), given: Some("Jeff".into()), ..Default::default() },
+            ]),
+            issued: Some(DateVariable {
+                date_parts: Some(vec![vec![1995]]),
+                ..Default::default()
+            }),
+            container_title: Some("Microbiological Reviews".into()),
+            volume: Some(StringOrNumber::Number(59)),
+            issue: Some(StringOrNumber::Number(3)),
+            page: Some("423-450".into()),
+            doi: Some("10.1128/mr.59.3.423-450.1995".into()),
+            publisher: Some("American Society for Microbiology".into()),
+            ..Default::default()
+        };
+
+        let apa_xml = load_style("apa");
+        let (bib, _) = render_both(&item, &apa_xml).unwrap();
+        eprintln!("APA Ross: {}", bib);
+
+        // Page range should use en-dash (–) not hyphen (-)
+        assert!(bib.contains("423–450") || bib.contains("423\u{2013}450"),
+            "Pages should use en-dash: {}", bib);
+
+        // Should NOT include publisher for journal articles
+        assert!(!bib.contains("American Society"),
+            "APA journal should NOT show publisher: {}", bib);
+    }
+
+    fn ross_item() -> CslItem {
+        CslItem {
+            id: "ross1995".into(),
+            item_type: ItemType::ArticleJournal,
+            title: Some("mRNA stability in mammalian cells".into()),
+            author: Some(vec![
+                Name { family: Some("Ross".into()), given: Some("Jeff".into()), ..Default::default() },
+            ]),
+            issued: Some(DateVariable {
+                date_parts: Some(vec![vec![1995]]),
+                ..Default::default()
+            }),
+            container_title: Some("Microbiological Reviews".into()),
+            volume: Some(StringOrNumber::Number(59)),
+            issue: Some(StringOrNumber::Number(3)),
+            page: Some("423-450".into()),
+            doi: Some("10.1128/mr.59.3.423-450.1995".into()),
+            publisher: Some("American Society for Microbiology".into()),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn test_mla_ross_article() {
+        let item = ross_item();
+        let mla_xml = load_style("modern-language-association");
+        let (bib, intext) = render_both(&item, &mla_xml).unwrap();
+        eprintln!("MLA Ross: {}", bib);
+        eprintln!("MLA Ross intext: {}", intext);
+
+        // Full given name, not initials
+        assert!(bib.contains("Ross, Jeff"), "MLA should use full name: {}", bib);
+        // En-dash in pages
+        assert!(bib.contains("423–50") || bib.contains("423–450"),
+            "MLA pages should use en-dash: {}", bib);
+        // No publisher for journal articles
+        assert!(!bib.contains("American Society"),
+            "MLA journal should NOT show publisher: {}", bib);
     }
 }
