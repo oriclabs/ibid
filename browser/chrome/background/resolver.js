@@ -429,10 +429,27 @@ export async function resolveIdentifier(input) {
   input = (input || '').trim();
   if (!input) throw new Error('No identifier provided');
 
-  // arXiv DOI (10.48550/arXiv.XXXX.XXXXX) — route to arXiv API, not CrossRef
+  // arXiv DOI (10.48550/arXiv.XXXX.XXXXX) — try arXiv, fallback to OpenAlex
   const arxivDoiMatch = input.match(/10\.48550\/arXiv\.(\d{4}\.\d{4,5})/i);
   if (arxivDoiMatch) {
-    return resolveArxiv(arxivDoiMatch[1]);
+    try {
+      return await resolveArxiv(arxivDoiMatch[1]);
+    } catch {
+      // arXiv resolution failed (CORS/permissions) — try OpenAlex as DOI
+      try {
+        return await resolveDoiViaOpenAlex(input);
+      } catch {}
+      // Last resort — return minimal data
+      return {
+        type: 'article',
+        title: null,
+        author: [],
+        DOI: input,
+        URL: `https://arxiv.org/abs/${arxivDoiMatch[1]}`,
+        _source: 'fallback',
+        _needsPermissions: true,
+      };
+    }
   }
 
   // DOI
