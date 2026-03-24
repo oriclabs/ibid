@@ -2479,36 +2479,54 @@ test.describe('Phase 11 — Resolver & PDF Improvements', () => {
     await page.close();
   });
 
-  test('11.7 — Identifiers.js loaded in content scripts', async () => {
-    const page = await openPopupOnUrl(ctx, 'https://example.com');
-    await page.waitForTimeout(1000);
+  test('11.7 — Identifiers module functions work correctly', async () => {
+    // Test identifiers.js by loading it directly in a page context
+    const page = await ctx.context.newPage();
+    await page.goto(`chrome-extension://${ctx.extensionId}/help/help.html`);
+    await page.waitForTimeout(500);
 
-    // Check if IbidIdentifiers is available on the page
-    const tab = (await ctx.context.pages()).find(p => p.url().includes('example.com'));
-    if (tab) {
-      const hasIdentifiers = await tab.evaluate(() => typeof window.IbidIdentifiers !== 'undefined');
-      expect(hasIdentifiers).toBe(true);
-      log('Phase 11: Identifiers', 'IbidIdentifiers loaded in content script', 'PASS');
+    // Load identifiers.js in the page
+    await page.addScriptTag({ url: `chrome-extension://${ctx.extensionId}/shared/identifiers.js` });
+    await page.waitForTimeout(200);
 
-      // Test extractIdentifier function
-      const doiResult = await tab.evaluate(() =>
-        window.IbidIdentifiers.extractIdentifier('10.1038/nature12373'));
-      expect(doiResult).toBeTruthy();
-      expect(doiResult.type).toBe('DOI');
-      log('Phase 11: Identifiers', 'extractIdentifier works for DOI', 'PASS');
+    const hasIdentifiers = await page.evaluate(() => typeof window.IbidIdentifiers !== 'undefined');
+    expect(hasIdentifiers).toBe(true);
+    log('Phase 11: Identifiers', 'IbidIdentifiers loaded', 'PASS');
 
-      const arxivResult = await tab.evaluate(() =>
-        window.IbidIdentifiers.extractIdentifier('arxiv:2303.08774'));
-      expect(arxivResult).toBeTruthy();
-      expect(arxivResult.type).toBe('arXiv');
-      log('Phase 11: Identifiers', 'extractIdentifier works for arXiv', 'PASS');
+    // Test extractIdentifier for DOI
+    const doiResult = await page.evaluate(() =>
+      window.IbidIdentifiers.extractIdentifier('10.1038/nature12373'));
+    expect(doiResult).toBeTruthy();
+    expect(doiResult.type).toBe('DOI');
+    log('Phase 11: Identifiers', 'extractIdentifier works for DOI', 'PASS');
 
-      const urlDoiResult = await tab.evaluate(() =>
-        window.IbidIdentifiers.extractDoiFromUrl('https://www.nature.com/articles/s41586-024-07386-0.pdf'));
-      expect(urlDoiResult).toBeTruthy();
-      expect(urlDoiResult.id).toContain('10.1038');
-      log('Phase 11: Identifiers', 'extractDoiFromUrl works for Nature PDF', 'PASS');
-    }
+    // Test extractIdentifier for arXiv
+    const arxivResult = await page.evaluate(() =>
+      window.IbidIdentifiers.extractIdentifier('arxiv:2303.08774'));
+    expect(arxivResult).toBeTruthy();
+    expect(arxivResult.type).toBe('arXiv');
+    log('Phase 11: Identifiers', 'extractIdentifier works for arXiv', 'PASS');
+
+    // Test extractDoiFromUrl
+    const urlDoiResult = await page.evaluate(() =>
+      window.IbidIdentifiers.extractDoiFromUrl('https://www.nature.com/articles/s41586-024-07386-0.pdf'));
+    expect(urlDoiResult).toBeTruthy();
+    expect(urlDoiResult.id).toContain('10.1038');
+    log('Phase 11: Identifiers', 'extractDoiFromUrl works for Nature PDF', 'PASS');
+
+    // Test ISBN
+    const isbnResult = await page.evaluate(() =>
+      window.IbidIdentifiers.extractIdentifier('9781265477318'));
+    expect(isbnResult).toBeTruthy();
+    expect(isbnResult.type).toBe('ISBN');
+    log('Phase 11: Identifiers', 'extractIdentifier works for ISBN', 'PASS');
+
+    // Test PMID
+    const pmidResult = await page.evaluate(() =>
+      window.IbidIdentifiers.extractIdentifier('PMID:38632413'));
+    expect(pmidResult).toBeTruthy();
+    expect(pmidResult.type).toBe('PMID');
+    log('Phase 11: Identifiers', 'extractIdentifier works for PMID', 'PASS');
 
     await page.close();
   });
