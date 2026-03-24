@@ -30,17 +30,8 @@ window.__ibidExtractorLoaded = true;
     // 1. JSON-LD (Schema.org)
     extractJsonLd(meta);
 
-    // 2. Highwire Press tags (Google Scholar compatible)
-    extractHighwire(meta);
-
-    // 3. Dublin Core
-    extractDublinCore(meta);
-
-    // 4. OpenGraph
-    extractOpenGraph(meta);
-
-    // 5. Standard meta tags
-    extractStandardMeta(meta);
+    // 2. Meta tags — Highwire, Dublin Core, OpenGraph, Standard (data-driven)
+    extractMetaTags(meta);
 
     // 6. Site-specific extractors
     extractSiteSpecific(meta);
@@ -145,151 +136,245 @@ window.__ibidExtractorLoaded = true;
   }
 
   // -------------------------------------------------------------------------
-  // Highwire Press tags (citation_*)
+  // Meta tag sources — data-driven lookup table
+  // -------------------------------------------------------------------------
+  // To add/update meta tag sources: edit this structure, no extraction logic changes needed.
+  //
+  // Each entry: { tags: [...], attr?, mode?, transform?, override? }
+  //   tags:      meta tag names to try (first match wins)
+  //   attr:      'property' for og/article tags, default is 'name'
+  //   mode:      'all' to collect all matching tags (e.g. multiple authors)
+  //   transform: function(value) to convert raw value before assignment
+  //   override:  true to overwrite existing value (e.g. Highwire journal > og:site_name)
+
+  const META_SOURCES = {
+    // --- Highwire Press (Google Scholar compatible) — highest priority for academic ---
+    highwire: {
+      title:              { tags: ['citation_title'] },
+      author:             { tags: ['citation_author'], mode: 'all' },
+      DOI:                { tags: ['citation_doi'], transform: cleanDoi },
+      'container-title':  { tags: ['citation_journal_title', 'citation_conference_title'], override: true },
+      publisher:          { tags: ['citation_publisher'] },
+      issued:             { tags: ['citation_publication_date', 'citation_date'], transform: parseDate },
+      volume:             { tags: ['citation_volume'] },
+      issue:              { tags: ['citation_issue'] },
+      _firstPage:         { tags: ['citation_firstpage'] },
+      _lastPage:          { tags: ['citation_lastpage'] },
+      ISBN:               { tags: ['citation_isbn'] },
+      ISSN:               { tags: ['citation_issn'] },
+      _pdfUrl:            { tags: ['citation_pdf_url'] },
+      _type:              { tags: ['citation_title'], transform: () => 'article-journal' },
+    },
+
+    // --- Dublin Core ---
+    dublinCore: {
+      title:              { tags: ['DC.title', 'dc.title'] },
+      author:             { tags: ['DC.creator', 'dc.creator', 'DC.Creator'], mode: 'all' },
+      issued:             { tags: ['DC.date', 'dc.date'], transform: parseDate },
+      publisher:          { tags: ['DC.publisher', 'dc.publisher'] },
+      abstract:           { tags: ['DC.description', 'dc.description'] },
+      DOI:                { tags: ['DC.identifier', 'dc.identifier'], transform: (v) => { const m = v.match(/^10\.\d{4,}\/.+/); return m ? m[0] : null; } },
+      _dcType:            { tags: ['DC.type', 'dc.type'] },
+    },
+
+    // --- OpenGraph ---
+    openGraph: {
+      title:              { tags: ['og:title'], attr: 'property' },
+      'container-title':  { tags: ['og:site_name'], attr: 'property' },
+      abstract:           { tags: ['og:description'], attr: 'property' },
+      issued:             { tags: ['article:published_time', 'article:published'], attr: 'property', transform: parseDate },
+      author:             { tags: ['article:author', 'article:author:name'], attr: 'property' },
+      _ogType:            { tags: ['og:type'], attr: 'property' },
+    },
+
+    // --- PRISM (Publisher Requirements for Industry Standard Metadata) ---
+    // Used by Elsevier, Wiley, Springer, Taylor & Francis
+    prism: {
+      'container-title':  { tags: ['prism.publicationName'] },
+      volume:             { tags: ['prism.volume'] },
+      issue:              { tags: ['prism.number', 'prism.issueIdentifier'] },
+      _prismStartPage:    { tags: ['prism.startingPage'] },
+      _prismEndPage:      { tags: ['prism.endingPage'] },
+      ISSN:               { tags: ['prism.issn', 'prism.eIssn'] },
+      DOI:                { tags: ['prism.doi'], transform: cleanDoi },
+      issued:             { tags: ['prism.publicationDate', 'prism.coverDate'], transform: parseDate },
+    },
+
+    // --- Eprints (Institutional repositories: DSpace, EPrints, etc.) ---
+    eprints: {
+      title:              { tags: ['eprints.title'] },
+      author:             { tags: ['eprints.creators_name'], mode: 'all' },
+      abstract:           { tags: ['eprints.abstract'] },
+      issued:             { tags: ['eprints.date'], transform: parseDate },
+      publisher:          { tags: ['eprints.publisher'] },
+      'container-title':  { tags: ['eprints.publication'] },
+      _eprintsType:       { tags: ['eprints.type'] },
+    },
+
+    // --- BIBO (Bibliographic Ontology) — some academic sites ---
+    bibo: {
+      volume:             { tags: ['bibo.volume'] },
+      issue:              { tags: ['bibo.issue'] },
+      page:               { tags: ['bibo.pages', 'bibo.pageStart'] },
+      DOI:                { tags: ['bibo.doi'], transform: cleanDoi },
+    },
+
+    // --- Standard HTML meta (lowest priority) ---
+    standard: {
+      title:              { tags: ['_document_title'] }, // special: uses document.title
+      abstract:           { tags: ['description'] },
+      author:             { tags: ['author'] },
+      issued:             { tags: ['date', 'pubdate'], transform: parseDate },
+    },
+  };
+
+  // Generic sites to exclude from container-title (og:site_name)
+  const GENERIC_SITE_NAMES = /^(Google|Google Drive|Google Docs|Facebook|Twitter|X|YouTube|LinkedIn|Reddit|Medium|Wikipedia|GitHub|Instagram|TikTok|Pinterest|Dropbox|OneDrive)$/i;
+
+  // Dublin Core type → CSL type mapping
+  const DC_TYPE_MAP = {
+    journalarticle: 'article-journal',
+    reviewarticle: 'article-journal',
+    researcharticle: 'article-journal',
+    article: 'article-journal',
+    conferencepaper: 'paper-conference',
+    bookchapter: 'chapter',
+    chapter: 'chapter',
+    thesis: 'thesis',
+    dissertation: 'thesis',
+    report: 'report',
+    technicalreport: 'report',
+    book: 'book',
+    newsarticle: 'article-newspaper',
+    blogpost: 'post-weblog',
+    dataset: 'dataset',
+    patent: 'patent',
+    legislation: 'legislation',
+  };
+
+  // -------------------------------------------------------------------------
+  // Meta tag extraction engine
   // -------------------------------------------------------------------------
 
-  function extractHighwire(meta) {
-    const title = getMeta('citation_title');
-    if (title) {
-      meta.title = meta.title || title;
-      meta.type = 'article-journal'; // Highwire implies academic
-    }
+  function extractMetaTags(meta) {
+    for (const [sourceName, fields] of Object.entries(META_SOURCES)) {
+      for (const [field, config] of Object.entries(fields)) {
+        // Skip internal fields (prefixed with _) during normal assignment
+        const isInternal = field.startsWith('_');
 
-    const authors = document.querySelectorAll(
-      'meta[name="citation_author"]'
-    );
-    if (authors.length && meta.author.length === 0) {
-      for (const el of authors) {
-        const name = el.getAttribute('content');
-        if (name) meta.author.push(parseName(name));
+        // Resolve raw value from tags
+        let raw = null;
+        const attrType = config.attr || 'name';
+
+        if (config.mode === 'all') {
+          // Collect all matching tags (e.g. multiple citation_author)
+          const values = [];
+          for (const tag of config.tags) {
+            const els = document.querySelectorAll(`meta[${attrType}="${tag}"]`);
+            for (const el of els) {
+              const content = el.getAttribute('content')?.trim();
+              if (content) values.push(content);
+            }
+          }
+          if (values.length === 0) continue;
+
+          // For author fields: Highwire with multiple authors overrides single-author from JSON-LD
+          if (field === 'author' && meta.author.length >= values.length) continue;
+          meta.author = values.map(n => parseName(n));
+          continue;
+        }
+
+        // Single value mode
+        for (const tag of config.tags) {
+          if (tag === '_document_title') {
+            raw = document.title || null;
+          } else {
+            raw = getMeta(tag, attrType);
+          }
+          if (raw) break;
+        }
+        if (!raw) continue;
+
+        // Apply transform
+        const value = config.transform ? config.transform(raw) : raw;
+        if (!value) continue;
+
+        // Handle special internal fields
+        if (isInternal) {
+          if (field === '_type' && meta.type === 'webpage') meta.type = value;
+          if (field === '_dcType' || field === '_eprintsType') {
+            const mapped = DC_TYPE_MAP[raw.toLowerCase().replace(/[\s-]/g, '')];
+            if (mapped) meta.type = mapped;
+          }
+          if (field === '_ogType' && raw === 'article' && meta.type === 'webpage') meta.type = 'article';
+          if (field === '_firstPage' || field === '_lastPage' || field === '_pdfUrl' ||
+              field === '_prismStartPage' || field === '_prismEndPage') {
+            meta[field] = value;
+          }
+          continue;
+        }
+
+        // Special handling for container-title from og:site_name
+        if (field === 'container-title' && sourceName === 'openGraph') {
+          if (GENERIC_SITE_NAMES.test(raw)) continue;
+          if (meta['container-title']) continue; // don't overwrite
+        }
+
+        // Assign: override mode or fill-if-empty
+        if (field === 'author') {
+          if (meta.author.length === 0) meta.author.push(parseName(value));
+        } else if (field === 'issued') {
+          if (!meta.issued) meta.issued = value;
+        } else if (config.override) {
+          meta[field] = value;
+        } else {
+          meta[field] = meta[field] || value;
+        }
       }
     }
 
-    meta.DOI = meta.DOI || cleanDoi(getMeta('citation_doi'));
-    // Highwire journal title is authoritative — overrides og:site_name
-    const hwJournal = getMeta('citation_journal_title');
-    if (hwJournal) meta['container-title'] = hwJournal;
-    meta.publisher = meta.publisher || getMeta('citation_publisher');
-
-    const date = getMeta('citation_publication_date') || getMeta('citation_date');
-    if (date && !meta.issued) {
-      meta.issued = parseDate(date);
+    // Compose page from firstPage/lastPage (Highwire or PRISM)
+    const fp = meta._firstPage || meta._prismStartPage;
+    const lp = meta._lastPage || meta._prismEndPage;
+    if (!meta.page && fp) {
+      meta.page = lp ? `${fp}-${lp}` : fp;
     }
+    delete meta._firstPage;
+    delete meta._lastPage;
+    delete meta._prismStartPage;
+    delete meta._prismEndPage;
 
-    const volume = getMeta('citation_volume');
-    if (volume) meta.volume = volume;
-
-    const issue = getMeta('citation_issue');
-    if (issue) meta.issue = issue;
-
-    const firstPage = getMeta('citation_firstpage');
-    const lastPage = getMeta('citation_lastpage');
-    if (firstPage) {
-      meta.page = lastPage ? `${firstPage}-${lastPage}` : firstPage;
-    }
-
-    const isbn = getMeta('citation_isbn');
-    if (isbn) meta.ISBN = isbn;
-
-    const issn = getMeta('citation_issn');
-    if (issn) meta.ISSN = issn;
-
-    const pdfUrl = getMeta('citation_pdf_url');
-    if (pdfUrl) meta._pdfUrl = pdfUrl;
-  }
-
-  // -------------------------------------------------------------------------
-  // Dublin Core
-  // -------------------------------------------------------------------------
-
-  function extractDublinCore(meta) {
-    meta.title =
-      meta.title || getMeta('DC.title') || getMeta('dc.title');
-
-    const creator =
-      getMeta('DC.creator') ||
-      getMeta('dc.creator') ||
-      getMeta('DC.Creator');
-    if (creator && meta.author.length === 0) {
-      meta.author.push(parseName(creator));
-    }
-
-    const date = getMeta('DC.date') || getMeta('dc.date');
-    if (date && !meta.issued) {
-      meta.issued = parseDate(date);
-    }
-
-    meta.publisher =
-      meta.publisher || getMeta('DC.publisher') || getMeta('dc.publisher');
-    meta.abstract =
-      meta.abstract || getMeta('DC.description') || getMeta('dc.description');
-
-    const dcType = getMeta('DC.type') || getMeta('dc.type');
-    if (dcType) {
-      const typeMap = {
-        journalarticle: 'article-journal',
-        conferencepaper: 'paper-conference',
-        bookchapter: 'chapter',
-        thesis: 'thesis',
-        report: 'report',
-        book: 'book',
-      };
-      const mapped = typeMap[dcType.toLowerCase().replace(/[\s-]/g, '')];
-      if (mapped) meta.type = mapped;
-    }
-  }
-
-  // -------------------------------------------------------------------------
-  // OpenGraph
-  // -------------------------------------------------------------------------
-
-  function extractOpenGraph(meta) {
-    meta.title = meta.title || getMeta('og:title', 'property');
-    const siteName = getMeta('og:site_name', 'property');
-    // Don't use generic platform names as container titles
-    const genericSites = /^(Google|Google Drive|Google Docs|Facebook|Twitter|X|YouTube|LinkedIn|Reddit|Medium|Wikipedia|GitHub|Instagram|TikTok|Pinterest|Dropbox|OneDrive)$/i;
-    if (siteName && !genericSites.test(siteName)) {
-      meta['container-title'] = meta['container-title'] || siteName;
-    }
-    meta.abstract =
-      meta.abstract || getMeta('og:description', 'property');
-
-    const ogType = getMeta('og:type', 'property');
-    if (ogType === 'article' && meta.type === 'webpage') {
-      meta.type = 'article';
-    }
-
-    const pubDate =
-      getMeta('article:published_time', 'property') ||
-      getMeta('article:published', 'property');
-    if (pubDate && !meta.issued) {
-      meta.issued = parseDate(pubDate);
-    }
-
-    const ogAuthor =
-      getMeta('article:author', 'property') ||
-      getMeta('article:author:name', 'property');
-    if (ogAuthor && meta.author.length === 0) {
-      meta.author.push(parseName(ogAuthor));
-    }
-  }
-
-  // -------------------------------------------------------------------------
-  // Standard meta tags
-  // -------------------------------------------------------------------------
-
-  function extractStandardMeta(meta) {
-    meta.title = meta.title || document.title;
-    meta.abstract = meta.abstract || getMeta('description');
-
-    const author = getMeta('author');
-    if (author && meta.author.length === 0) {
-      meta.author.push(parseName(author));
-    }
-
-    const date = getMeta('date') || getMeta('pubdate');
-    if (date && !meta.issued) {
-      meta.issued = parseDate(date);
+    // --- COinS (OpenURL) — Wikipedia, library catalogs ---
+    // <span class="Z3988" title="ctx_ver=Z39.88-2004&rft.atitle=...">
+    const coins = document.querySelector('span.Z3988[title*="ctx_ver"]');
+    if (coins) {
+      const params = new URLSearchParams(coins.getAttribute('title'));
+      meta.title = meta.title || params.get('rft.atitle') || params.get('rft.btitle') || params.get('rft.title');
+      meta['container-title'] = meta['container-title'] || params.get('rft.jtitle') || params.get('rft.stitle');
+      if (!meta.author?.length) {
+        // COinS: rft.au, rft.aulast/rft.aufirst
+        const au = params.get('rft.au');
+        const aulast = params.get('rft.aulast');
+        const aufirst = params.get('rft.aufirst');
+        if (au) meta.author.push(parseName(au));
+        else if (aulast) meta.author.push({ family: aulast, given: aufirst || '' });
+      }
+      if (!meta.issued) {
+        const date = params.get('rft.date');
+        if (date) meta.issued = parseDate(date);
+      }
+      meta.volume = meta.volume || params.get('rft.volume');
+      meta.issue = meta.issue || params.get('rft.issue');
+      meta.page = meta.page || params.get('rft.pages') || params.get('rft.spage');
+      meta.ISBN = meta.ISBN || params.get('rft.isbn');
+      meta.ISSN = meta.ISSN || params.get('rft.issn');
+      meta.publisher = meta.publisher || params.get('rft.pub');
+      const genre = params.get('rft.genre');
+      if (genre && meta.type === 'webpage') {
+        const genreMap = { article: 'article-journal', book: 'book', bookitem: 'chapter',
+          conference: 'paper-conference', proceeding: 'paper-conference', report: 'report' };
+        if (genreMap[genre]) meta.type = genreMap[genre];
+      }
     }
   }
 

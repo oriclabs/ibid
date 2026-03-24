@@ -787,15 +787,7 @@ async function tryAutoEnhance() {
 
   if (!hasResolvable) return;
 
-  // Check if key fields are missing (worth enhancing)
-  const missingAuthor = !$('#field-authors').value.trim();
-  const missingDate = !$('#field-date').value.trim();
-  const missingContainer = !$('#field-container').value.trim();
-  const missingTitle = !$('#field-title').value.trim();
-
-  if (!missingAuthor && !missingDate && !missingContainer && !missingTitle) return;
-
-  // Resolve silently
+  // Resolve silently — DOI metadata is authoritative, always worth trying
   try {
     const res = await chrome.runtime.sendMessage({
       action: 'resolve',
@@ -807,45 +799,58 @@ async function tryAutoEnhance() {
     const resolved = res.resolved;
     const filled = [];
 
-    if (resolved.title && missingTitle) {
-      $('#field-title').value = resolved.title;
-      filled.push('title');
-    }
-    if (resolved.author?.length && missingAuthor) {
-      $('#field-authors').value = formatAuthorsForInput(resolved.author);
-      filled.push('authors');
-    }
-    if (resolved.issued && missingDate) {
-      $('#field-date').value = formatDateForInput(resolved.issued);
-      if (resolved.issued['date-parts']?.[0]) {
-        const len = resolved.issued['date-parts'][0].length;
-        $('#date-precision').value = len >= 3 ? 'day' : len === 2 ? 'month' : 'year';
+    // Helper: override if resolved value is better (longer, more complete)
+    const current = (sel) => $(sel).value.trim();
+    const set = (sel, val, label) => {
+      if (current(sel) !== val) { $(sel).value = val; filled.push(label); }
+    };
+
+    // Title: override if resolved is longer/better (page may have site suffix)
+    if (resolved.title) {
+      const cur = current('#field-title');
+      if (!cur || (resolved.title.length > cur.length && !cur.includes(resolved.title))) {
+        set('#field-title', resolved.title, 'title');
       }
-      filled.push('date');
     }
+
+    // Authors: override if resolved has more
+    if (resolved.author?.length) {
+      const curAuthors = current('#field-authors');
+      const curCount = curAuthors ? curAuthors.split(/\s*;\s*/).length : 0;
+      if (resolved.author.length > curCount) {
+        set('#field-authors', formatAuthorsForInput(resolved.author), 'authors');
+      }
+    }
+
+    // Date: override if empty or resolved is more precise
+    if (resolved.issued) {
+      const curDate = current('#field-date');
+      const resolvedDate = formatDateForInput(resolved.issued);
+      if (!curDate || (resolvedDate.length > curDate.length)) {
+        set('#field-date', resolvedDate, 'date');
+        if (resolved.issued['date-parts']?.[0]) {
+          const len = resolved.issued['date-parts'][0].length;
+          $('#date-precision').value = len >= 3 ? 'day' : len === 2 ? 'month' : 'year';
+        }
+      }
+    }
+
+    // Container-title: always override — DOI-resolved journal name is authoritative
     if (resolved['container-title']) {
-      // Always overwrite — DOI-resolved journal name is more authoritative than og:site_name
-      if (missingContainer || $('#field-container').value !== resolved['container-title']) {
-        $('#field-container').value = resolved['container-title'];
-        filled.push('journal');
-      }
+      set('#field-container', resolved['container-title'], 'journal');
     }
-    if (resolved.publisher && !$('#field-publisher').value.trim()) {
-      $('#field-publisher').value = resolved.publisher;
-      filled.push('publisher');
+
+    // Publisher: fill if empty
+    if (resolved.publisher && !current('#field-publisher')) {
+      set('#field-publisher', resolved.publisher, 'publisher');
     }
-    if (resolved.volume && !$('#field-volume').value.trim()) {
-      $('#field-volume').value = resolved.volume;
-      filled.push('vol');
-    }
-    if (resolved.issue && !$('#field-issue').value.trim()) {
-      $('#field-issue').value = resolved.issue;
-      filled.push('issue');
-    }
-    if (resolved.page && !$('#field-pages').value.trim()) {
-      $('#field-pages').value = resolved.page;
-      filled.push('pages');
-    }
+
+    // Volume, issue, pages: override if empty or resolved differs
+    if (resolved.volume) set('#field-volume', resolved.volume, 'vol');
+    if (resolved.issue) set('#field-issue', resolved.issue, 'issue');
+    if (resolved.page) set('#field-pages', resolved.page, 'pages');
+
+    // DOI and type: always set
     if (resolved.DOI) {
       $('#field-doi').value = resolved.DOI;
     }
