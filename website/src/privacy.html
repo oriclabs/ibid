@@ -34,7 +34,7 @@
   <a href="index.html" class="back">&larr; Back to Ibid</a>
 
   <h1>Privacy Policy</h1>
-  <p class="updated">Last updated: March 21, 2026</p>
+  <p class="updated">Last updated: March 24, 2026</p>
 
   <div class="highlight">
     <strong>Summary:</strong> Ibid does not collect, transmit, or store any personal data. All citation processing happens locally in your browser. We have no servers, no analytics, no accounts, and no way to access your data.
@@ -53,23 +53,41 @@
   </ul>
 
   <h2>3. Network requests</h2>
-  <p>Ibid makes network requests <strong>only when you explicitly trigger them</strong> by clicking the "Enhance" button to look up a DOI, ISBN, PMID, or arXiv ID. These requests go to:</p>
+  <p>Ibid makes network requests in two scenarios:</p>
+
+  <p><strong>a) Auto-enhance (when a DOI/identifier is detected on the page):</strong></p>
+  <p>When Ibid detects a DOI, ISBN, PMID, or arXiv ID on a page you're citing, it automatically looks up complete metadata. This happens when you open the popup — no background requests. If no identifier is found but a title exists, Ibid may search by title as a fallback.</p>
+
+  <p><strong>b) Manual enhance (clicking the "Enhance" button):</strong></p>
+  <p>When you paste an identifier or URL and click Enhance.</p>
+
+  <p>All requests use multiple sources with automatic fallback. Only the identifier is sent — never personal data, browsing history, or cookies:</p>
 
   <table>
     <thead>
       <tr><th>Service</th><th>URL</th><th>When</th><th>Data sent</th></tr>
     </thead>
     <tbody>
-      <tr><td>CrossRef</td><td>api.crossref.org</td><td>DOI lookup</td><td>The DOI only</td></tr>
-      <tr><td>Open Library</td><td>openlibrary.org</td><td>ISBN lookup</td><td>The ISBN only</td></tr>
-      <tr><td>NCBI/PubMed</td><td>api.ncbi.nlm.nih.gov</td><td>PMID lookup</td><td>The PMID only</td></tr>
-      <tr><td>arXiv</td><td>export.arxiv.org</td><td>arXiv ID lookup</td><td>The arXiv ID only</td></tr>
+      <tr><td>OpenAlex</td><td>api.openalex.org</td><td>DOI lookup (primary), title search</td><td>DOI or title string</td></tr>
+      <tr><td>CrossRef</td><td>api.crossref.org</td><td>DOI lookup (fallback)</td><td>DOI only</td></tr>
+      <tr><td>Open Library</td><td>openlibrary.org</td><td>ISBN lookup (primary)</td><td>ISBN only</td></tr>
+      <tr><td>Google Books</td><td>googleapis.com/books</td><td>ISBN lookup (fallback)</td><td>ISBN only</td></tr>
+      <tr><td>NCBI/PubMed</td><td>api.ncbi.nlm.nih.gov</td><td>PMID lookup</td><td>PMID only</td></tr>
+      <tr><td>arXiv *</td><td>arxiv.org</td><td>arXiv paper metadata</td><td>arXiv ID only</td></tr>
+      <tr><td>Semantic Scholar *</td><td>api.semanticscholar.org</td><td>arXiv papers (fallback)</td><td>arXiv ID only</td></tr>
+      <tr><td>Citoid (Wikipedia) *</td><td>en.wikipedia.org/api</td><td>URL-based citation</td><td>Page URL only</td></tr>
+      <tr><td>doi.org *</td><td>doi.org</td><td>Follow DOI to publisher page</td><td>DOI only</td></tr>
+      <tr><td>GitHub</td><td>raw.githubusercontent.com</td><td>On-demand citation style download</td><td>Style filename only</td></tr>
     </tbody>
   </table>
 
-  <p>These are all public, free academic APIs. No personal information, cookies, or authentication tokens are sent. No requests are made in the background or without your action.</p>
+  <p><small>* These services require <strong>optional host permissions</strong> (see section 4). They are only contacted if you have granted access. Without access, Ibid uses the other services which work without extra permissions.</small></p>
+
+  <p>All APIs are public and free. All requests are rate-limited (minimum 200ms between requests per host) to prevent abuse. No requests are made in the background or without your action.</p>
 
   <h2>4. Permissions explained</h2>
+
+  <p><strong>Required permissions</strong> (granted at install):</p>
   <table>
     <thead>
       <tr><th>Permission</th><th>Why</th></tr>
@@ -79,10 +97,25 @@
       <tr><td><code>scripting</code></td><td>Inject the metadata extraction script into the current page on demand.</td></tr>
       <tr><td><code>storage</code></td><td>Save your citations, projects, and settings locally on your device.</td></tr>
       <tr><td><code>sidePanel</code></td><td>Open the library management panel alongside your browser.</td></tr>
-      <tr><td><code>contextMenus</code></td><td>Add "Cite this page" and "Save quote" to the right-click menu.</td></tr>
+      <tr><td><code>contextMenus</code></td><td>Add "Cite this page", "Cite linked page", and "Import DOIs" to the right-click menu.</td></tr>
     </tbody>
   </table>
-  <p>We request <strong>no other permissions</strong>. No <code>&lt;all_urls&gt;</code>, no <code>tabs</code>, no <code>host_permissions</code>, no <code>identity</code>.</p>
+
+  <p><strong>Optional host permissions</strong> (requested only when needed, you choose):</p>
+  <table>
+    <thead>
+      <tr><th>Host</th><th>Why</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>arxiv.org</code></td><td>Fetch complete author lists and metadata from arXiv paper pages. Without this, arXiv papers may have incomplete author data.</td></tr>
+      <tr><td><code>api.semanticscholar.org</code></td><td>Alternative metadata source for computer science papers when arXiv is unavailable.</td></tr>
+      <tr><td><code>en.wikipedia.org</code></td><td>Resolve any URL to structured citation data via Wikipedia's Citoid service (uses Zotero translators).</td></tr>
+      <tr><td><code>doi.org</code></td><td>Follow DOI links to publisher article pages for Highwire/Dublin Core metadata extraction.</td></tr>
+    </tbody>
+  </table>
+  <p>Optional permissions are <strong>never granted automatically</strong>. You are prompted only when Ibid needs access to one of these services for a specific citation. You can grant or revoke access anytime from <strong>Settings &rarr; Scholarly API Access</strong>. If denied, Ibid falls back to services that don't require extra permissions (OpenAlex, CrossRef, Open Library, Google Books, NCBI).</p>
+
+  <p>We do not request <code>&lt;all_urls&gt;</code>, <code>tabs</code>, <code>webRequest</code>, <code>identity</code>, or any other broad permissions.</p>
 
   <h2>5. Content Security Policy</h2>
   <p>The extension uses <code>wasm-unsafe-eval</code> in its Content Security Policy. This is required to run the Rust/WebAssembly citation engine. It does not enable arbitrary code execution — it only allows compiled WebAssembly modules bundled with the extension to run.</p>

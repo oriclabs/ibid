@@ -375,10 +375,20 @@
           <li><strong>Wikipedia/Citoid</strong> &mdash; resolves any URL to structured citation data</li>
         </ul>
 
+        <h3 class="text-sm font-medium mb-1">When is it needed?</h3>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">Some scholarly APIs (arXiv, Semantic Scholar, doi.org, Wikipedia/Citoid) require explicit browser permission because they don't allow cross-origin requests from extensions. You'll see a hint in the popup when Ibid needs this access &mdash; typically when:</p>
+        <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside mb-2">
+          <li>Citing an <strong>arXiv paper</strong> (PDF or abstract page)</li>
+          <li>Resolving a DOI that redirects through <strong>doi.org</strong> to a publisher page</li>
+          <li>Using <strong>title-based search</strong> when no DOI is found (e.g. PDFs without identifiers)</li>
+          <li>Resolving a <strong>URL</strong> to citation data via Wikipedia's Citoid service</li>
+        </ul>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2"><strong>Without this access</strong>, Ibid still works &mdash; it uses OpenAlex, CrossRef, Open Library, Google Books, and NCBI which don't require extra permissions. You may get less complete metadata for arXiv papers and some edge cases.</p>
+
         <h3 class="text-sm font-medium mb-1">How to enable</h3>
         <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">
-          <span class="ibid-chrome-only">Go to <strong>Settings</strong> (gear icon &rarr; Advanced Settings) and click <strong>Grant API access</strong>. You can also grant access during first-time setup on the Welcome page.</span>
-          <span class="ibid-firefox-only hidden">Firefox grants these permissions automatically when you approve the extension.</span>
+          <span class="ibid-chrome-only">Go to <strong>Settings</strong> (gear icon &rarr; Advanced Settings) and click <strong>Grant API access</strong>. You can also grant access during first-time setup on the Welcome page. If you previously denied the permission, you can grant it anytime from Settings.</span>
+          <span class="ibid-firefox-only hidden">Firefox grants these permissions automatically when you approve the extension. No extra steps needed.</span>
         </p>
 
         <h3 class="text-sm font-medium mb-1">Which APIs are contacted</h3>

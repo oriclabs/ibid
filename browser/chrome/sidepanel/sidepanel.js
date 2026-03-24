@@ -1574,6 +1574,13 @@ chrome.storage.onChanged.addListener((changes) => {
     populateProjectFilter(changes.projects.newValue || []);
     updateProjectActions();
   }
+  // Sync theme from popup settings
+  if (changes.theme) {
+    const newTheme = changes.theme.newValue || 'system';
+    applyTheme(newTheme);
+    const themePicker = document.querySelector('#sp-pref-theme');
+    if (themePicker) themePicker.value = newTheme;
+  }
 });
 
 // Listen for bulk import data arriving (when sidepanel is already open)
@@ -1601,7 +1608,7 @@ chrome.storage.session.onChanged.addListener((changes) => {
 
 async function initSidepanelSettings() {
   // Load saved preferences
-  const prefs = await chrome.storage.local.get(['spDefaultSort', 'spCopyFormat', 'spTheme']);
+  const prefs = await chrome.storage.local.get(['spDefaultSort', 'spCopyFormat', 'spTheme', 'theme']);
 
   if (prefs.spDefaultSort) {
     $('#sp-pref-sort').value = prefs.spDefaultSort;
@@ -1610,10 +1617,10 @@ async function initSidepanelSettings() {
   if (prefs.spCopyFormat) {
     $('#sp-pref-copy-format').value = prefs.spCopyFormat;
   }
-  if (prefs.spTheme) {
-    $('#sp-pref-theme').value = prefs.spTheme;
-    applyTheme(prefs.spTheme);
-  }
+  // Theme: use sidepanel's own preference, or fall back to popup's global theme
+  const activeTheme = prefs.spTheme || prefs.theme || 'system';
+  $('#sp-pref-theme').value = activeTheme;
+  applyTheme(activeTheme);
 
   // Toggle dropdown
   $('#sp-settings-btn').addEventListener('click', (e) => {
@@ -1645,7 +1652,7 @@ async function initSidepanelSettings() {
   // Theme
   $('#sp-pref-theme').addEventListener('change', (e) => {
     const val = e.target.value;
-    chrome.storage.local.set({ spTheme: val });
+    chrome.storage.local.set({ spTheme: val, theme: val }); // sync both keys
     applyTheme(val);
   });
 

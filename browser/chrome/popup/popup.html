@@ -255,7 +255,7 @@
         <div id="citation-preview" class="flex-1 px-2 py-1.5 rounded bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs leading-relaxed max-h-[48px] overflow-y-auto select-all transition-opacity duration-150">
           <span class="text-zinc-400 italic">Citation preview...</span>
         </div>
-        <button id="btn-copy-bib" class="shrink-0 px-2 py-1.5 rounded border border-saffron-300 dark:border-saffron-700 bg-saffron-50 dark:bg-saffron-900/20 text-saffron-600 dark:text-saffron-400 text-[10px] font-medium hover:bg-saffron-100 transition-colors">Copy Bib</button>
+        <button id="btn-copy-bib" class="shrink-0 px-2 py-1.5 rounded border border-saffron-300 dark:border-saffron-600 bg-saffron-50 dark:bg-saffron-900/30 text-saffron-600 dark:text-saffron-300 text-[10px] font-medium hover:bg-saffron-100 dark:hover:bg-saffron-900/50 transition-colors">Copy Bib</button>
       </div>
       <!-- In-text -->
       <div class="flex items-center gap-2">
@@ -266,7 +266,7 @@
           <button id="btn-parenthetical" class="text-[9px] px-1.5 py-0.5 bg-saffron-500 text-white" title="Parenthetical: (Smith, 2024)">P</button>
           <button id="btn-narrative" class="text-[9px] px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300" title="Narrative: Smith (2024)">N</button>
         </div>
-        <button id="btn-copy-intext" class="shrink-0 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 text-[10px] text-zinc-500 hover:text-saffron-600 hover:border-saffron-400 transition-colors">Copy</button>
+        <button id="btn-copy-intext" class="shrink-0 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-600 text-[10px] text-zinc-500 dark:text-zinc-300 hover:text-saffron-600 hover:border-saffron-400 dark:hover:text-saffron-400 transition-colors">Copy</button>
       </div>
     </div>
 
@@ -290,12 +290,12 @@
       <!-- Tags input (hidden, toggles via tag icon) -->
       <input id="field-tags" type="text" maxlength="500" placeholder="Tags (comma-separated, e.g. thesis, review)" class="hidden w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-[10px] focus:ring-1 focus:ring-saffron-500 outline-none">
       <!-- Already in library indicator — compact single line -->
-      <div id="in-library-badge" class="hidden px-3 py-1 bg-emerald-50 dark:bg-emerald-900/10 border-t border-emerald-200 dark:border-emerald-800 flex items-center gap-2">
-        <svg class="w-3 h-3 text-emerald-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
-        <span id="in-library-project" class="text-[10px] text-emerald-600 dark:text-emerald-400 flex-1 truncate">In library</span>
-        <button id="btn-view-in-library" class="text-[10px] text-saffron-600 dark:text-saffron-400 hover:text-saffron-800 font-medium shrink-0">View</button>
-        <span class="text-[10px] text-zinc-300 dark:text-zinc-600">·</span>
-        <button id="btn-update-existing" class="text-[10px] text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 font-medium shrink-0">Update</button>
+      <div id="in-library-badge" class="hidden px-3 py-1 bg-emerald-50 dark:bg-emerald-950/60 border-t border-emerald-200 dark:border-emerald-800 flex items-center gap-2">
+        <svg class="w-3 h-3 text-emerald-500 dark:text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+        <span id="in-library-project" class="text-[10px] text-emerald-600 dark:text-emerald-300 flex-1 truncate">In library</span>
+        <button id="btn-view-in-library" class="text-[10px] text-saffron-600 dark:text-saffron-300 hover:text-saffron-800 dark:hover:text-saffron-200 font-medium shrink-0">View</button>
+        <span class="text-[10px] text-zinc-300 dark:text-zinc-500">·</span>
+        <button id="btn-update-existing" class="text-[10px] text-emerald-600 dark:text-emerald-300 hover:text-emerald-800 dark:hover:text-emerald-200 font-medium shrink-0">Update</button>
       </div>
       <!-- New project form (hidden) -->
       <div id="new-project-form" class="hidden space-y-2 p-2.5 rounded-lg border border-saffron-200 dark:border-saffron-800 bg-saffron-50/50 dark:bg-saffron-900/10">
