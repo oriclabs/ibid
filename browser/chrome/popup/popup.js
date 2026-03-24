@@ -823,11 +823,12 @@ async function ensureScholarlyPermissions(forcedHint = false) {
   if (!forcedHint && await hasScholarlyPermissions()) return true;
 
   // Show a non-blocking hint — permissions should be granted from options page
+  const settingsUrl = chrome.runtime.getURL('options/options.html');
+  const link = `<a href="${settingsUrl}" target="_blank" class="underline text-saffron-600 hover:text-saffron-800">Grant API access in settings</a>`;
   showHint('info',
-    (forcedHint
-      ? 'Scholarly API access may need to be re-granted after extension reload. '
-      : 'For better metadata from arXiv and scholarly APIs, ') +
-    '<a href="' + chrome.runtime.getURL('options/options.html') + '" target="_blank" class="underline text-saffron-600 hover:text-saffron-800">Grant API access in settings</a>.'
+    forcedHint
+      ? `Scholarly API access may need to be re-granted after extension reload. ${link}.`
+      : `Missing authors or incomplete data? ${link} to fetch complete metadata from arXiv and other scholarly APIs.`
   );
   return false;
 }
@@ -860,6 +861,9 @@ async function tryAutoEnhance() {
         const res = await chrome.runtime.sendMessage({ action: 'resolveByTitle', title });
         if (res?.resolved) {
           applyResolved(res.resolved, res.source);
+          if (res.resolved._needsPermissions && !(await hasScholarlyPermissions())) {
+            ensureScholarlyPermissions();
+          }
         }
       } catch {}
     }
@@ -878,6 +882,10 @@ async function tryAutoEnhance() {
     if (res?.resolved) {
       applyResolved(res.resolved, res.source);
       resolved = true;
+      // If resolver signals that permissions would improve results, show hint
+      if (res.resolved._needsPermissions && !(await hasScholarlyPermissions())) {
+        ensureScholarlyPermissions();
+      }
     }
     if (res?.error) resolveError = res.error;
   } catch (e) {
@@ -920,7 +928,12 @@ async function tryAutoEnhance() {
       }
       try {
         const res = await chrome.runtime.sendMessage({ action: 'resolveByTitle', title });
-        if (res?.resolved) applyResolved(res.resolved, res.source);
+        if (res?.resolved) {
+          applyResolved(res.resolved, res.source);
+          if (res.resolved._needsPermissions) {
+            ensureScholarlyPermissions();
+          }
+        }
       } catch {
         // Silent fail
       }

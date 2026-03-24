@@ -549,6 +549,18 @@ export async function resolveByTitle(title) {
       }
     } catch (e) {
       console.log('[Ibid] arXiv abstract page fetch failed:', e.message);
+      // arXiv fetch failed (likely CORS) — return minimal data with arXiv DOI
+      // Don't use OpenAlex authors — they're unreliable for arXiv papers
+      return {
+        type: 'article',
+        title: item.title,
+        author: [],
+        DOI: `10.48550/arXiv.${arxivMatch[1]}`,
+        URL: `https://arxiv.org/abs/${arxivMatch[1]}`,
+        number: arxivMatch[1],
+        _source: 'openalex-search',
+        _needsPermissions: true,
+      };
     }
   }
 
