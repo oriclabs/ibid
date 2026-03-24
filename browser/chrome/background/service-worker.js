@@ -773,7 +773,7 @@ async function handleMessage(message) {
         if (!message.url) return { error: 'No URL provided' };
         // Timeout: 6s for download — if PDF is too large, skip text extraction
         // The content script's binary scan already has DOI/ISBN from the first 32KB
-        const res = await fetch(message.url, { signal: AbortSignal.timeout(6000) });
+        const res = await fetch(message.url, { signal: AbortSignal.timeout(12000) });
         if (!res.ok) return { error: `Fetch failed: ${res.status}` };
         const buffer = await res.arrayBuffer();
         const bytes = new Uint8Array(buffer);

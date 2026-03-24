@@ -20,8 +20,22 @@ if (!window.__ibidPdfExtractorLoaded) {
 
     // Extract text from pdf.js viewer DOM (.textLayer spans)
     // Works in both Firefox and Chrome when PDF is rendered via pdf.js
-    function extractPdfJsText() {
-      // pdf.js renders text in .textLayer > span elements
+    // Returns a promise — waits for text layer to render if not ready
+    async function extractPdfJsTextAsync() {
+      // Try immediately first
+      const immediate = extractPdfJsTextSync();
+      if (immediate) return immediate;
+
+      // Wait for pdf.js to render text layers (up to 5s)
+      for (let i = 0; i < 10; i++) {
+        await new Promise(r => setTimeout(r, 500));
+        const text = extractPdfJsTextSync();
+        if (text) return text;
+      }
+      return null;
+    }
+
+    function extractPdfJsTextSync() {
       const textLayers = document.querySelectorAll('.textLayer span, .text-layer span');
       if (textLayers.length > 0) {
         const pages = {};
@@ -266,7 +280,7 @@ if (!window.__ibidPdfExtractorLoaded) {
 
       // 3c. Try to extract text from pdf.js DOM viewer (Firefox + Chrome pdf.js)
       // When the browser renders a PDF via pdf.js, the text is in .textLayer spans
-      const pdfJsText = extractPdfJsText();
+      const pdfJsText = await extractPdfJsTextAsync();
       if (pdfJsText) {
         const header = pdfJsText.substring(0, 3000);
 

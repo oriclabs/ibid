@@ -39,13 +39,7 @@ function syncDir(src, dest, exclude = []) {
     if (entry.isDirectory()) {
       syncDir(srcPath, destPath, exclude);
     } else {
-      // Only copy if source is newer or dest doesn't exist
-      const srcStat = fs.statSync(srcPath);
-      let destStat = null;
-      try { destStat = fs.statSync(destPath); } catch {}
-      if (!destStat || srcStat.mtimeMs > destStat.mtimeMs) {
-        fs.copyFileSync(srcPath, destPath);
-      }
+      fs.copyFileSync(srcPath, destPath);
     }
   }
 }

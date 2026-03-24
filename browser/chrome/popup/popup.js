@@ -327,22 +327,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         showHint('info', 'Local file detected. To auto-extract, enable "Allow access to file URLs" in chrome://extensions. Or paste a DOI below and click Enhance.');
       }
     } else if (tab?.id) {
-      // Programmatically inject content scripts (no <all_urls> permission needed)
+      // Programmatically inject content scripts
+      const isPdfPage = tab.url?.toLowerCase().match(/\.pdf(\?|#|$)/) || tab.url?.match(/\/pdf\/[\d.]/) || tab.url?.includes('application/pdf');
       try {
-        await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ['shared/identifiers.js', 'content/extractor.js'],
-        });
-        // Also inject PDF extractor for PDF pages
-        if (tab.url?.toLowerCase().match(/\.pdf(\?|#|$)/) || tab.url?.match(/\/pdf\/[\d.]/) || tab.url?.includes('application/pdf')) {
+        // For non-PDF pages: await injection (fast, needed before sendMessage)
+        // For PDF pages: skip injection (may hang on Firefox pdf.js viewer)
+        if (!isPdfPage) {
           await chrome.scripting.executeScript({
             target: { tabId: tab.id },
-            files: ['shared/identifiers.js', 'content/pdfParser.js', 'content/pdf-extractor.js'],
+            files: ['shared/identifiers.js', 'content/extractor.js'],
           });
         }
-      } catch (e) {
-        // Injection failed — restricted page or already injected
-      }
+      } catch {}
 
       // Check if we have cached enhanced data for this URL
       const cacheKey = `ibid_cache_${tab.id}`;
@@ -362,24 +358,62 @@ document.addEventListener('DOMContentLoaded', async () => {
           tab.url?.match(/\/pdf\/[\d.]/) ||
           tab.url?.includes('application/pdf');
 
+        if (isPdfUrl) {
+          // --- PDF path: show form instantly, manual scan button ---
+          let doi = null;
+          const pageUrl = tab.url || '';
+          const urlDoi = pageUrl.match(/10\.\d{4,}\/[^\s&?#]+/);
+          if (urlDoi) {
+            doi = urlDoi[0].replace(/[.,;:)\]}>]+$/, '');
+          } else {
+            const arxivMatch = pageUrl.match(/arxiv\.org\/(?:abs|pdf)\/(\d{4}\.\d{4,5})/);
+            if (arxivMatch) doi = '10.48550/arXiv.' + arxivMatch[1];
+            if (!doi) { const nm = pageUrl.match(/nature\.com\/articles\/([^/.?#]+)/); if (nm) doi = '10.1038/' + nm[1]; }
+            if (!doi) { const dp = pageUrl.match(/\/doi\/(?:pdf|epdf|full|abs)\/(10\.\d{4,}\/[^?#]+)/); if (dp) doi = decodeURIComponent(dp[1]); }
+          }
+          currentMetadata = {
+            title: tab.title?.replace(/\.pdf$/i, '').trim() || '',
+            URL: pageUrl,
+            DOI: doi,
+            type: 'document',
+            _isPdf: true,
+          };
+          populateFields(currentMetadata);
+          showState('ready');
+          if (doi) {
+            showHint('info', 'PDF detected — DOI found. Click <strong>Enhance</strong> to fill all fields, or ' +
+              '<button id="btn-scan-pdf" class="inline px-2 py-0.5 text-xs font-medium rounded bg-saffron-500 text-white hover:bg-saffron-600">Scan PDF</button> to extract text.');
+          } else {
+            showHint('info', 'PDF detected. ' +
+              '<button id="btn-scan-pdf" class="inline px-2 py-0.5 text-xs font-medium rounded bg-saffron-500 text-white hover:bg-saffron-600">Scan PDF</button>' +
+              ' to extract title and DOI, or paste a DOI below and click Enhance.');
+          }
+          // Bind scan button — single sequential operation, no parallel calls
+          setTimeout(() => {
+            document.getElementById('btn-scan-pdf')?.addEventListener('click', async () => {
+              _permissionHintLocked = false; // reset lock
+              showHint('enhancing', 'Scanning PDF...');
+              await extractPdfViaServiceWorker(pageUrl);
+            });
+          }, 50);
+        } else {
+        // --- HTML path: normal content script extraction ---
+
         // Fresh extraction with timeout fallback
         let responded = false;
         const extractionTimeout = setTimeout(() => {
           if (responded) return;
           responded = true;
-          // Timeout — show fallback with tab info
           currentMetadata = {
             title: tab.title?.replace(/\.pdf$/i, '').trim() || '',
             URL: tab.url || '',
-            type: isPdfUrl ? 'document' : 'webpage',
+            type: 'webpage',
           };
           populateFields(currentMetadata);
           showState('ready');
-          showHint('sparse', isPdfUrl
-            ? 'PDF extraction timed out. Paste a DOI below and click Enhance for full metadata.'
-            : 'Extraction timed out. Fields pre-filled from tab info — review and complete manually.');
+          showHint('sparse', 'Extraction timed out. Fields pre-filled from tab info — review and complete manually.');
           tryAutoEnhance();
-        }, 8000); // 8s timeout — auto-enhance fills gaps if extraction is slow
+        }, 8000);
 
         chrome.tabs.sendMessage(tab.id, { action: 'extractMetadata' }, (response) => {
           if (responded) return;
@@ -387,18 +421,18 @@ document.addEventListener('DOMContentLoaded', async () => {
           clearTimeout(extractionTimeout);
 
           if (chrome.runtime.lastError || !response?.metadata) {
-            // Extract DOI from URL if possible
-            const urlDoi = tab.url?.match(/10\.\d{4,}\/[^\s&?#]+/);
+            let doi = null;
+            const pageUrl = tab.url || '';
+            const urlDoi = pageUrl.match(/10\.\d{4,}\/[^\s&?#]+/);
+            if (urlDoi) doi = urlDoi[0].replace(/[.,;:)\]}>]+$/, '');
             currentMetadata = {
               title: tab.title || '',
-              URL: tab.url || '',
-              DOI: urlDoi ? urlDoi[0].replace(/[.,;:)\]}>]+$/, '') : null,
-              type: isPdfUrl ? 'document' : 'webpage',
+              URL: pageUrl,
+              DOI: doi,
+              type: 'webpage',
             };
             populateFields(currentMetadata);
-            if (isPdfUrl) {
-              showHint('sparse', 'PDF detected — limited metadata. Paste a DOI below and click Enhance. Or right-click: DOI link → <strong>"Cite linked page"</strong>.');
-            } else if (currentMetadata.DOI) {
+            if (doi) {
               showHint('enhancing', 'Extracting metadata via DOI...');
             } else if (currentMetadata.title && currentMetadata.title.length > 15) {
               showHint('enhancing', 'Limited extraction — searching by title...');
@@ -433,6 +467,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           showState('ready');
           tryAutoEnhance();
         });
+        } // end HTML path else
       }
     } else {
       showState('ready');
@@ -822,17 +857,24 @@ async function requestScholarlyPermissions() {
   } catch { return false; }
 }
 
+let _permissionHintLocked = false;
+
 async function ensureScholarlyPermissions(forcedHint = false) {
   if (!forcedHint && await hasScholarlyPermissions()) return true;
 
-  // Show a non-blocking hint — permissions should be granted from options page
+  // Lock hint bar and show permission message directly (bypass showHint lock)
+  _permissionHintLocked = true;
   const settingsUrl = chrome.runtime.getURL('options/options.html');
   const link = `<a href="${settingsUrl}" target="_blank" class="underline text-saffron-600 hover:text-saffron-800">Grant API access in settings</a>`;
-  showHint('info',
-    forcedHint
+  const bar = $('#hint-bar');
+  const text = $('#hint-text');
+  if (bar && text) {
+    bar.setAttribute('class', 'px-4 py-2 text-xs flex items-start gap-2 border-b bg-blue-50 dark:bg-blue-900/15 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400');
+    text.innerHTML = forcedHint
       ? `Scholarly API access may need to be re-granted after extension reload. ${link}.`
-      : `Missing authors or incomplete data? ${link} to fetch complete metadata from arXiv and other scholarly APIs.`
-  );
+      : `Missing authors or incomplete data? ${link} to fetch complete metadata from arXiv and other scholarly APIs.`;
+    bar.classList.remove('hidden');
+  }
   return false;
 }
 
@@ -1761,6 +1803,8 @@ function showError(msg) {
 }
 
 function showHint(type, message) {
+  // Don't overwrite permission hint
+  if (_permissionHintLocked) return;
   const bar = $('#hint-bar');
   const text = $('#hint-text');
   const icon = $('#hint-icon');
@@ -1797,11 +1841,49 @@ function showHint(type, message) {
 }
 
 function dismissHint() {
+  if (_permissionHintLocked) return;
   $('#hint-bar').classList.add('hidden');
 }
 
-// Bind dismiss button
-$('#hint-dismiss')?.addEventListener('click', dismissHint);
+// Bind dismiss button — always works, even when locked
+$('#hint-dismiss')?.addEventListener('click', () => {
+  _permissionHintLocked = false;
+  $('#hint-bar').classList.add('hidden');
+});
+
+// Service worker PDF text extraction — used when content script can't access PDF
+async function extractPdfViaServiceWorker(url) {
+  try {
+    const textResult = await chrome.runtime.sendMessage({ action: 'extractPdfText', url });
+    if (textResult?.text) {
+      const header = textResult.text.substring(0, 3000);
+      const textDoi = header.match(/(?:doi[:\s]*|https?:\/\/(?:dx\.)?doi\.org\/)(10\.\d{4,}\/[^\s<>"{}|\\^~\[\]`]+)/i)
+        || header.match(/\b(10\.\d{4,}\/[^\s<>"{}|\\^~\[\]`]+)/);
+      if (textDoi) {
+        currentMetadata.DOI = textDoi[1].replace(/[.,;:)\]}>]+$/, '');
+        $('#field-doi').value = currentMetadata.DOI;
+      }
+      const lines = header.split('\n').map(l => l.trim()).filter(l => l.length > 10 && l.length < 200);
+      if (lines.length > 0 && (!currentMetadata.title || currentMetadata.title.length < 30)) {
+        currentMetadata.title = lines[0];
+        $('#field-title').value = currentMetadata.title;
+      }
+    }
+  } catch {}
+  populateFields(currentMetadata);
+  showState('ready');
+  if (currentMetadata.DOI) {
+    showHint('enhancing', 'DOI found — enhancing...');
+    await tryAutoEnhance();
+    if (!_permissionHintLocked) dismissHint();
+  } else if (currentMetadata.title && currentMetadata.title.length > 15) {
+    showHint('enhancing', 'Searching by title...');
+    await tryAutoEnhance();
+    if (!_permissionHintLocked) dismissHint();
+  } else {
+    showHint('sparse', 'Could not extract DOI from PDF. Paste a DOI below and click Enhance.');
+  }
+}
 
 async function rescanPage() {
   try {
