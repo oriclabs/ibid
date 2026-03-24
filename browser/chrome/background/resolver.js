@@ -481,7 +481,7 @@ export async function resolveIdentifier(input) {
 // ---------------------------------------------------------------------------
 
 export async function resolveUrl(url) {
-  const isPdf = /\.pdf(\?|$)/i.test(url);
+  const isPdf = /\.pdf(\?|#|$)/i.test(url) || /\/pdf\/[\d.]/i.test(url);
 
   // Citoid doesn't support PDFs (415 Unsupported Media Type)
   if (!isPdf) {
