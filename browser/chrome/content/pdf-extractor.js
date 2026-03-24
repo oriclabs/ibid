@@ -11,7 +11,9 @@ if (!window.__ibidPdfExtractorLoaded) {
 
     function isPdfPage() {
       if (document.contentType === 'application/pdf') return true;
-      if (window.location.href.toLowerCase().match(/\.pdf(\?|$)/)) return true;
+      const url = window.location.href.toLowerCase();
+      if (url.match(/\.pdf(\?|#|$)/)) return true;
+      if (url.match(/\/pdf\/[\d.]/)) return true;
       if (document.querySelector('embed[type="application/pdf"]')) return true;
       return false;
     }

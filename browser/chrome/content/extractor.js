@@ -855,7 +855,8 @@ window.__ibidExtractorLoaded = true;
     if (message.action === 'extractMetadata') {
       // On PDF pages, let pdf-extractor.js handle it
       if (document.contentType === 'application/pdf' ||
-          window.location.href.toLowerCase().match(/\.pdf(\?|$)/)) {
+          window.location.href.toLowerCase().match(/\.pdf(\?|#|$)/) ||
+          window.location.href.toLowerCase().match(/\/pdf\/[\d.]/)) {
         return false; // don't handle — pdf-extractor will respond
       }
       const metadata = extractMetadata();
