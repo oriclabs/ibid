@@ -16,6 +16,60 @@ async function openSidePanel() {
   } catch { /* ignore — may fail if already open or unsupported */ }
 }
 
+// ---------------------------------------------------------------------------
+// Action card — centered overlay for user decisions
+// ---------------------------------------------------------------------------
+function showActionCard({ icon, title, message, buttons }) {
+  const overlay = $('#action-overlay');
+  $('#action-icon').textContent = icon || '';
+  $('#action-title').textContent = title || '';
+  $('#action-message').innerHTML = message || '';
+  const btnContainer = $('#action-buttons');
+  btnContainer.innerHTML = '';
+  for (const btn of buttons || []) {
+    const el = document.createElement('button');
+    el.textContent = btn.label;
+    el.className = btn.primary
+      ? 'px-4 py-2 rounded-lg bg-saffron-500 hover:bg-saffron-600 text-white text-xs font-semibold transition-colors'
+      : 'px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-600 text-zinc-700 dark:text-zinc-300 text-xs font-medium transition-colors';
+    el.addEventListener('click', () => {
+      hideActionCard();
+      if (btn.action) btn.action();
+    });
+    btnContainer.appendChild(el);
+  }
+  // Dark mode overlay background
+  const isDark = document.documentElement.classList.contains('dark');
+  overlay.style.background = isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.3)';
+  overlay.classList.remove('hidden');
+}
+
+function hideActionCard() {
+  $('#action-overlay').classList.add('hidden');
+}
+
+// ---------------------------------------------------------------------------
+// Progress box — centered overlay during HTTP operations
+// ---------------------------------------------------------------------------
+function showProgress(text, detail) {
+  const overlay = $('#progress-overlay');
+  $('#progress-text').textContent = text || 'Processing...';
+  $('#progress-detail').textContent = detail || '';
+  const isDark = document.documentElement.classList.contains('dark');
+  overlay.style.background = isDark ? 'rgba(24,24,27,0.5)' : 'rgba(255,255,255,0.5)';
+  overlay.classList.remove('hidden');
+}
+
+function updateProgress(text, detail) {
+  if ($('#progress-overlay').classList.contains('hidden')) return;
+  if (text) $('#progress-text').textContent = text;
+  if (detail !== undefined) $('#progress-detail').textContent = detail;
+}
+
+function hideProgress() {
+  $('#progress-overlay').classList.add('hidden');
+}
+
 // State
 let currentMetadata = null;
 let currentStyle = 'apa7';
@@ -359,7 +413,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           tab.url?.includes('application/pdf');
 
         if (isPdfUrl) {
-          // --- PDF path: show form instantly, manual scan button ---
+          // --- PDF path: extract DOI from URL, show action card ---
           let doi = null;
           const pageUrl = tab.url || '';
           const urlDoi = pageUrl.match(/10\.\d{4,}\/[^\s&?#]+/);
@@ -380,22 +434,34 @@ document.addEventListener('DOMContentLoaded', async () => {
           };
           populateFields(currentMetadata);
           showState('ready');
+
+          // Action card for PDF
+          const pdfButtons = [];
           if (doi) {
-            showHint('info', 'PDF detected — DOI found. Click <strong>Enhance</strong> to fill all fields, or ' +
-              '<button id="btn-scan-pdf" class="inline px-2 py-0.5 text-xs font-medium rounded bg-saffron-500 text-white hover:bg-saffron-600">Scan PDF</button> to extract text.');
-          } else {
-            showHint('info', 'PDF detected. ' +
-              '<button id="btn-scan-pdf" class="inline px-2 py-0.5 text-xs font-medium rounded bg-saffron-500 text-white hover:bg-saffron-600">Scan PDF</button>' +
-              ' to extract title and DOI, or paste a DOI below and click Enhance.');
+            pdfButtons.push({ label: 'Enhance via DOI', primary: true, action: async () => {
+              showProgress('Resolving DOI...', doi);
+              await tryAutoEnhance();
+              hideProgress();
+            }});
           }
-          // Bind scan button — single sequential operation, no parallel calls
-          setTimeout(() => {
-            document.getElementById('btn-scan-pdf')?.addEventListener('click', async () => {
-              _permissionHintLocked = false; // reset lock
-              showHint('enhancing', 'Scanning PDF...');
-              await extractPdfViaServiceWorker(pageUrl);
-            });
-          }, 50);
+          pdfButtons.push({ label: 'Scan PDF Text', primary: !doi, action: async () => {
+            _permissionHintLocked = false;
+            showProgress('Scanning PDF for metadata...');
+            await extractPdfViaServiceWorker(pageUrl);
+            hideProgress();
+          }});
+          pdfButtons.push({ label: 'Enter manually', action: () => {
+            showHint('info', 'Fill in the fields below. Paste a DOI and click Enhance for auto-fill.');
+          }});
+
+          showActionCard({
+            icon: '📄',
+            title: 'PDF Detected',
+            message: doi
+              ? `DOI found: <code class="text-[10px] bg-zinc-100 dark:bg-zinc-700 px-1 rounded">${doi}</code>`
+              : `No DOI in URL. Scan the PDF to extract metadata, or enter details manually.`,
+            buttons: pdfButtons,
+          });
         } else {
         // --- HTML path: normal content script extraction ---
 
@@ -412,7 +478,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           populateFields(currentMetadata);
           showState('ready');
           showHint('sparse', 'Extraction timed out. Fields pre-filled from tab info — review and complete manually.');
-          tryAutoEnhance();
+          tryAutoEnhance().then(() => hideProgress());
         }, 8000);
 
         chrome.tabs.sendMessage(tab.id, { action: 'extractMetadata' }, (response) => {
@@ -433,9 +499,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
             populateFields(currentMetadata);
             if (doi) {
-              showHint('enhancing', 'Extracting metadata via DOI...');
+              showProgress('Resolving metadata via DOI...');
             } else if (currentMetadata.title && currentMetadata.title.length > 15) {
-              showHint('enhancing', 'Limited extraction — searching by title...');
+              showProgress('Searching by title...');
             } else {
               showHint('sparse', 'Could not read this page. Paste a DOI or ISBN below and click Enhance, or enter details manually.');
             }
@@ -461,11 +527,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else if (hasTitle && !hasAuthor && !hasDoi) {
               showHint('sparse', 'Limited metadata found (missing author). If you have a DOI, paste it below and click Enhance.');
             } else if (hasTitle && !hasAuthor && hasDoi) {
-              showHint('enhancing', 'Author not found on page — looking up via DOI...');
+              showProgress('Looking up author via DOI...');
             }
           }
           showState('ready');
-          tryAutoEnhance();
+          tryAutoEnhance().then(() => hideProgress());
         });
         } // end HTML path else
       }
@@ -862,20 +928,36 @@ let _permissionHintLocked = false;
 async function ensureScholarlyPermissions(forcedHint = false) {
   if (!forcedHint && await hasScholarlyPermissions()) return true;
 
-  // Lock hint bar and show permission message directly (bypass showHint lock)
-  _permissionHintLocked = true;
+  // Show action card for permission grant, dismiss to hint bar
   const settingsUrl = chrome.runtime.getURL('options/options.html');
-  const link = `<a href="${settingsUrl}" target="_blank" class="underline text-saffron-600 hover:text-saffron-800">Grant API access in settings</a>`;
-  const bar = $('#hint-bar');
-  const text = $('#hint-text');
-  if (bar && text) {
-    bar.setAttribute('class', 'px-4 py-2 text-xs flex items-start gap-2 border-b bg-blue-50 dark:bg-blue-900/15 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400');
-    text.innerHTML = forcedHint
-      ? `Scholarly API access may need to be re-granted after extension reload. ${link}.`
-      : `Missing authors or incomplete data? ${link} to fetch complete metadata from arXiv and other scholarly APIs.`;
-    bar.classList.remove('hidden');
-  }
-  return false;
+  return new Promise((resolve) => {
+    showActionCard({
+      icon: '🔑',
+      title: 'Scholarly API Access',
+      message: forcedHint
+        ? 'API access may need to be re-granted after extension reload.'
+        : 'Grant access to fetch complete metadata from arXiv, DOI.org, and other scholarly APIs.',
+      buttons: [
+        { label: 'Open Settings', primary: true, action: () => {
+          chrome.tabs.create({ url: settingsUrl });
+          resolve(false);
+        }},
+        { label: 'Skip', action: () => {
+          // Collapse to hint bar
+          _permissionHintLocked = true;
+          const link = `<a href="${settingsUrl}" target="_blank" class="underline text-saffron-600 hover:text-saffron-800">Grant API access in settings</a>`;
+          const bar = $('#hint-bar');
+          const text = $('#hint-text');
+          if (bar && text) {
+            bar.setAttribute('class', 'px-4 py-2 text-xs flex items-start gap-2 border-b bg-blue-50 dark:bg-blue-900/15 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400');
+            text.innerHTML = `Missing data? ${link} for better results.`;
+            bar.classList.remove('hidden');
+          }
+          resolve(false);
+        }},
+      ],
+    });
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -883,107 +965,71 @@ async function ensureScholarlyPermissions(forcedHint = false) {
 // ---------------------------------------------------------------------------
 
 async function tryAutoEnhance() {
-  // Check if we have an identifier to resolve
   const doiField = $('#field-doi').value.trim();
-  if (!doiField) return;
-
-  // Detect if there's a resolvable identifier (DOI, PMID, arXiv, ISBN, or URL)
-  const hasResolvable =
+  // Check if DOI field has an actual identifier (not just a URL)
+  const isIdentifier = doiField && (
     doiField.match(/^10\.\d{4,}/) ||
-    doiField.match(/doi\.org\/10\./) ||
-    doiField.match(/^pmid:\s*\d+$/i) ||
-    doiField.match(/pubmed.*\/\d+/) ||
-    doiField.match(/arxiv\.org\/abs\//) ||
-    doiField.match(/^arxiv:\s*\d{4}\./i) ||
-    doiField.match(/^(97[89])?\d{9}[\dXx]$/) ||
-    doiField.match(/^https?:\/\//i);
+    doiField.match(/^pmid:/i) ||
+    doiField.match(/^arxiv:/i) ||
+    doiField.match(/^(97[89])?\d{9}[\dXx]$/)
+  );
+  const isUrl = doiField && /^https?:\/\//i.test(doiField) && !isIdentifier;
 
-  if (!hasResolvable) {
-    // No resolvable ID — try title search as last resort
+  // Title search: when no identifier, or only a URL in the DOI field
+  const tryTitleSearch = async () => {
     const title = $('#field-title').value.trim();
     if (title && title.length > 15 && !$('#field-authors').value.trim()) {
       try {
         const res = await chrome.runtime.sendMessage({ action: 'resolveByTitle', title });
         if (res?.resolved) {
           applyResolved(res.resolved, res.source);
-          if (res.resolved._needsPermissions && !(await hasScholarlyPermissions())) {
-            ensureScholarlyPermissions();
-          }
+          if (res.resolved._needsPermissions) await ensureScholarlyPermissions();
+          return true;
         }
       } catch {}
     }
+    return false;
+  };
+
+  if (!doiField || isUrl) {
+    // No identifier or just a URL — try title search first
+    if (isUrl) {
+      // Try URL resolution (Citoid for non-PDF URLs)
+      try {
+        const res = await chrome.runtime.sendMessage({ action: 'resolve', identifier: doiField });
+        if (res?.resolved) {
+          applyResolved(res.resolved, res.source);
+          if (res.resolved._needsPermissions) await ensureScholarlyPermissions();
+          return;
+        }
+      } catch {}
+    }
+    // URL resolution failed or no URL — try title
+    await tryTitleSearch();
     return;
   }
 
-  // Resolve silently — DOI metadata is authoritative, always worth trying
-  let resolved = false;
-  let resolveError = null;
+  // Has an actual identifier — try to resolve it
+  let result = null;
   try {
-    const res = await chrome.runtime.sendMessage({
-      action: 'resolve',
-      identifier: doiField,
-    });
+    const res = await chrome.runtime.sendMessage({ action: 'resolve', identifier: doiField });
+    if (res?.resolved) result = res;
+  } catch {}
 
-    if (res?.resolved) {
-      applyResolved(res.resolved, res.source);
-      resolved = true;
-      // If resolver signals that permissions would improve results, show hint
-      if (res.resolved._needsPermissions && !(await hasScholarlyPermissions())) {
-        ensureScholarlyPermissions();
-      }
-    }
-    if (res?.error) resolveError = res.error;
-  } catch (e) {
-    resolveError = e.message || String(e);
+  if (result?.resolved) {
+    applyResolved(result.resolved, result.source);
+    if (result.resolved._needsPermissions) await ensureScholarlyPermissions();
+    return;
   }
 
-  // If failed and looks like CORS or needs scholarly API, prompt for permissions
-  const needsScholarlyApi =
-    doiField.match(/arxiv/i) || doiField.match(/^https?:\/\//i) ||
-    doiField.match(/10\.48550/);
-  const isCorsError = resolveError && /CORS|blocked|Failed to fetch|Network error/i.test(resolveError);
-  if (!resolved && (needsScholarlyApi || isCorsError)) {
-    const hasPerms = await hasScholarlyPermissions();
-    if (!hasPerms || isCorsError) {
-      // Show hint — forcedHint when permissions exist but CORS still fails (extension reload)
-      const granted = await ensureScholarlyPermissions(hasPerms && isCorsError);
-      if (granted) {
-        // Retry with permissions
-        try {
-          const res = await chrome.runtime.sendMessage({
-            action: 'resolve',
-            identifier: doiField,
-          });
-          if (res?.resolved) {
-            applyResolved(res.resolved, res.source);
-            resolved = true;
-          }
-        } catch {}
-      }
-    }
+  // Resolution failed — check if permissions needed
+  if (doiField.match(/arxiv|10\.48550/i)) {
+    await ensureScholarlyPermissions();
+    return;
   }
 
-  // Fallback: title search when primary resolution fails (e.g. PDF URL with no DOI)
-  if (!resolved) {
-    const title = $('#field-title').value.trim();
-    if (title && title.length > 15 && !$('#field-authors').value.trim()) {
-      // Title search via OpenAlex may need permissions for arXiv fallback
-      if (!(await hasScholarlyPermissions())) {
-        await ensureScholarlyPermissions();
-      }
-      try {
-        const res = await chrome.runtime.sendMessage({ action: 'resolveByTitle', title });
-        if (res?.resolved) {
-          applyResolved(res.resolved, res.source);
-          if (res.resolved._needsPermissions) {
-            ensureScholarlyPermissions();
-          }
-        }
-      } catch {
-        // Silent fail
-      }
-    }
-  }
+  // Last fallback: title search
+  await tryTitleSearch();
 }
 
 function applyResolved(resolved, source) {
@@ -1854,8 +1900,10 @@ $('#hint-dismiss')?.addEventListener('click', () => {
 // Service worker PDF text extraction — used when content script can't access PDF
 async function extractPdfViaServiceWorker(url) {
   try {
+    updateProgress('Scanning PDF for metadata...');
     const textResult = await chrome.runtime.sendMessage({ action: 'extractPdfText', url });
     if (textResult?.text) {
+      updateProgress('Analyzing text...');
       const header = textResult.text.substring(0, 3000);
       const textDoi = header.match(/(?:doi[:\s]*|https?:\/\/(?:dx\.)?doi\.org\/)(10\.\d{4,}\/[^\s<>"{}|\\^~\[\]`]+)/i)
         || header.match(/\b(10\.\d{4,}\/[^\s<>"{}|\\^~\[\]`]+)/);
@@ -1873,14 +1921,15 @@ async function extractPdfViaServiceWorker(url) {
   populateFields(currentMetadata);
   showState('ready');
   if (currentMetadata.DOI) {
-    showHint('enhancing', 'DOI found — enhancing...');
+    updateProgress('Resolving DOI...', currentMetadata.DOI);
     await tryAutoEnhance();
-    if (!_permissionHintLocked) dismissHint();
+    hideProgress();
   } else if (currentMetadata.title && currentMetadata.title.length > 15) {
-    showHint('enhancing', 'Searching by title...');
+    updateProgress('Searching by title...');
     await tryAutoEnhance();
-    if (!_permissionHintLocked) dismissHint();
+    hideProgress();
   } else {
+    hideProgress();
     showHint('sparse', 'Could not extract DOI from PDF. Paste a DOI below and click Enhance.');
   }
 }

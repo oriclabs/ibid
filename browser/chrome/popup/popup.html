@@ -6,7 +6,27 @@
   <title>Ibid</title>
   <link rel="stylesheet" href="../styles/ibid.css">
 </head>
-<body class="w-[400px] h-[560px] bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-sans text-sm flex flex-col overflow-hidden">
+<body class="w-[400px] h-[560px] bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-sans text-sm flex flex-col overflow-hidden relative">
+
+  <!-- Action card overlay — user decisions (PDF scan, permissions) -->
+  <div id="action-overlay" class="hidden absolute inset-0 z-50 flex items-center justify-center p-6" style="background:rgba(0,0,0,0.3);">
+    <div id="action-card" class="bg-white dark:bg-zinc-800 rounded-xl shadow-xl border border-zinc-200 dark:border-zinc-700 p-5 w-full max-w-[320px] text-center">
+      <div id="action-icon" class="text-3xl mb-2"></div>
+      <h3 id="action-title" class="text-sm font-semibold mb-1"></h3>
+      <p id="action-message" class="text-xs text-zinc-500 dark:text-zinc-400 mb-4"></p>
+      <div id="action-buttons" class="flex flex-col gap-2"></div>
+    </div>
+  </div>
+
+  <!-- Progress overlay — HTTP operations -->
+  <div id="progress-overlay" class="hidden absolute inset-0 z-40 flex items-center justify-center p-6" style="background:rgba(255,255,255,0.5);backdrop-filter:blur(1px);">
+    <div class="bg-white dark:bg-zinc-800 rounded-xl shadow-lg border border-zinc-200 dark:border-zinc-700 px-6 py-4 text-center max-w-[280px]">
+      <div class="mx-auto mb-3" style="width:32px;height:32px;border:3px solid #fef3c7;border-top-color:#f49707;border-radius:50%;animation:spin 1s linear infinite;"></div>
+      <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+      <p id="progress-text" class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Processing...</p>
+      <p id="progress-detail" class="text-[10px] text-zinc-400 mt-1"></p>
+    </div>
+  </div>
 
   <!-- Header -->
   <header class="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800">
@@ -91,8 +111,8 @@
 
   <!-- Loading state -->
   <div id="state-loading" class="flex flex-col items-center justify-center py-12 gap-3">
-    <div class="w-8 h-8 border-2 border-saffron-300 border-t-saffron-600 rounded-full animate-spin"></div>
-    <p class="text-zinc-500 dark:text-zinc-400">Extracting metadata...</p>
+    <div class="mx-auto" style="width:32px;height:32px;border:3px solid #fef3c7;border-top-color:#f49707;border-radius:50%;animation:spin 1s linear infinite;"></div>
+    <p class="text-zinc-500 dark:text-zinc-400 text-sm">Reading page metadata...</p>
   </div>
 
   <!-- Main content (hidden until loaded) -->

@@ -98,35 +98,18 @@ async function loadStyleXml(styleId) {
 // Context Menus
 // ---------------------------------------------------------------------------
 
-chrome.runtime.onInstalled.addListener((details) => {
+chrome.runtime.onInstalled.addListener(async (details) => {
   // Show welcome page on first install
   if (details.reason === 'install') {
     chrome.tabs.create({ url: chrome.runtime.getURL('onboarding/welcome.html') });
   }
 
-  chrome.contextMenus.create({
-    id: 'ibid-cite-page',
-    title: 'Cite this page',
-    contexts: ['page'],
-  });
-
-  chrome.contextMenus.create({
-    id: 'ibid-cite-link',
-    title: 'Cite linked page',
-    contexts: ['link'],
-  });
-
-  chrome.contextMenus.create({
-    id: 'ibid-lookup-selection',
-    title: 'Look up selected DOI/ISBN',
-    contexts: ['selection'],
-  });
-
-  chrome.contextMenus.create({
-    id: 'ibid-import-dois',
-    title: 'Import DOIs from selection',
-    contexts: ['selection'],
-  });
+  // Remove existing menu items first, then recreate (prevents duplicate ID error on reload)
+  await chrome.contextMenus.removeAll();
+  chrome.contextMenus.create({ id: 'ibid-cite-page', title: 'Cite this page', contexts: ['page'] });
+  chrome.contextMenus.create({ id: 'ibid-cite-link', title: 'Cite linked page', contexts: ['link'] });
+  chrome.contextMenus.create({ id: 'ibid-lookup-selection', title: 'Look up selected DOI/ISBN', contexts: ['selection'] });
+  chrome.contextMenus.create({ id: 'ibid-import-dois', title: 'Import DOIs from selection', contexts: ['selection'] });
 });
 
 // Badge: show citation count on extension icon

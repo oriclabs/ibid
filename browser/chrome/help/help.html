@@ -298,15 +298,20 @@
 
       <section id="local-files" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
         <h2 class="text-base font-semibold mb-3">PDFs &amp; Local Files</h2>
-        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">Ibid uses multiple strategies to extract metadata from PDFs:</p>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">When you open a PDF, Ibid shows an action card with options:</p>
+        <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside mb-2">
+          <li><strong>Enhance via DOI</strong> &mdash; if a DOI is detected in the URL (arXiv, Nature, Springer, etc.), click to resolve full metadata instantly</li>
+          <li><strong>Scan PDF Text</strong> &mdash; downloads and scans the PDF to extract title, DOI, authors, and dates from the document text</li>
+          <li><strong>Enter manually</strong> &mdash; fill fields yourself or paste a DOI and click Enhance</li>
+        </ul>
+        <h3 class="text-sm font-medium mb-1">How PDF scanning works</h3>
         <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside mb-2">
           <li><strong>PDF info dictionary</strong> &mdash; title, author, date, keywords from binary metadata</li>
           <li><strong>XMP metadata</strong> &mdash; richer embedded XML with DOI, journal name, volume, issue, pages</li>
           <li><strong>Full text extraction</strong> &mdash; Rust/WASM extracts text from the first pages to find DOI, dates, title, and authors</li>
-          <li><strong>DOI from URL</strong> &mdash; recognizes DOI patterns in URLs from Nature, Springer, Wiley, T&amp;F, arXiv, and other publishers</li>
+          <li><strong>Title search</strong> &mdash; if no DOI is found, Ibid searches by title on OpenAlex to find the paper</li>
+          <li><strong>DOI from URL</strong> &mdash; recognizes DOI patterns in URLs from academic publishers</li>
           <li><strong>DOI from filename</strong> &mdash; detects DOIs in downloaded filenames (e.g. <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">10.1038_s41586-024-07386-0.pdf</code>)</li>
-          <li><strong>Article page fetch</strong> &mdash; when a DOI is found, Ibid can fetch the publisher's article page for complete metadata (requires API access, see below)</li>
-          <li><strong>Auto-enhance</strong> &mdash; resolves DOI via OpenAlex or CrossRef to fill all remaining fields</li>
         </ul>
         <h3 class="text-sm font-medium mb-1">Right-click options on PDFs</h3>
         <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside mb-2">
