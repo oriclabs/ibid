@@ -269,14 +269,14 @@ function renderCitationRow(item) {
               <span class="text-[9px] text-zinc-400 flex-1">Preview</span>
               <button class="preview-copy-bib text-[9px] text-saffron-600 dark:text-saffron-400 hover:text-saffron-800 font-medium" data-id="${item.id}">Copy Bib</button>
             </div>
-            <div class="preview-bib-output text-[11px] leading-relaxed text-zinc-700 dark:text-zinc-300 mb-1.5 pb-1.5 border-b border-zinc-200 dark:border-zinc-700 select-all">${CitationFormatter.formatBibSync(item, 'apa')}</div>
+            <div class="preview-bib-output text-[11px] leading-relaxed text-zinc-700 dark:text-zinc-300 mb-1.5 pb-1.5 border-b border-zinc-200 dark:border-zinc-700 select-all"><span class="text-zinc-400 italic">Loading preview...</span></div>
             <div class="flex items-center gap-1.5">
               <span class="text-[8px] text-zinc-400 uppercase tracking-wider shrink-0">In-text</span>
               <div class="inline-flex rounded overflow-hidden border border-zinc-200 dark:border-zinc-600 shrink-0">
                 <button class="preview-pn-btn text-[8px] px-1.5 py-0.5 bg-saffron-500 text-white" data-id="${item.id}" data-mode="parenthetical">P</button>
                 <button class="preview-pn-btn text-[8px] px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300" data-id="${item.id}" data-mode="narrative">N</button>
               </div>
-              <div class="preview-intext-output text-[11px] text-zinc-500 dark:text-zinc-400 select-all flex-1">${CitationFormatter.formatIntextSync(item, 'apa')}</div>
+              <div class="preview-intext-output text-[11px] text-zinc-500 dark:text-zinc-400 select-all flex-1"><span class="text-zinc-400 italic">...</span></div>
               <button class="preview-copy-intext text-[8px] px-2 py-0.5 rounded bg-saffron-100 dark:bg-saffron-900/30 text-saffron-600 dark:text-saffron-400 hover:bg-saffron-200 dark:hover:bg-saffron-900/50 font-medium shrink-0 transition-colors" data-id="${item.id}">Copy</button>
             </div>
           </div>
@@ -306,7 +306,7 @@ function bindCitationEvents() {
       const item = allCitations.find((c) => c.id === id);
       if (!item) return;
 
-      const formatted = CitationFormatter.formatBibSync(item, 'apa');
+      const formatted = await CitationFormatter.formatBib(item, 'apa7') || CitationFormatter.formatBibSync(item, 'apa');
       try {
         await navigator.clipboard.writeText(formatted);
         // Flash the button
@@ -365,7 +365,27 @@ function bindCitationEvents() {
         for (const p of $$('.cite-preview')) {
           if (p !== preview) p.classList.add('hidden');
         }
+        const wasHidden = preview.classList.contains('hidden');
         preview.classList.toggle('hidden');
+
+        // First open: render via WASM (replaces placeholder)
+        if (wasHidden && !preview.dataset.rendered) {
+          preview.dataset.rendered = '1';
+          const item = allCitations.find(c => c.id === id);
+          if (item) {
+            const bibEl = preview.querySelector('.preview-bib-output');
+            const intextEl = preview.querySelector('.preview-intext-output');
+            // Get current style from picker or default
+            const picker = previewPickers.get(id);
+            const styleId = picker?.getValue?.() || 'apa7';
+            CitationFormatter.formatBib(item, styleId, { html: true }).then(bib => {
+              if (bibEl) bibEl.innerHTML = bib;
+            });
+            CitationFormatter.formatIntext(item, styleId, false).then(intext => {
+              if (intextEl) intextEl.textContent = intext;
+            });
+          }
+        }
       }
     });
   }
@@ -451,7 +471,7 @@ function bindCitationEvents() {
         // Check if narrative mode is active for this preview
         const narrativeBtn = $(`[data-preview-id="${id}"] .preview-pn-btn[data-mode="narrative"]`);
         const isNarrative = narrativeBtn?.classList.contains('bg-saffron-500');
-        const text = CitationFormatter.formatIntextSync(item, style, isNarrative);
+        const text = await CitationFormatter.formatIntext(item, style, isNarrative) || CitationFormatter.formatIntextSync(item, style, isNarrative);
         await navigator.clipboard.writeText(text);
         btn.textContent = 'Copied!';
         setTimeout(() => btn.textContent = 'Copy In-text', 1500);

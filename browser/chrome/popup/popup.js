@@ -812,13 +812,15 @@ async function requestScholarlyPermissions() {
   } catch { return false; }
 }
 
-async function ensureScholarlyPermissions() {
-  if (await hasScholarlyPermissions()) return true;
+async function ensureScholarlyPermissions(forcedHint = false) {
+  if (!forcedHint && await hasScholarlyPermissions()) return true;
 
   // Show a non-blocking hint — permissions should be granted from options page
   showHint('info',
-    'For better metadata from arXiv and scholarly APIs, ' +
-    '<a href="' + chrome.runtime.getURL('options/options.html') + '" target="_blank" class="underline text-saffron-600 hover:text-saffron-800">grant API access in settings</a>.'
+    (forcedHint
+      ? 'Scholarly API access may need to be re-granted after extension reload. '
+      : 'For better metadata from arXiv and scholarly APIs, ') +
+    '<a href="' + chrome.runtime.getURL('options/options.html') + '" target="_blank" class="underline text-saffron-600 hover:text-saffron-800">Grant API access in settings</a>.'
   );
   return false;
 }
@@ -859,6 +861,7 @@ async function tryAutoEnhance() {
 
   // Resolve silently — DOI metadata is authoritative, always worth trying
   let resolved = false;
+  let resolveError = null;
   try {
     const res = await chrome.runtime.sendMessage({
       action: 'resolve',
@@ -869,28 +872,34 @@ async function tryAutoEnhance() {
       applyResolved(res.resolved, res.source);
       resolved = true;
     }
-  } catch {
-    // Primary resolution failed
+    if (res?.error) resolveError = res.error;
+  } catch (e) {
+    resolveError = e.message || String(e);
   }
 
-  // If primary failed and identifier needs scholarly API access, prompt for permissions
+  // If failed and looks like CORS or needs scholarly API, prompt for permissions
   const needsScholarlyApi =
     doiField.match(/arxiv/i) || doiField.match(/^https?:\/\//i) ||
     doiField.match(/10\.48550/);
-  if (!resolved && needsScholarlyApi && !(await hasScholarlyPermissions())) {
-    const granted = await ensureScholarlyPermissions();
-    if (granted) {
-      // Retry with permissions
-      try {
-        const res = await chrome.runtime.sendMessage({
-          action: 'resolve',
-          identifier: doiField,
-        });
-        if (res?.resolved) {
-          applyResolved(res.resolved, res.source);
-          resolved = true;
-        }
-      } catch {}
+  const isCorsError = resolveError && /CORS|blocked|Failed to fetch|Network error/i.test(resolveError);
+  if (!resolved && (needsScholarlyApi || isCorsError)) {
+    const hasPerms = await hasScholarlyPermissions();
+    if (!hasPerms || isCorsError) {
+      // Show hint — forcedHint when permissions exist but CORS still fails (extension reload)
+      const granted = await ensureScholarlyPermissions(hasPerms && isCorsError);
+      if (granted) {
+        // Retry with permissions
+        try {
+          const res = await chrome.runtime.sendMessage({
+            action: 'resolve',
+            identifier: doiField,
+          });
+          if (res?.resolved) {
+            applyResolved(res.resolved, res.source);
+            resolved = true;
+          }
+        } catch {}
+      }
     }
   }
 
