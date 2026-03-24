@@ -771,17 +771,16 @@ async function handleMessage(message) {
     case 'extractPdfText': {
       try {
         if (!message.url) return { error: 'No URL provided' };
-        const res = await fetch(message.url);
+        // Timeout: 6s for download — if PDF is too large, skip text extraction
+        // The content script's binary scan already has DOI/ISBN from the first 32KB
+        const res = await fetch(message.url, { signal: AbortSignal.timeout(6000) });
         if (!res.ok) return { error: `Fetch failed: ${res.status}` };
         const buffer = await res.arrayBuffer();
         const bytes = new Uint8Array(buffer);
-        console.log('[Ibid] extractPdfText — fetched', bytes.length, 'bytes from', message.url);
         const text = engine.extractPdfText(bytes);
-        console.log('[Ibid] extractPdfText — extracted', text.length, 'chars');
         return { text };
       } catch (e) {
-        console.error('[Ibid] extractPdfText FAILED:', e.message || e);
-        return { error: e.message || String(e) };
+        return { error: e.name === 'TimeoutError' ? 'PDF download timed out' : (e.message || String(e)) };
       }
     }
 

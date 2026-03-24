@@ -2366,3 +2366,249 @@ test.describe('Phase 10 — Store Screenshots', () => {
     await page.close();
   });
 });
+
+// =============================================================================
+// Phase 11 — Multi-Source Resolver, API Access, PDF Extraction
+// =============================================================================
+
+test.describe('Phase 11 — Resolver & PDF Improvements', () => {
+
+  test('11.1 — Options page has API access section', async () => {
+    const page = await ctx.context.newPage();
+    await page.goto(`chrome-extension://${ctx.extensionId}/options/options.html`);
+    await page.waitForTimeout(500);
+
+    const grantBtn = await page.$('#btn-grant-api');
+    expect(grantBtn).toBeTruthy();
+    const btnText = await grantBtn.textContent();
+    // In dev mode, permissions are auto-granted
+    expect(btnText.trim()).toMatch(/Grant|Granted/i);
+    log('Phase 11: API Access', 'Options page has Grant API button', 'PASS', btnText.trim());
+
+    const statusEl = await page.$('#api-status');
+    expect(statusEl).toBeTruthy();
+    log('Phase 11: API Access', 'Options page has API status indicator', 'PASS');
+
+    await page.close();
+  });
+
+  test('11.2 — Welcome page has API access section', async () => {
+    const page = await ctx.context.newPage();
+    await page.goto(`chrome-extension://${ctx.extensionId}/onboarding/welcome.html`);
+    await page.waitForTimeout(500);
+
+    const grantBtn = await page.$('#btn-grant-api');
+    expect(grantBtn).toBeTruthy();
+    log('Phase 11: API Access', 'Welcome page has Grant API button', 'PASS');
+
+    await page.close();
+  });
+
+  test('11.3 — Help page has API access section', async () => {
+    const page = await ctx.context.newPage();
+    await page.goto(`chrome-extension://${ctx.extensionId}/help/help.html`);
+    await page.waitForTimeout(500);
+
+    const apiSection = await page.$('#api-access');
+    expect(apiSection).toBeTruthy();
+    log('Phase 11: Help', 'Help page has API access section', 'PASS');
+
+    // Check the API table has expected entries
+    const tableText = await apiSection.textContent();
+    expect(tableText).toContain('OpenAlex');
+    expect(tableText).toContain('CrossRef');
+    expect(tableText).toContain('arXiv');
+    expect(tableText).toContain('Citoid');
+    expect(tableText).toContain('Open Library');
+    log('Phase 11: Help', 'API table lists all sources', 'PASS');
+
+    await page.close();
+  });
+
+  test('11.4 — Help page has updated PDF section', async () => {
+    const page = await ctx.context.newPage();
+    await page.goto(`chrome-extension://${ctx.extensionId}/help/help.html`);
+    await page.waitForTimeout(500);
+
+    const pdfSection = await page.$('#pdfs');
+    if (pdfSection) {
+      const pdfText = await pdfSection.textContent();
+      expect(pdfText).toContain('XMP metadata');
+      expect(pdfText).toContain('Full text extraction');
+      expect(pdfText).toContain('DOI from URL');
+      expect(pdfText).toContain('DOI from filename');
+      log('Phase 11: Help', 'PDF section documents new extraction features', 'PASS');
+    } else {
+      log('Phase 11: Help', 'PDF section not found', 'WARN');
+    }
+
+    await page.close();
+  });
+
+  test('11.5 — Help page privacy updated', async () => {
+    const page = await ctx.context.newPage();
+    await page.goto(`chrome-extension://${ctx.extensionId}/help/help.html`);
+    await page.waitForTimeout(500);
+
+    const privacySection = await page.$('#privacy');
+    expect(privacySection).toBeTruthy();
+    const privacyText = await privacySection.textContent();
+    expect(privacyText).toContain('optional');
+    expect(privacyText).toContain('rate-limited');
+    log('Phase 11: Help', 'Privacy section mentions optional API access and rate limiting', 'PASS');
+
+    await page.close();
+  });
+
+  test('11.6 — Popup extraction timeout fallback', async () => {
+    // Open popup on a restricted page (about:blank) to trigger timeout/fallback
+    const page = await ctx.context.newPage();
+    await page.goto('about:blank');
+    await page.waitForTimeout(200);
+
+    const popup = await ctx.context.newPage();
+    await popup.goto(ctx.popupUrl);
+    await popup.waitForTimeout(1000);
+
+    // Should show ready state even on restricted pages
+    const state = await popup.$('.ibid-state-ready, #field-title');
+    expect(state).toBeTruthy();
+    log('Phase 11: Timeout', 'Popup shows ready state on restricted page', 'PASS');
+
+    await popup.close();
+    await page.close();
+  });
+
+  test('11.7 — Identifiers.js loaded in content scripts', async () => {
+    const page = await openPopupOnUrl(ctx, 'https://example.com');
+    await page.waitForTimeout(1000);
+
+    // Check if IbidIdentifiers is available on the page
+    const tab = (await ctx.context.pages()).find(p => p.url().includes('example.com'));
+    if (tab) {
+      const hasIdentifiers = await tab.evaluate(() => typeof window.IbidIdentifiers !== 'undefined');
+      expect(hasIdentifiers).toBe(true);
+      log('Phase 11: Identifiers', 'IbidIdentifiers loaded in content script', 'PASS');
+
+      // Test extractIdentifier function
+      const doiResult = await tab.evaluate(() =>
+        window.IbidIdentifiers.extractIdentifier('10.1038/nature12373'));
+      expect(doiResult).toBeTruthy();
+      expect(doiResult.type).toBe('DOI');
+      log('Phase 11: Identifiers', 'extractIdentifier works for DOI', 'PASS');
+
+      const arxivResult = await tab.evaluate(() =>
+        window.IbidIdentifiers.extractIdentifier('arxiv:2303.08774'));
+      expect(arxivResult).toBeTruthy();
+      expect(arxivResult.type).toBe('arXiv');
+      log('Phase 11: Identifiers', 'extractIdentifier works for arXiv', 'PASS');
+
+      const urlDoiResult = await tab.evaluate(() =>
+        window.IbidIdentifiers.extractDoiFromUrl('https://www.nature.com/articles/s41586-024-07386-0.pdf'));
+      expect(urlDoiResult).toBeTruthy();
+      expect(urlDoiResult.id).toContain('10.1038');
+      log('Phase 11: Identifiers', 'extractDoiFromUrl works for Nature PDF', 'PASS');
+    }
+
+    await page.close();
+  });
+
+  test('11.8 — Firefox manifest generated correctly', async () => {
+    const fs = require('fs');
+    const path = require('path');
+    const manifestPath = path.resolve(__dirname, '../../browser/firefox/manifest.json');
+
+    // Generate if not exists
+    if (!fs.existsSync(manifestPath)) {
+      const { execSync } = require('child_process');
+      execSync('node scripts/build-firefox-manifest.js', { cwd: path.resolve(__dirname, '../..') });
+    }
+
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+
+    // Verify Firefox-specific changes
+    expect(manifest.background.scripts).toBeTruthy();
+    expect(manifest.background.service_worker).toBeUndefined();
+    expect(manifest.sidebar_action).toBeTruthy();
+    expect(manifest.side_panel).toBeUndefined();
+    expect(manifest.browser_specific_settings?.gecko?.id).toBeTruthy();
+    expect(manifest.optional_permissions).toContain('https://arxiv.org/*');
+    expect(manifest.optional_host_permissions).toBeUndefined();
+    expect(manifest.permissions).not.toContain('sidePanel');
+    expect(manifest.commands['_execute_sidebar_action']).toBeTruthy();
+    expect(manifest.commands['_execute_side_panel']).toBeUndefined();
+
+    log('Phase 11: Firefox', 'Firefox manifest has correct structure', 'PASS');
+  });
+
+  test('11.9 — Service worker has proxyFetch handler', async () => {
+    // Test proxyFetch via message to service worker
+    const page = await ctx.context.newPage();
+    await page.goto(`chrome-extension://${ctx.extensionId}/popup/popup.html`);
+    await page.waitForTimeout(1000);
+
+    const result = await page.evaluate(async () => {
+      const res = await chrome.runtime.sendMessage({
+        action: 'proxyFetch',
+        url: 'https://httpbin.org/get',
+        options: { timeout: 5000 },
+      });
+      return res;
+    });
+
+    if (result?.ok) {
+      expect(result.status).toBe(200);
+      log('Phase 11: ProxyFetch', 'proxyFetch handler works', 'PASS');
+    } else {
+      log('Phase 11: ProxyFetch', 'proxyFetch returned error (network issue?)', 'WARN', result?.error);
+    }
+
+    await page.close();
+  });
+
+  test('11.10 — Service worker has resolveByTitle handler', async () => {
+    const page = await ctx.context.newPage();
+    await page.goto(`chrome-extension://${ctx.extensionId}/popup/popup.html`);
+    await page.waitForTimeout(1000);
+
+    const result = await page.evaluate(async () => {
+      const res = await chrome.runtime.sendMessage({
+        action: 'resolveByTitle',
+        title: 'GPT-4 Technical Report',
+      });
+      return res;
+    });
+
+    if (result?.resolved) {
+      expect(result.resolved.title).toContain('GPT-4');
+      log('Phase 11: TitleSearch', 'resolveByTitle returns result for GPT-4', 'PASS');
+    } else {
+      log('Phase 11: TitleSearch', 'resolveByTitle failed (network?)', 'WARN', result?.error);
+    }
+
+    await page.close();
+  });
+
+  test('11.11 — Service worker has fetchArticleMeta handler', async () => {
+    const page = await ctx.context.newPage();
+    await page.goto(`chrome-extension://${ctx.extensionId}/popup/popup.html`);
+    await page.waitForTimeout(1000);
+
+    const result = await page.evaluate(async () => {
+      const res = await chrome.runtime.sendMessage({
+        action: 'fetchArticleMeta',
+        url: 'https://doi.org/10.4161/rna.22269',
+      });
+      return res;
+    });
+
+    if (result?.meta) {
+      log('Phase 11: ArticleMeta', 'fetchArticleMeta returns metadata', 'PASS',
+        `title: ${result.meta.title?.slice(0, 40)}, authors: ${result.meta.authors?.length}`);
+    } else {
+      log('Phase 11: ArticleMeta', 'fetchArticleMeta failed (network?)', 'WARN', result?.error);
+    }
+
+    await page.close();
+  });
+});

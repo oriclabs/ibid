@@ -359,8 +359,30 @@ document.addEventListener('DOMContentLoaded', async () => {
           tab.url?.includes('/pdf/') ||
           tab.url?.includes('application/pdf');
 
-        // Fresh extraction
+        // Fresh extraction with timeout fallback
+        let responded = false;
+        const extractionTimeout = setTimeout(() => {
+          if (responded) return;
+          responded = true;
+          // Timeout — show fallback with tab info
+          currentMetadata = {
+            title: tab.title?.replace(/\.pdf$/i, '').trim() || '',
+            URL: tab.url || '',
+            type: isPdfUrl ? 'document' : 'webpage',
+          };
+          populateFields(currentMetadata);
+          showState('ready');
+          showHint('sparse', isPdfUrl
+            ? 'PDF extraction timed out. Paste a DOI below and click Enhance for full metadata.'
+            : 'Extraction timed out. Fields pre-filled from tab info — review and complete manually.');
+          tryAutoEnhance();
+        }, 8000); // 8s timeout — auto-enhance fills gaps if extraction is slow
+
         chrome.tabs.sendMessage(tab.id, { action: 'extractMetadata' }, (response) => {
+          if (responded) return;
+          responded = true;
+          clearTimeout(extractionTimeout);
+
           if (chrome.runtime.lastError || !response?.metadata) {
             currentMetadata = {
               title: tab.title || '',
@@ -383,7 +405,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const hasTitle = !!currentMetadata.title;
 
             if (currentMetadata._isPdf || isPdfUrl) {
-              // PDF-specific hints
               if (hasTitle && hasAuthor && hasDoi) {
                 showHint('info', 'PDF metadata extracted. Review fields and click Enhance for complete details.');
               } else if (hasDoi) {
@@ -439,7 +460,7 @@ function populateFields(meta) {
     $('#field-doi').value = doiVal;
   } else if (meta.ISBN) {
     $('#field-doi').value = meta.ISBN;
-  } else if (meta.URL && meta.URL.length < 200) {
+  } else if (meta.URL && meta.URL.length < 200 && /^https?:\/\//i.test(meta.URL)) {
     $('#field-doi').value = meta.URL;
   } else {
     $('#field-doi').value = '';

@@ -1,0 +1,83 @@
+{
+  "manifest_version": 3,
+  "name": "Ibid — Citation Manager",
+  "version": "0.1.0",
+  "description": "Privacy-first citation manager. One-click accurate citations in 74 styles: APA, MLA, Chicago, Harvard, IEEE, Vancouver, Nature, Lancet & more. Powered by Rust/WASM.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    },
+    "default_title": "Ibid — Cite this page"
+  },
+  "background": {
+    "scripts": [
+      "background/service-worker.js"
+    ],
+    "type": "module"
+  },
+  "content_security_policy": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
+  "options_page": "options/options.html",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "contextMenus"
+  ],
+  "omnibox": {
+    "keyword": "cite"
+  },
+  "commands": {
+    "cite-page": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+C",
+        "mac": "Command+Shift+C"
+      },
+      "description": "Cite current page"
+    },
+    "_execute_sidebar_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
+      },
+      "description": "Open side panel"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "wasm/ibid_core_bg.wasm",
+        "wasm/ibid_core.js",
+        "styles/csl/*.csl"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "optional_permissions": [
+    "https://arxiv.org/*",
+    "https://export.arxiv.org/*",
+    "https://api.semanticscholar.org/*",
+    "https://en.wikipedia.org/*",
+    "https://doi.org/*"
+  ],
+  "sidebar_action": {
+    "default_panel": "sidepanel/sidepanel.html",
+    "default_title": "Ibid — Library",
+    "default_icon": "icons/icon-32.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "ibid@ibid.tools",
+      "strict_min_version": "109.0"
+    }
+  }
+}

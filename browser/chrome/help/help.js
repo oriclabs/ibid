@@ -36,3 +36,8 @@ document.getElementById('toc-toggle').addEventListener('click', () => {
   sidebar.classList.toggle('border-zinc-200');
   sidebar.classList.toggle('shadow-lg');
 });
+
+// Browser detection — show/hide Chrome/Firefox-specific content
+const isFirefox = typeof browser !== 'undefined' || navigator.userAgent.includes('Firefox');
+document.querySelectorAll('.ibid-chrome-only').forEach(el => el.classList.toggle('hidden', isFirefox));
+document.querySelectorAll('.ibid-firefox-only').forEach(el => el.classList.toggle('hidden', !isFirefox));

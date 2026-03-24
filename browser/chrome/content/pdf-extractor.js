@@ -197,6 +197,20 @@ if (!window.__ibidPdfExtractorLoaded) {
         } catch {}
       }
 
+      // 2b. DOI/arXiv from filename (e.g. "10.1038_s41586-024-07386-0.pdf")
+      try {
+        const filename = decodeURIComponent(window.location.href.split('/').pop() || '')
+          .replace(/\.pdf$/i, '');
+        // DOI in filename: 10.xxxx_rest or 10.xxxx-rest (slash replaced with _ or -)
+        const filenameDoi = filename.match(/\b(10\.\d{4,})[_]([\w.\-]+)/);
+        if (filenameDoi && !meta.DOI) meta.DOI = filenameDoi[1] + '/' + filenameDoi[2];
+        // arXiv ID in filename: 2303.08774
+        if (!meta.DOI) {
+          const filenameArxiv = filename.match(/\b(\d{4}\.\d{4,5})\b/);
+          if (filenameArxiv) meta.DOI = '10.48550/arXiv.' + filenameArxiv[1];
+        }
+      } catch {}
+
       // 3. DOI from URL — uses shared identifier patterns
       const url = window.location.href;
       if (typeof window.IbidIdentifiers !== 'undefined') {

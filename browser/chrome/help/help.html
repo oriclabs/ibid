@@ -50,6 +50,7 @@
         <li><a href="#keyboard" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Shortcuts</a></li>
         <li><a href="#context-menu" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Context Menu</a></li>
         <li><a href="#backup" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Backup</a></li>
+        <li><a href="#api-access" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">API Access</a></li>
         <li><a href="#privacy" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Privacy</a></li>
         <li><a href="#troubleshooting" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Troubleshooting</a></li>
         <li><a href="#formats" class="sidebar-link block px-3 py-1.5 rounded-r text-zinc-600 dark:text-zinc-400 hover:text-saffron-600 hover:bg-saffron-50 dark:hover:bg-saffron-900/10 transition-colors">Formats Reference</a></li>
@@ -89,16 +90,17 @@
       <section id="auto-enhance" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
         <h2 class="text-base font-semibold mb-3">Auto-Enhance &amp; Identifier Lookup</h2>
         <h3 class="text-sm font-medium mb-1">Automatic</h3>
-        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">When a DOI/PMID/arXiv ID is found and key fields are empty, Ibid silently resolves via API and fills them. Enhanced fields flash saffron.</p>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">When a DOI, PMID, arXiv ID, ISBN, or URL is found and key fields are missing, Ibid silently resolves via multiple APIs and fills them. Enhanced fields flash saffron. If no identifier is found but a title exists, Ibid searches by title as a fallback.</p>
         <h3 class="text-sm font-medium mb-1">Manual (Enhance button)</h3>
         <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">Paste any identifier and click <strong>Enhance</strong>:</p>
         <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside">
-          <li><strong>DOI</strong> &mdash; <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">10.1038/nature12373</code> &rarr; CrossRef</li>
-          <li><strong>ISBN</strong> &mdash; <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">978-0-13-468599-1</code> &rarr; Open Library</li>
+          <li><strong>DOI</strong> &mdash; <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">10.1038/nature12373</code> &rarr; OpenAlex &rarr; CrossRef</li>
+          <li><strong>ISBN</strong> &mdash; <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">978-0-13-468599-1</code> &rarr; Open Library &rarr; Google Books</li>
           <li><strong>PMID</strong> &mdash; <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">PMID:12345678</code> &rarr; NCBI/PubMed</li>
-          <li><strong>arXiv</strong> &mdash; <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">arxiv:2301.07041</code> &rarr; arXiv API</li>
+          <li><strong>arXiv</strong> &mdash; <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">arxiv:2301.07041</code> &rarr; arXiv abstract page &rarr; Semantic Scholar</li>
+          <li><strong>URL</strong> &mdash; <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">https://example.com/article</code> &rarr; Citoid (Wikipedia)</li>
         </ul>
-        <p class="text-sm text-zinc-600 dark:text-zinc-400 mt-2">Enhance <strong>never overwrites</strong> fields you've already filled.</p>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mt-2">Enhance uses smart overrides: DOI-resolved authors replace page-extracted ones when the API returns more names. Journal names from DOI resolution always take priority over page metadata.</p>
       </section>
 
       <section id="type-validation" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
@@ -296,12 +298,15 @@
 
       <section id="local-files" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
         <h2 class="text-base font-semibold mb-3">PDFs &amp; Local Files</h2>
-        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">Ibid extracts metadata from PDF files when possible:</p>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">Ibid uses multiple strategies to extract metadata from PDFs:</p>
         <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside mb-2">
-          <li><strong>PDF metadata</strong> &mdash; title, author, date, keywords from the PDF info dictionary</li>
-          <li><strong>DOI detection</strong> &mdash; scans the first pages for DOI patterns</li>
-          <li><strong>ISBN detection</strong> &mdash; scans for ISBN-10/ISBN-13 (sets type to Book)</li>
-          <li><strong>Enhance</strong> &mdash; paste a DOI or ISBN and click Enhance to fill all fields</li>
+          <li><strong>PDF info dictionary</strong> &mdash; title, author, date, keywords from binary metadata</li>
+          <li><strong>XMP metadata</strong> &mdash; richer embedded XML with DOI, journal name, volume, issue, pages</li>
+          <li><strong>Full text extraction</strong> &mdash; Rust/WASM extracts text from the first pages to find DOI, dates, title, and authors</li>
+          <li><strong>DOI from URL</strong> &mdash; recognizes DOI patterns in URLs from Nature, Springer, Wiley, T&amp;F, arXiv, and other publishers</li>
+          <li><strong>DOI from filename</strong> &mdash; detects DOIs in downloaded filenames (e.g. <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">10.1038_s41586-024-07386-0.pdf</code>)</li>
+          <li><strong>Article page fetch</strong> &mdash; when a DOI is found, Ibid can fetch the publisher's article page for complete metadata (requires API access, see below)</li>
+          <li><strong>Auto-enhance</strong> &mdash; resolves DOI via OpenAlex or CrossRef to fill all remaining fields</li>
         </ul>
         <h3 class="text-sm font-medium mb-1">Right-click options on PDFs</h3>
         <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside mb-2">
@@ -311,7 +316,7 @@
           <li>Select text with multiple DOIs &rarr; <strong>"Import DOIs from selection"</strong> &mdash; bulk import via Library</li>
         </ul>
         <h3 class="text-sm font-medium mb-1">Local files</h3>
-        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">For <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">file:///</code> URLs, enable <strong>"Allow access to file URLs"</strong> in <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">chrome://extensions</code> for auto-extraction.</p>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">For <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">file:///</code> URLs, enable <strong>"Allow access to file URLs"</strong> in <span class="ibid-chrome-only"><code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">chrome://extensions</code></span><span class="ibid-firefox-only hidden"><code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">about:addons</code></span> for auto-extraction. If the filename contains a DOI (e.g. <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">10.1038_s41586-024-07386-0.pdf</code>), it will be detected automatically.</p>
       </section>
 
       <section id="quick-settings" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
@@ -358,15 +363,56 @@
         </ul>
       </section>
 
+      <section id="api-access" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
+        <h2 class="text-base font-semibold mb-3">Scholarly API Access <span class="text-xs font-normal text-zinc-400">(optional)</span></h2>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">Ibid can fetch metadata from scholarly APIs for better citation accuracy. This is <strong>optional</strong> &mdash; core citation features work without it.</p>
+
+        <h3 class="text-sm font-medium mb-1">What it enables</h3>
+        <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside mb-2">
+          <li><strong>arXiv papers</strong> &mdash; fetches complete author lists and abstracts from arXiv abstract pages</li>
+          <li><strong>DOI resolution via doi.org</strong> &mdash; follows DOI links to publisher pages for full metadata</li>
+          <li><strong>Semantic Scholar</strong> &mdash; alternative metadata source for computer science papers</li>
+          <li><strong>Wikipedia/Citoid</strong> &mdash; resolves any URL to structured citation data</li>
+        </ul>
+
+        <h3 class="text-sm font-medium mb-1">How to enable</h3>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">
+          <span class="ibid-chrome-only">Go to <strong>Settings</strong> (gear icon &rarr; Advanced Settings) and click <strong>Grant API access</strong>. You can also grant access during first-time setup on the Welcome page.</span>
+          <span class="ibid-firefox-only hidden">Firefox grants these permissions automatically when you approve the extension.</span>
+        </p>
+
+        <h3 class="text-sm font-medium mb-1">Which APIs are contacted</h3>
+        <table class="text-xs text-zinc-600 dark:text-zinc-400 w-full border-collapse mb-2">
+          <thead><tr class="border-b border-zinc-200 dark:border-zinc-700">
+            <th class="text-left py-1 pr-2">API</th><th class="text-left py-1 pr-2">When used</th><th class="text-left py-1">Data sent</th>
+          </tr></thead>
+          <tbody>
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1 pr-2">OpenAlex</td><td class="py-1 pr-2">DOI lookup, title search</td><td class="py-1">DOI or title string</td></tr>
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1 pr-2">CrossRef</td><td class="py-1 pr-2">DOI lookup (fallback)</td><td class="py-1">DOI</td></tr>
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1 pr-2">arXiv</td><td class="py-1 pr-2">arXiv paper metadata</td><td class="py-1">arXiv ID</td></tr>
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1 pr-2">Semantic Scholar</td><td class="py-1 pr-2">arXiv papers (fallback)</td><td class="py-1">arXiv ID</td></tr>
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1 pr-2">Citoid (Wikipedia)</td><td class="py-1 pr-2">URL-based citation</td><td class="py-1">Page URL</td></tr>
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1 pr-2">Open Library</td><td class="py-1 pr-2">ISBN lookup</td><td class="py-1">ISBN</td></tr>
+            <tr class="border-b border-zinc-100 dark:border-zinc-800"><td class="py-1 pr-2">Google Books</td><td class="py-1 pr-2">ISBN lookup (fallback)</td><td class="py-1">ISBN</td></tr>
+            <tr><td class="py-1 pr-2">NCBI/PubMed</td><td class="py-1 pr-2">PMID lookup</td><td class="py-1">PMID</td></tr>
+          </tbody>
+        </table>
+        <div class="p-3 bg-saffron-50 dark:bg-saffron-900/10 rounded text-xs text-saffron-800 dark:text-saffron-300">
+          <strong>Privacy:</strong> Only the identifier (DOI, ISBN, arXiv ID, or URL) is sent to these APIs. No personal data, no browsing history, no tracking. All APIs are public and free. Requests are rate-limited to avoid abuse.
+        </div>
+      </section>
+
       <section id="privacy" class="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-5">
         <h2 class="text-base font-semibold mb-3">Privacy</h2>
         <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside">
-          <li>Zero telemetry, zero tracking</li>
-          <li>All processing local (Rust/WASM)</li>
-          <li>No bandwidth abuse</li>
-          <li>Minimal permissions: activeTab, storage, sidePanel, contextMenus</li>
-          <li>Network calls only for DOI/ISBN lookups (Enhance) and optional style downloads from GitHub</li>
-          <li>No account required</li>
+          <li>Zero telemetry, zero tracking, zero analytics</li>
+          <li>All citation processing runs locally via Rust/WASM &mdash; no server</li>
+          <li>No bandwidth abuse &mdash; API requests are queued and rate-limited</li>
+          <li>Minimal permissions: <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">activeTab</code>, <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">storage</code>, <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">contextMenus</code></li>
+          <li>Scholarly API access is <strong>optional</strong> &mdash; you choose whether to grant it</li>
+          <li>Network calls are made <strong>only</strong> for: identifier lookups (DOI/ISBN/PMID/arXiv), style downloads from GitHub, and article page fetches when you click Enhance</li>
+          <li>No account required, no sign-up, no cloud sync (yet)</li>
+          <li>Your citation library is stored locally in <code class="text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">chrome.storage.local</code> &mdash; only you can access it</li>
         </ul>
       </section>
 
