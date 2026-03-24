@@ -153,7 +153,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     try {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        files: ['content/extractor.js'],
+        files: ['shared/identifiers.js', 'content/extractor.js'],
       });
     } catch (e) { /* may already be injected or restricted page */ }
   }

@@ -198,46 +198,22 @@ if (!window.__ibidPdfExtractorLoaded) {
         } catch {}
       }
 
-      // 3. DOI from URL — multiple patterns
+      // 3. DOI from URL — uses shared identifier patterns
       const url = window.location.href;
-      const urlDoi = url.match(/10\.\d{4,}\/[^\s&?#]+/);
-      if (urlDoi) meta.DOI = urlDoi[0].replace(/[.,;:)\]}>]+$/, '');
-
-      if (!meta.DOI) {
-        // arXiv: arxiv.org/pdf/2303.08774
-        const arxivMatch = url.match(/arxiv\.org\/(?:abs|pdf)\/(\d{4}\.\d{4,5})/);
-        if (arxivMatch) meta.DOI = '10.48550/arXiv.' + arxivMatch[1];
-      }
-      if (!meta.DOI) {
-        // Nature: nature.com/articles/s41586-024-07386-0.pdf
-        const natureMatch = url.match(/nature\.com\/articles\/([^/.]+)\.pdf/);
-        if (natureMatch) meta.DOI = '10.1038/' + natureMatch[1];
-      }
-      if (!meta.DOI) {
-        // Springer: link.springer.com/content/pdf/10.1007/...
-        const springerMatch = url.match(/springer\.com\/content\/pdf\/(10\.\d{4,}\/[^.]+)/);
-        if (springerMatch) meta.DOI = springerMatch[1];
-      }
-      if (!meta.DOI) {
-        // ScienceDirect: sciencedirect.com/science/article/pii/S0123456789 → need DOI from page
-        // Wiley: onlinelibrary.wiley.com/doi/pdfdirect/10.1002/...
-        const wileyMatch = url.match(/wiley\.com\/doi\/(?:pdfdirect|epdf)\/(10\.\d{4,}\/[^?#]+)/);
-        if (wileyMatch) meta.DOI = decodeURIComponent(wileyMatch[1]);
-      }
-      if (!meta.DOI) {
-        // Taylor & Francis: tandfonline.com/doi/pdf/10.4161/rna.22269
-        const tfMatch = url.match(/tandfonline\.com\/doi\/(?:pdf|epdf)\/(10\.\d{4,}\/[^?#]+)/);
-        if (tfMatch) meta.DOI = decodeURIComponent(tfMatch[1]);
-      }
-      if (!meta.DOI) {
-        // SAGE, ACS, generic /doi/pdf/ pattern
-        const genericDoiPdf = url.match(/\/doi\/(?:pdf|epdf|pdfdirect|full)\/(10\.\d{4,}\/[^?#]+)/);
-        if (genericDoiPdf) meta.DOI = decodeURIComponent(genericDoiPdf[1]);
-      }
-      if (!meta.DOI) {
-        // PMC: ncbi.nlm.nih.gov/pmc/articles/PMC1234567/pdf/
-        const pmcMatch = url.match(/\/pmc\/articles\/(PMC\d+)/);
-        if (pmcMatch) meta._pmcId = pmcMatch[1];
+      if (typeof window.IbidIdentifiers !== 'undefined') {
+        const urlId = window.IbidIdentifiers.extractDoiFromUrl(url);
+        if (urlId) {
+          if (urlId.type === 'DOI') meta.DOI = urlId.id;
+          else if (urlId.type === 'PMC') meta._pmcId = urlId.id;
+        }
+      } else {
+        // Fallback: inline DOI extraction if identifiers.js not loaded
+        const urlDoi = url.match(/10\.\d{4,}\/[^\s&?#]+/);
+        if (urlDoi) meta.DOI = urlDoi[0].replace(/[.,;:)\]}>]+$/, '');
+        if (!meta.DOI) {
+          const arxivMatch = url.match(/arxiv\.org\/(?:abs|pdf)\/(\d{4}\.\d{4,5})/);
+          if (arxivMatch) meta.DOI = '10.48550/arXiv.' + arxivMatch[1];
+        }
       }
 
       // 4. Try to fetch PDF bytes and parse metadata dictionary

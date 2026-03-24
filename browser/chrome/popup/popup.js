@@ -303,9 +303,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Try injection (works only if user enabled "Allow access to file URLs")
       let injected = false;
       try {
-        await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content/extractor.js'] });
+        await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['shared/identifiers.js', 'content/extractor.js'] });
         if (tab.url?.toLowerCase().endsWith('.pdf') || tab.url?.includes('pdf')) {
-          await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content/pdfParser.js', 'content/pdf-extractor.js'] });
+          await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['shared/identifiers.js', 'content/pdfParser.js', 'content/pdf-extractor.js'] });
         }
         injected = true;
       } catch {}
@@ -328,13 +328,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       try {
         await chrome.scripting.executeScript({
           target: { tabId: tab.id },
-          files: ['content/extractor.js'],
+          files: ['shared/identifiers.js', 'content/extractor.js'],
         });
         // Also inject PDF extractor for PDF pages
         if (tab.url?.toLowerCase().endsWith('.pdf') || tab.url?.includes('pdf')) {
           await chrome.scripting.executeScript({
             target: { tabId: tab.id },
-            files: ['content/pdfParser.js', 'content/pdf-extractor.js'],
+            files: ['shared/identifiers.js', 'content/pdfParser.js', 'content/pdf-extractor.js'],
           });
         }
       } catch (e) {
@@ -1685,7 +1685,7 @@ async function rescanPage() {
     try {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        files: ['content/extractor.js'],
+        files: ['shared/identifiers.js', 'content/extractor.js'],
       });
     } catch (e) { /* may already be injected */ }
 
