@@ -304,7 +304,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       let injected = false;
       try {
         await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['shared/identifiers.js', 'content/extractor.js'] });
-        if (tab.url?.toLowerCase().endsWith('.pdf') || tab.url?.includes('pdf')) {
+        if (tab.url?.toLowerCase().match(/\.pdf(\?|#|$)/) || tab.url?.match(/\/pdf\/[\d.]/) || tab.url?.includes('application/pdf')) {
           await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['shared/identifiers.js', 'content/pdfParser.js', 'content/pdf-extractor.js'] });
         }
         injected = true;
@@ -331,7 +331,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           files: ['shared/identifiers.js', 'content/extractor.js'],
         });
         // Also inject PDF extractor for PDF pages
-        if (tab.url?.toLowerCase().endsWith('.pdf') || tab.url?.includes('pdf')) {
+        if (tab.url?.toLowerCase().match(/\.pdf(\?|#|$)/) || tab.url?.match(/\/pdf\/[\d.]/) || tab.url?.includes('application/pdf')) {
           await chrome.scripting.executeScript({
             target: { tabId: tab.id },
             files: ['shared/identifiers.js', 'content/pdfParser.js', 'content/pdf-extractor.js'],
@@ -354,9 +354,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         showHint('info', 'Restored from previous session. Click "Rescan Page" for fresh extraction.');
       } else {
         // Detect PDF from URL
-        const isPdfUrl = tab.url?.toLowerCase().includes('.pdf') ||
+        const isPdfUrl = tab.url?.toLowerCase().match(/\.pdf(\?|#|$)/) ||
           tab.url?.includes('pdf.sciencedirectassets') ||
-          tab.url?.includes('/pdf/') ||
+          tab.url?.match(/\/pdf\/[\d.]/) ||
           tab.url?.includes('application/pdf');
 
         // Fresh extraction with timeout fallback
@@ -1819,7 +1819,7 @@ async function rescanPage() {
     const cacheKey = `ibid_cache_${tab.id}`;
     await chrome.storage.session.remove([cacheKey]);
 
-    const isPdf = tab.url?.toLowerCase().includes('.pdf') || tab.url?.includes('pdf');
+    const isPdf = tab.url?.toLowerCase().match(/\.pdf(\?|#|$)/) || tab.url?.match(/\/pdf\/[\d.]/) || tab.url?.includes('application/pdf');
 
     // Re-inject content scripts
     try {
