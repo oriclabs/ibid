@@ -1,0 +1,112 @@
+FIREFOX ADD-ONS (AMO) LISTING
+===============================
+
+Name: Ibid — Citation Manager
+
+Summary (250 chars max):
+One-click citations in APA, MLA, Chicago, Harvard & 2,600+ styles. Privacy-first citation manager powered by Rust/WASM. No account needed. All processing local.
+
+Category: Web Development (closest AMO match for academic tools)
+
+License: MIT
+
+---
+
+Description:
+
+Ibid — from Latin "ibidem," meaning "in the same place" — is a citation manager built for students, researchers, and academics who need accurate references without compromising their privacy.
+
+Ibid runs a full Citation Style Language (CSL) engine directly in your browser using WebAssembly. All citation processing happens locally on your device. No data is sent to external servers. No account is required.
+
+HOW IT WORKS
+
+1. Visit any webpage, journal article, or book page
+2. Click the Ibid icon — metadata is extracted automatically
+3. Choose your citation style and copy the formatted reference
+
+Ibid supports one-click citing from academic publishers, news sites, and general webpages.
+
+CITATION STYLES
+
+74 styles bundled offline, including APA, MLA, Chicago, Harvard, and IEEE. 2,600+ additional styles from the official CSL repository can be downloaded on demand. Once downloaded, they work offline.
+
+FEATURES
+
+Citation & Formatting
+  - Accurate bibliography and in-text citations
+  - Parenthetical and narrative in-text toggle
+  - Smart metadata extraction from multiple web standards (structured data, meta tags, and page content)
+  - PDF metadata extraction via Rust/WASM — reads embedded text, document properties, and identifier patterns
+  - Editable fields — review and correct any auto-detected data before saving
+  - Auto-enhance — paste a DOI, ISBN, or other identifier to fill all fields from public academic APIs
+  - Multi-source resolver with automatic fallback for reliable results
+  - Title-based search fallback when no identifier is found
+
+Library Management
+  - Organize citations into projects
+  - Star, tag, and search your references
+  - Inline citation preview with per-entry style selection
+  - Duplicate detection
+  - Add entries manually with a built-in form
+  - Sidebar stays open while you research
+
+Import & Export
+  - Import and export in common academic formats (BibTeX, RIS, CSL-JSON, and more)
+  - Filter exports by project, type, or starred status
+
+Additional
+  - Dark mode
+  - Keyboard shortcuts (Ctrl+Shift+C to cite)
+  - Context menu integration
+  - Session persistence — reopen the popup without losing your work
+
+PRIVACY
+
+  - All citation processing happens locally in your browser
+  - No telemetry, analytics, or tracking
+  - No data collection — your library stays on your device
+  - Network requests only for identifier lookups and optional style downloads
+  - Minimal required permissions — no broad host access
+  - Optional scholarly API access is included in optional_permissions and prompted when needed
+  - Full privacy policy: https://ibid.tools/privacy
+
+TECHNICAL DETAILS
+
+Ibid uses a Rust/WebAssembly citation engine powered by Hayagriva (the CSL processor from the Typst project) for accurate rendering of all 2,600+ official CSL styles. An embedded English locale ensures correct terms ("et al.," month names, ordinals). The WASM engine also handles BibTeX and RIS parsing for fast import and export.
+
+FIREFOX-SPECIFIC NOTES
+
+  - Uses Manifest V3 with background scripts (not service workers)
+  - Library panel uses Firefox's sidebar_action API (equivalent to Chrome's sidePanel)
+  - Keyboard shortcut: Ctrl+Shift+S opens the sidebar
+  - Optional permissions for scholarly APIs (arxiv.org, doi.org, etc.) are listed in optional_permissions — Firefox prompts the user when these are first requested
+  - Minimum Firefox version: 109 (MV3 support)
+  - Addon ID: ibid@ibid.tools
+
+For questions, feedback, or bug reports:
+  Website: https://ibid.tools
+  GitHub: https://github.com/oriclabs/ibid
+  Support: support@ibid.tools
+  Privacy Policy: https://ibid.tools/privacy
+
+---
+
+NOTES FOR AMO REVIEW
+
+Required permissions justification:
+  - activeTab: Extract metadata from the current page when the user clicks the extension icon.
+  - scripting: Inject the metadata extractor content script into the active tab on demand.
+  - storage: Save the user's citation library, projects, and preferences locally.
+  - contextMenus: Add citation options to the right-click menu.
+
+Optional permissions (host patterns):
+  - arxiv.org: Fetch paper metadata from arXiv abstract pages for complete author information.
+  - api.semanticscholar.org: Fallback metadata for academic papers.
+  - en.wikipedia.org: URL-based citation resolution via Citoid service.
+  - doi.org: Follow DOI links to publisher pages for metadata extraction.
+
+These are in optional_permissions and are only requested at runtime when the user's citation requires them. If denied, the extension falls back to APIs that work without extra permissions.
+
+Content Security Policy includes wasm-unsafe-eval for the Rust/WASM citation engine. No arbitrary code execution.
+
+Source code is available at: https://github.com/oriclabs/ibid
