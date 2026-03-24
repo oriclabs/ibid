@@ -22,6 +22,38 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.storage.local.set({ autoAddToProject: $('#opt-autoadd').checked });
   });
 
+  // Scholarly API permissions
+  const SCHOLARLY_ORIGINS = [
+    'https://arxiv.org/*',
+    'https://export.arxiv.org/*',
+    'https://api.semanticscholar.org/*',
+    'https://en.wikipedia.org/*',
+    'https://doi.org/*',
+  ];
+
+  function updateApiStatus(granted) {
+    const btn = $('#btn-grant-api');
+    const status = $('#api-status');
+    if (granted) {
+      btn.textContent = 'Granted';
+      btn.disabled = true;
+      btn.classList.add('opacity-50');
+      status.textContent = 'arXiv, DOI.org, Semantic Scholar, Wikipedia';
+      status.classList.add('text-green-600');
+    } else {
+      btn.textContent = 'Grant API access';
+      btn.disabled = false;
+      status.textContent = 'Not granted — some features limited';
+    }
+  }
+
+  chrome.permissions.contains({ origins: SCHOLARLY_ORIGINS }, updateApiStatus);
+
+  $('#btn-grant-api').addEventListener('click', async () => {
+    const granted = await chrome.permissions.request({ origins: SCHOLARLY_ORIGINS });
+    updateApiStatus(granted);
+  });
+
   // Backup
   $('#btn-backup').addEventListener('click', async () => {
     const data = await chrome.storage.local.get(null);

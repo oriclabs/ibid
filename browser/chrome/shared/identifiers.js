@@ -5,6 +5,9 @@
 // To add a new identifier type: add an entry to IDENTIFIERS and URL_DOI_PATTERNS.
 // No extraction logic changes needed.
 
+if (!window.__ibidIdentifiersLoaded) {
+window.__ibidIdentifiersLoaded = true;
+
 'use strict';
 
 const IDENTIFIERS = {
@@ -187,3 +190,4 @@ if (typeof window !== 'undefined') {
     extractIdentifiersFromText,
   };
 }
+} // end double-injection guard

@@ -35,6 +35,13 @@
     "sidePanel",
     "contextMenus"
   ],
+  "optional_host_permissions": [
+    "https://arxiv.org/*",
+    "https://export.arxiv.org/*",
+    "https://api.semanticscholar.org/*",
+    "https://en.wikipedia.org/*",
+    "https://doi.org/*"
+  ],
   "omnibox": {
     "keyword": "cite"
   },

@@ -2,7 +2,7 @@
 // Initializes WASM engine, handles messages, context menus, commands
 
 import init, { IbidEngine, version } from '../wasm/ibid_core.js';
-import { resolveIdentifier } from './resolver.js';
+import { resolveIdentifier, resolveByTitle } from './resolver.js';
 import { BUNDLED_STYLES, STYLE_INDEX } from '../styles/bundled-styles.js';
 import { initDB, getAllCitations, putCitation, putCitations, deleteCitation, deleteCitations, clearAllCitations, migrateFromChromeStorage } from './db.js';
 import * as fallback from './fallback-parsers.js';
@@ -522,6 +522,17 @@ async function handleMessage(message) {
     await clearAllCitations();
     updateBadge();
     return { success: true };
+  }
+
+  // Resolve by title search — doesn't need WASM
+  if (message.action === 'resolveByTitle') {
+    try {
+      const resolved = await resolveByTitle(message.title);
+      if (resolved) return { resolved, source: resolved._source || 'unknown' };
+      return { error: 'No match found' };
+    } catch (err) {
+      return { error: err.toString() };
+    }
   }
 
   // Resolve identifier — doesn't need WASM

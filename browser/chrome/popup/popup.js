@@ -768,6 +768,41 @@ function highlightFields(fieldNames) {
 }
 
 // ---------------------------------------------------------------------------
+// Optional host permissions — for scholarly API access (arXiv, Semantic Scholar, etc.)
+// ---------------------------------------------------------------------------
+
+const SCHOLARLY_ORIGINS = [
+  'https://arxiv.org/*',
+  'https://export.arxiv.org/*',
+  'https://api.semanticscholar.org/*',
+  'https://en.wikipedia.org/*',
+  'https://doi.org/*',
+];
+
+async function hasScholarlyPermissions() {
+  try {
+    return await chrome.permissions.contains({ origins: SCHOLARLY_ORIGINS });
+  } catch { return false; }
+}
+
+async function requestScholarlyPermissions() {
+  try {
+    return await chrome.permissions.request({ origins: SCHOLARLY_ORIGINS });
+  } catch { return false; }
+}
+
+async function ensureScholarlyPermissions() {
+  if (await hasScholarlyPermissions()) return true;
+
+  // Show a non-blocking hint — permissions should be granted from options page
+  showHint('info',
+    'For better metadata from arXiv and scholarly APIs, ' +
+    '<a href="' + chrome.runtime.getURL('options/options.html') + '" target="_blank" class="underline text-saffron-600 hover:text-saffron-800">grant API access in settings</a>.'
+  );
+  return false;
+}
+
+// ---------------------------------------------------------------------------
 // Auto-enhance — silently resolve if identifier found and fields missing
 // ---------------------------------------------------------------------------
 
@@ -776,104 +811,150 @@ async function tryAutoEnhance() {
   const doiField = $('#field-doi').value.trim();
   if (!doiField) return;
 
-  // Detect if there's a resolvable identifier
+  // Detect if there's a resolvable identifier (DOI, PMID, arXiv, ISBN, or URL)
   const hasResolvable =
     doiField.match(/^10\.\d{4,}/) ||
     doiField.match(/doi\.org\/10\./) ||
     doiField.match(/^pmid:\s*\d+$/i) ||
     doiField.match(/pubmed.*\/\d+/) ||
     doiField.match(/arxiv\.org\/abs\//) ||
-    doiField.match(/^arxiv:\s*\d{4}\./i);
+    doiField.match(/^arxiv:\s*\d{4}\./i) ||
+    doiField.match(/^(97[89])?\d{9}[\dXx]$/) ||
+    doiField.match(/^https?:\/\//i);
 
-  if (!hasResolvable) return;
+  if (!hasResolvable) {
+    // No resolvable ID — try title search as last resort
+    const title = $('#field-title').value.trim();
+    if (title && title.length > 15 && !$('#field-authors').value.trim()) {
+      try {
+        const res = await chrome.runtime.sendMessage({ action: 'resolveByTitle', title });
+        if (res?.resolved) {
+          applyResolved(res.resolved, res.source);
+        }
+      } catch {}
+    }
+    return;
+  }
 
   // Resolve silently — DOI metadata is authoritative, always worth trying
+  let resolved = false;
   try {
     const res = await chrome.runtime.sendMessage({
       action: 'resolve',
       identifier: doiField,
     });
 
-    if (!res?.resolved) return;
-
-    const resolved = res.resolved;
-    const filled = [];
-
-    // Helper: override if resolved value is better (longer, more complete)
-    const current = (sel) => $(sel).value.trim();
-    const set = (sel, val, label) => {
-      if (current(sel) !== val) { $(sel).value = val; filled.push(label); }
-    };
-
-    // Title: override if resolved is longer/better (page may have site suffix)
-    if (resolved.title) {
-      const cur = current('#field-title');
-      if (!cur || (resolved.title.length > cur.length && !cur.includes(resolved.title))) {
-        set('#field-title', resolved.title, 'title');
-      }
-    }
-
-    // Authors: override if resolved has more
-    if (resolved.author?.length) {
-      const curAuthors = current('#field-authors');
-      const curCount = curAuthors ? curAuthors.split(/\s*;\s*/).length : 0;
-      if (resolved.author.length > curCount) {
-        set('#field-authors', formatAuthorsForInput(resolved.author), 'authors');
-      }
-    }
-
-    // Date: override if empty or resolved is more precise
-    if (resolved.issued) {
-      const curDate = current('#field-date');
-      const resolvedDate = formatDateForInput(resolved.issued);
-      if (!curDate || (resolvedDate.length > curDate.length)) {
-        set('#field-date', resolvedDate, 'date');
-        if (resolved.issued['date-parts']?.[0]) {
-          const len = resolved.issued['date-parts'][0].length;
-          $('#date-precision').value = len >= 3 ? 'day' : len === 2 ? 'month' : 'year';
-        }
-      }
-    }
-
-    // Container-title: always override — DOI-resolved journal name is authoritative
-    if (resolved['container-title']) {
-      set('#field-container', resolved['container-title'], 'journal');
-    }
-
-    // Publisher: fill if empty
-    if (resolved.publisher && !current('#field-publisher')) {
-      set('#field-publisher', resolved.publisher, 'publisher');
-    }
-
-    // Volume, issue, pages: override if empty or resolved differs
-    if (resolved.volume) set('#field-volume', resolved.volume, 'vol');
-    if (resolved.issue) set('#field-issue', resolved.issue, 'issue');
-    if (resolved.page) set('#field-pages', resolved.page, 'pages');
-
-    // DOI and type: always set
-    if (resolved.DOI) {
-      $('#field-doi').value = resolved.DOI;
-    }
-    if (resolved.type) {
-      const opt = $('#source-type').querySelector(`option[value="${resolved.type}"]`);
-      if (opt) $('#source-type').value = resolved.type;
-    }
-
-    if (filled.length > 0) {
-      highlightFields(filled);
-      dismissHint(); // Clear the "looking up via DOI" hint
-      showEnhanceResult('success',
-        `Auto-enhanced ${filled.length} field${filled.length > 1 ? 's' : ''} via ${res.source}`
-      );
-      // Re-validate now that fields are filled — clears stale warnings
-      validateSourceType();
-      updateFieldRelevance();
-      updatePreview();
-      // Cache enhanced data for this tab
-      cacheCurrentFields();
+    if (res?.resolved) {
+      applyResolved(res.resolved, res.source);
+      resolved = true;
     }
   } catch {
-    // Silent fail — auto-enhance is best-effort
+    // Primary resolution failed
+  }
+
+  // If primary failed and identifier needs scholarly API access, prompt for permissions
+  const needsScholarlyApi =
+    doiField.match(/arxiv/i) || doiField.match(/^https?:\/\//i) ||
+    doiField.match(/10\.48550/);
+  if (!resolved && needsScholarlyApi && !(await hasScholarlyPermissions())) {
+    const granted = await ensureScholarlyPermissions();
+    if (granted) {
+      // Retry with permissions
+      try {
+        const res = await chrome.runtime.sendMessage({
+          action: 'resolve',
+          identifier: doiField,
+        });
+        if (res?.resolved) {
+          applyResolved(res.resolved, res.source);
+          resolved = true;
+        }
+      } catch {}
+    }
+  }
+
+  // Fallback: title search when primary resolution fails (e.g. PDF URL with no DOI)
+  if (!resolved) {
+    const title = $('#field-title').value.trim();
+    if (title && title.length > 15 && !$('#field-authors').value.trim()) {
+      // Title search via OpenAlex may need permissions for arXiv fallback
+      if (!(await hasScholarlyPermissions())) {
+        await ensureScholarlyPermissions();
+      }
+      try {
+        const res = await chrome.runtime.sendMessage({ action: 'resolveByTitle', title });
+        if (res?.resolved) applyResolved(res.resolved, res.source);
+      } catch {
+        // Silent fail
+      }
+    }
+  }
+}
+
+function applyResolved(resolved, source) {
+  const filled = [];
+  const current = (sel) => $(sel).value.trim();
+  const set = (sel, val, label) => {
+    if (current(sel) !== val) { $(sel).value = val; filled.push(label); }
+  };
+
+  if (resolved.title) {
+    const cur = current('#field-title');
+    if (!cur || (resolved.title.length > cur.length && !cur.includes(resolved.title))) {
+      set('#field-title', resolved.title, 'title');
+    }
+  }
+
+  if (resolved.author?.length) {
+    const curAuthors = current('#field-authors');
+    const curCount = curAuthors ? curAuthors.split(/\s*;\s*/).length : 0;
+    if (resolved.author.length > curCount) {
+      set('#field-authors', formatAuthorsForInput(resolved.author), 'authors');
+    }
+  }
+
+  if (resolved.issued) {
+    const curDate = current('#field-date');
+    const resolvedDate = formatDateForInput(resolved.issued);
+    if (!curDate || (resolvedDate.length > curDate.length)) {
+      set('#field-date', resolvedDate, 'date');
+      if (resolved.issued['date-parts']?.[0]) {
+        const len = resolved.issued['date-parts'][0].length;
+        $('#date-precision').value = len >= 3 ? 'day' : len === 2 ? 'month' : 'year';
+      }
+    }
+  }
+
+  if (resolved['container-title']) {
+    set('#field-container', resolved['container-title'], 'journal');
+  }
+
+  if (resolved.publisher && !current('#field-publisher')) {
+    set('#field-publisher', resolved.publisher, 'publisher');
+  }
+
+  if (resolved.volume) set('#field-volume', resolved.volume, 'vol');
+  if (resolved.issue) set('#field-issue', resolved.issue, 'issue');
+  if (resolved.page) set('#field-pages', resolved.page, 'pages');
+
+  if (resolved.DOI) {
+    $('#field-doi').value = resolved.DOI;
+  }
+  if (resolved.type) {
+    const opt = $('#source-type').querySelector(`option[value="${resolved.type}"]`);
+    if (opt) $('#source-type').value = resolved.type;
+  }
+
+  if (filled.length > 0) {
+    highlightFields(filled);
+    dismissHint();
+    showEnhanceResult('success',
+      `Auto-enhanced ${filled.length} field${filled.length > 1 ? 's' : ''} via ${source || 'API'}`
+    );
+    validateSourceType();
+    updateFieldRelevance();
+    updatePreview();
+    cacheCurrentFields();
   }
 }
 
