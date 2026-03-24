@@ -690,6 +690,34 @@ async function handleMessage(message) {
       }
     }
 
+    case 'proxyFetch': {
+      // Generic CORS-free fetch proxy for content scripts
+      // Usage: chrome.runtime.sendMessage({ action: 'proxyFetch', url, options })
+      // Returns: { ok, status, text?, json?, error? }
+      try {
+        if (!message.url) return { error: 'No URL provided' };
+        // Security: only allow http/https
+        if (!/^https?:\/\//i.test(message.url)) return { error: 'Only HTTP(S) URLs allowed' };
+        const res = await fetch(message.url, {
+          method: message.options?.method || 'GET',
+          headers: message.options?.headers || {},
+          redirect: 'follow',
+          signal: AbortSignal.timeout(message.options?.timeout || 15000),
+        });
+        const contentType = res.headers.get('content-type') || '';
+        const isJson = contentType.includes('json');
+        const body = isJson ? await res.json() : await res.text();
+        return {
+          ok: res.ok,
+          status: res.status,
+          contentType,
+          ...(isJson ? { json: body } : { text: body }),
+        };
+      } catch (e) {
+        return { error: e.message || String(e) };
+      }
+    }
+
     case 'fetchArticleMeta': {
       // Fetch article HTML page and extract Highwire/DC meta tags
       try {
