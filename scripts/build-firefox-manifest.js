@@ -72,11 +72,8 @@ firefoxManifest.browser_specific_settings = {
   },
 };
 
-// 6. Content security policy — Firefox uses flat string for MV3
-if (firefoxManifest.content_security_policy?.extension_pages) {
-  firefoxManifest.content_security_policy =
-    firefoxManifest.content_security_policy.extension_pages;
-}
+// 6. Content security policy — Firefox MV3 uses same object format as Chrome
+// No changes needed
 
 // 7. web_accessible_resources — Firefox MV3 uses same format as Chrome
 // (no changes needed)
