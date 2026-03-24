@@ -170,7 +170,6 @@ if (!window.__ibidPdfExtractorLoaded) {
     }
 
     async function extractPdfMetadata() {
-      console.log('[ibid] pdf-extractor: running extractPdfMetadata');
       const meta = {
         type: 'document',
         title: null,
@@ -218,7 +217,6 @@ if (!window.__ibidPdfExtractorLoaded) {
 
       // 4. Try to fetch PDF bytes and parse metadata dictionary
       try {
-        console.log('[ibid] pdf-extractor: fetching PDF bytes from', window.location.href);
         const res = await fetch(window.location.href);
         if (res.ok) {
           const buffer = await res.arrayBuffer();
@@ -253,15 +251,12 @@ if (!window.__ibidPdfExtractorLoaded) {
 
           // 5. Try Rust WASM pdf-extract for full text extraction
           try {
-            console.log('[ibid] Sending extractPdfText to service worker for:', window.location.href);
             const textResult = await chrome.runtime.sendMessage({
               action: 'extractPdfText',
               url: window.location.href,
             });
-            console.log('[ibid] extractPdfText response:', textResult?.text ? `${textResult.text.length} chars` : textResult?.error || 'no result');
             if (textResult?.text) {
               const fullText = textResult.text;
-              console.log('[ibid] WASM pdf-extract text length:', fullText.length, 'preview:', fullText.substring(0, 300));
 
               // Smart header detection — find content before references/bibliography
               const refIndex = fullText.search(/\n\s*(References|Bibliography|Works Cited|Literature Cited|Notes)\s*\n/i);
@@ -330,11 +325,9 @@ if (!window.__ibidPdfExtractorLoaded) {
               }
             }
           } catch (wasmErr) {
-            console.log('[ibid] WASM pdf-extract failed:', wasmErr.message || wasmErr);
           }
         }
       } catch (fetchErr) {
-        console.log('[ibid] pdf-extractor: fetch failed:', fetchErr.message || fetchErr);
       }
 
       // 6. Linked article page — fetch HTML article page for Highwire/DC meta tags

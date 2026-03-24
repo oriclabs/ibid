@@ -265,7 +265,8 @@ async function resolveIsbnViaGoogleBooks(isbn) {
   const res = await queuedFetch(
     `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`,
     {},
-    'Google Books'
+    'Google Books',
+    1000 // Google rate limits aggressively
   );
 
   const data = await res.json();

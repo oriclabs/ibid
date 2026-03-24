@@ -322,7 +322,15 @@ window.__ibidExtractorLoaded = true;
 
         // Assign: override mode or fill-if-empty
         if (field === 'author') {
-          if (meta.author.length === 0) meta.author.push(parseName(value));
+          // Validate: author should be 2-5 words, mostly capitalized, no punctuation-heavy strings
+          const words = value.trim().split(/\s+/);
+          const isPlausibleName = words.length >= 1 && words.length <= 8 &&
+            words.some(w => /^[A-Z]/.test(w)) &&
+            !/[''\u2019]s\s/i.test(value) &&
+            (value.match(/[a-zA-Z]/g) || []).length > value.length * 0.6;
+          if (meta.author.length === 0 && isPlausibleName) {
+            meta.author.push(parseName(value));
+          }
         } else if (field === 'issued') {
           if (!meta.issued) meta.issued = value;
         } else if (config.override) {
@@ -395,20 +403,45 @@ window.__ibidExtractorLoaded = true;
         '[rel="author"]',
         '.author-name',
         '.byline__name',
-        '.author',
         '[itemprop="author"]',
         '.post-author',
         '.article-author',
+        '.author a',
+        '.author',
       ];
       for (const sel of authorSelectors) {
-        const el = document.querySelector(sel);
-        if (el) {
-          const text = el.textContent.trim();
-          if (text && text.length < 100) {
-            meta.author.push(parseName(text));
-            break;
+        const els = document.querySelectorAll(sel);
+        for (const el of els) {
+          let text = strip(el.textContent);
+          if (!text || text.length > 100 || text.length < 2) continue;
+          // Strip parenthesized roles
+          text = text.replace(/\s*\([^)]*\)\s*/g, '').trim();
+          // After stripping, if too short (e.g. was just "(Author)"), check parent
+          if (text.length < 2) {
+            // Walk up: parent has other children with the actual name
+            let parent = el.parentElement;
+            while (parent && parent !== document.body) {
+              const children = [...parent.children].filter(c =>
+                !['SCRIPT','STYLE','NOSCRIPT'].includes(c.tagName));
+              if (children.length >= 2) {
+                // Get text from siblings that aren't the current element's branch
+                for (const child of children) {
+                  if (child === el || child.contains(el) || el.contains(child)) continue;
+                  const ct = strip(child.textContent).replace(/\s*\([^)]*\)\s*/g, '').trim();
+                  if (ct.length >= 2 && ct.length < 80) { text = ct; break; }
+                }
+                if (text.length >= 2) break;
+              }
+              parent = parent.parentElement;
+            }
           }
+          if (text.length < 2) continue;
+          const words = text.split(/\s+/);
+          if (words.length > 6 || /\d{4}|https?:|\.com|@/.test(text)) continue;
+          meta.author.push(parseName(text));
+          break;
         }
+        if (meta.author.length > 0) break;
       }
     }
 
@@ -442,7 +475,6 @@ window.__ibidExtractorLoaded = true;
   // -------------------------------------------------------------------------
 
   function detectTypeFromSignals(meta) {
-    console.log('[Ibid v3] detectTypeFromSignals called, current type:', meta.type);
 
     const pageText = (document.body?.textContent || '').substring(0, 5000).toLowerCase();
     const url = window.location.href.toLowerCase();
@@ -473,63 +505,87 @@ window.__ibidExtractorLoaded = true;
     }
 
     // --- DOM key-value extraction (last resort, fills gaps for any type) ---
-    const strip = (s) => (s || '').replace(/[\u200e\u200f\u200b-\u200d\u2060\ufeff]/g, '').trim();
+    const strip = (s) => (s || '').replace(/[\p{Cf}\p{Cc}\p{Zl}\p{Zp}]/gu, '').replace(/\s+/g, ' ').trim();
 
     const v = (key) => {
       const skip = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'HEAD', 'META', 'LINK', 'TITLE']);
-      // Find the smallest element whose own text contains the key (case-insensitive)
       const lk = key.toLowerCase();
+
+      // --- Step 1: Find the smallest element containing the key ---
+      // Try XPath first (fast), then JS TreeWalker (handles Unicode)
+      let best = null, bestLen = Infinity;
+
       const xpath = `//*[text()[contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), "${lk}")]]`;
       const results = document.evaluate(xpath, document.body, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
-      let best = null, bestLen = Infinity;
       for (let i = 0; i < results.snapshotLength; i++) {
         const node = results.snapshotItem(i);
         if (skip.has(node.tagName)) continue;
         const text = strip(node.textContent);
-        if (text.length < key.length + 30 && text.length < bestLen) {
+        if (text.toLowerCase().includes(lk) && text.length < lk.length + 30 && text.length < bestLen) {
           best = node; bestLen = text.length;
         }
       }
+
+      // Fallback: JS walk for Unicode-heavy pages
+      if (!best) {
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT, {
+          acceptNode: (n) => skip.has(n.tagName) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
+        });
+        while (walker.nextNode()) {
+          const node = walker.currentNode;
+          const text = strip(node.textContent);
+          if (text.toLowerCase().includes(lk) && text.length < lk.length + 30 && text.length < bestLen) {
+            best = node; bestLen = text.length;
+          }
+        }
+      }
+
       if (!best) return null;
 
-      // Helper: extract short text value from an element (direct text nodes preferred)
-      const getText = (el) => {
-        if (!el || skip.has(el.tagName)) return null;
-        const t = strip(el.textContent);
-        // Skip if empty, too long, or contains the key itself
-        if (!t || t.length > 200 || t.toLowerCase().includes(key.toLowerCase())) return null;
-        return t;
-      };
+      // --- Step 2: Check if value is in the same element (after the key) ---
+      // Strip the element text, remove the key and surrounding punctuation/parens
+      const elemText = strip(best.textContent);
+      const remainder = elemText
+        .replace(new RegExp('[\\(\\)]*\\s*' + key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*[:\\-–]?\\s*[\\(\\)]*', 'i'), '')
+        .replace(/^[():\s\-–]+|[():\s\-–]+$/g, '') // trim leftover punctuation
+        .trim();
+      // If there's meaningful alphanumeric text beyond the key, that's the value
+      if (remainder.length > 1 && remainder.length < 200 &&
+          remainder.toLowerCase() !== lk &&
+          /[a-zA-Z0-9]/.test(remainder)) {
+        return remainder;
+      }
 
-      // Walk outward from the key element: self → parent → grandparent → ...
-      // At each level, check siblings that come AFTER the key-containing element
+      // --- Step 3: Walk up to parent with 2+ children, get sibling text ---
       let anchor = best;
-      for (let depth = 0; depth < 4; depth++) {
-        // 1. Next sibling elements of the anchor
-        let sib = anchor.nextElementSibling;
-        while (sib) {
-          const val = getText(sib);
-          if (val) return val;
-          // Check first-level children of the sibling
-          for (const child of sib.children) {
-            const cv = getText(child);
-            if (cv) return cv;
-          }
-          sib = sib.nextElementSibling;
-        }
-
-        // 2. Adjacent text node after the anchor
-        let next = anchor.nextSibling;
-        while (next && next.nodeType !== 3 && next.nodeType !== 1) next = next.nextSibling;
-        if (next?.nodeType === 3) {
-          const t = strip(next.textContent);
-          if (t.length > 0 && t.length < 200) return t;
-        }
-
-        // Walk up one level
+      for (let depth = 0; depth < 5; depth++) {
         const parent = anchor.parentElement;
         if (!parent || parent === document.body) break;
+
+        // Count non-skip children
+        const children = [...parent.children].filter(c => !skip.has(c.tagName));
+        if (children.length >= 2) {
+          // Get text from children that don't contain the key element
+          for (const child of children) {
+            if (child === anchor || child.contains(anchor) || anchor.contains(child)) continue;
+            const t = strip(child.textContent);
+            if (t && t.length > 0 && t.length < 200 && !t.toLowerCase().includes(lk)) {
+              return t;
+            }
+          }
+        }
+
+        // Parent has only 1 child — walk up
         anchor = parent;
+      }
+
+      // --- Step 4: innerText fallback for "key : value" pattern ---
+      const body = document.body?.innerText || '';
+      const keyRx = new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*[:\\-–]\\s*(.+)', 'im');
+      const m = body.match(keyRx);
+      if (m) {
+        const val = strip(m[1].split('\n')[0]);
+        if (val.length > 0 && val.length < 200) return val;
       }
 
       return null;
@@ -558,7 +614,7 @@ window.__ibidExtractorLoaded = true;
         edition:            { keys: ['Edition', 'Printing'] },
         'collection-title': { keys: ['Series', 'Book series'] },
         author:             { keys: ['Author', 'Authors', 'Written by', 'By'],
-                              transform: (val) => val.split(/\s*[,;]\s*|\s+and\s+/i).map(n => parseName(n.trim())).filter(n => n.family || n.literal),
+                              transform: (val) => val.replace(/\s*\(Author\)\s*/gi, '').split(/\s*[,;]\s*|\s+and\s+/i).map(n => parseName(n.trim())).filter(n => n.family || n.literal),
                               check: (meta) => !meta.author?.length },
         editor:             { keys: ['Editor', 'Editors', 'Edited by'],
                               transform: (val) => val.split(/\s*[,;]\s*|\s+and\s+/i).map(n => parseName(n.trim())).filter(n => n.family || n.literal) },
