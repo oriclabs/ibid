@@ -27,8 +27,20 @@ if (firefoxManifest.background?.service_worker) {
   };
 }
 
-// 2. optional_host_permissions → optional_permissions
-// Firefox MV3 puts host patterns in optional_permissions, not optional_host_permissions
+// 2. Host permissions for Firefox
+// Firefox MV3 background scripts need host_permissions for cross-origin fetch
+// (unlike Chrome where service worker fetch bypasses CORS for sites with CORS headers).
+// Essential API hosts go in host_permissions (required), scholarly ones in optional_permissions.
+firefoxManifest.host_permissions = [
+  'https://api.crossref.org/*',
+  'https://api.openalex.org/*',
+  'https://openlibrary.org/*',
+  'https://www.googleapis.com/*',
+  'https://api.ncbi.nlm.nih.gov/*',
+  'https://raw.githubusercontent.com/*',
+];
+
+// Scholarly APIs that need optional permissions (same as Chrome)
 if (firefoxManifest.optional_host_permissions) {
   firefoxManifest.optional_permissions = [
     ...(firefoxManifest.optional_permissions || []),
