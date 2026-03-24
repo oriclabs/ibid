@@ -18,6 +18,39 @@ if (!window.__ibidPdfExtractorLoaded) {
       return false;
     }
 
+    // Extract text from pdf.js viewer DOM (.textLayer spans)
+    // Works in both Firefox and Chrome when PDF is rendered via pdf.js
+    function extractPdfJsText() {
+      // pdf.js renders text in .textLayer > span elements
+      const textLayers = document.querySelectorAll('.textLayer span, .text-layer span');
+      if (textLayers.length > 0) {
+        const pages = {};
+        for (const span of textLayers) {
+          // Group by page
+          const page = span.closest('.page, [data-page-number]');
+          const pageNum = page?.dataset?.pageNumber || '1';
+          if (!pages[pageNum]) pages[pageNum] = [];
+          pages[pageNum].push(span.textContent);
+        }
+        // Join spans per page, pages with double newline
+        const pageTexts = Object.keys(pages).sort((a, b) => a - b)
+          .slice(0, 5) // first 5 pages
+          .map(k => pages[k].join(' '));
+        const text = pageTexts.join('\n\n');
+        if (text.trim().length > 20) return text;
+      }
+
+      // Fallback: try to get text from the viewer's text content
+      // Some pdf.js builds use #viewer or #viewerContainer
+      const viewer = document.querySelector('#viewer, #viewerContainer, .pdfViewer');
+      if (viewer) {
+        const text = viewer.innerText;
+        if (text && text.trim().length > 50) return text.substring(0, 10000);
+      }
+
+      return null;
+    }
+
     // Parse PDF info dictionary from raw bytes (lightweight, no PDF.js)
     function parsePdfInfo(bytes) {
       const info = {};
@@ -231,13 +264,73 @@ if (!window.__ibidPdfExtractorLoaded) {
         }
       }
 
+      // 3c. Try to extract text from pdf.js DOM viewer (Firefox + Chrome pdf.js)
+      // When the browser renders a PDF via pdf.js, the text is in .textLayer spans
+      const pdfJsText = extractPdfJsText();
+      if (pdfJsText) {
+        const header = pdfJsText.substring(0, 3000);
+
+        // DOI from rendered text
+        if (!meta.DOI) {
+          const doiMatch = header.match(/(?:doi[:\s]*|https?:\/\/(?:dx\.)?doi\.org\/)(10\.\d{4,}\/[^\s<>"{}|\\^~\[\]`]+)/i)
+            || header.match(/\b(10\.\d{4,}\/[^\s<>"{}|\\^~\[\]`]+)/);
+          if (doiMatch) meta.DOI = doiMatch[1].replace(/[.,;:)\]}>]+$/, '');
+        }
+
+        // ISBN from rendered text
+        if (!meta.ISBN) {
+          const isbnMatch = header.match(/ISBN(?:-1[03])?[\s:-]*(97[89][\d\s-]{10,})/i);
+          if (isbnMatch) meta.ISBN = isbnMatch[1].replace(/[\s-]/g, '');
+        }
+
+        // Title from first substantial line
+        const lines = header.split('\n').map(l => l.trim()).filter(l => l.length > 10 && l.length < 200);
+        if (lines.length > 0 && (!meta.title || meta.title.length < 30)) {
+          meta.title = lines[0];
+        }
+
+        // Author from second line
+        if (meta.author.length === 0 && lines.length > 1) {
+          const authorLine = lines[1];
+          const isSentence = (authorLine.match(/\.\s+[A-Z]/g) || []).length > 0;
+          const isBodyText = /^(we |this |the |in |a |an |abstract|introduction|chapter|section)/i.test(authorLine);
+          if (authorLine.length < 100 && !isSentence && !isBodyText && !/^https?:\/\//i.test(authorLine)) {
+            meta.author = parseAuthorsString(authorLine);
+          }
+        }
+
+        // Date from header text
+        const datePatterns = [
+          /(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4})/i,
+          /((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4})/i,
+          /(\d{4}-\d{2}-\d{2})/,
+        ];
+        for (const rx of datePatterns) {
+          const dm = header.match(rx);
+          if (dm) {
+            const ts = Date.parse(dm[1] || dm[0]);
+            if (!isNaN(ts)) {
+              const d = new Date(ts);
+              meta.issued = { 'date-parts': [[d.getFullYear(), d.getMonth() + 1, d.getDate()]] };
+              break;
+            }
+          }
+        }
+
+        if (meta.ISBN) meta.type = 'book';
+        else if (meta.DOI) meta.type = 'article-journal';
+      }
+
       // 4. Try to fetch PDF bytes and parse metadata dictionary
       try {
         const res = await fetch(window.location.href);
-        if (res.ok) {
-          const buffer = await res.arrayBuffer();
-          const bytes = new Uint8Array(buffer);
-          const info = parsePdfInfo(bytes);
+        if (!res.ok) throw new Error('Fetch failed');
+        const contentType = res.headers.get('content-type') || '';
+        // If we got HTML back instead of PDF (pdf.js viewer), skip binary parsing
+        if (contentType.includes('text/html')) throw new Error('Got HTML, not PDF binary');
+        const buffer = await res.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        const info = parsePdfInfo(bytes);
 
           if (info.Title && !meta.title) meta.title = info.Title;
           if (info.Author && meta.author.length === 0) {
@@ -341,9 +434,10 @@ if (!window.__ibidPdfExtractorLoaded) {
               }
             }
           } catch (wasmErr) {
+            // WASM extraction failed — continue with what we have
           }
-        }
       } catch (fetchErr) {
+        // Fetch failed (CORS, HTML response, etc.) — pdf.js DOM extraction above handles this
       }
 
       // 6. Linked article page — fetch HTML article page for Highwire/DC meta tags
