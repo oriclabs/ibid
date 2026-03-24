@@ -4,6 +4,18 @@
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
+// Cross-browser sidebar/sidepanel open
+async function openSidePanel() {
+  try {
+    if (chrome.sidePanel?.open) {
+      const win = await chrome.windows.getCurrent();
+      await chrome.sidePanel.open({ windowId: win.id });
+    } else if (typeof browser !== 'undefined' && browser.sidebarAction?.open) {
+      await browser.sidebarAction.open();
+    }
+  } catch { /* ignore — may fail if already open or unsupported */ }
+}
+
 // State
 let currentMetadata = null;
 let currentStyle = 'apa7';
@@ -42,10 +54,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#btn-retry').addEventListener('click', () => location.reload());
   $('#btn-enhance').addEventListener('click', enhanceMetadata);
   $('#btn-rescan').addEventListener('click', rescanPage);
-  $('#btn-view-in-library')?.addEventListener('click', async () => {
-    const win = await chrome.windows.getCurrent();
-    chrome.sidePanel.open({ windowId: win.id });
-  });
+  $('#btn-view-in-library')?.addEventListener('click', () => openSidePanel());
   $('#btn-update-existing')?.addEventListener('click', () => {
     if (existingCitationId) addToProject();
   });
@@ -180,16 +189,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  $('#btn-sidepanel').addEventListener('click', async () => {
-    const win = await chrome.windows.getCurrent();
-    chrome.sidePanel.open({ windowId: win.id });
-  });
+  $('#btn-sidepanel').addEventListener('click', () => openSidePanel());
 
   // Open sidepanel for import — used by bulk import banner
-  $('#btn-open-library-import')?.addEventListener('click', async () => {
-    const win = await chrome.windows.getCurrent();
-    chrome.sidePanel.open({ windowId: win.id });
-  });
+  $('#btn-open-library-import')?.addEventListener('click', () => openSidePanel());
   $('#style-selector').addEventListener('change', onStyleChange);
   $('#source-type').addEventListener('change', onSourceTypeChange);
 
