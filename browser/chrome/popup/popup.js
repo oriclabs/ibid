@@ -384,16 +384,23 @@ document.addEventListener('DOMContentLoaded', async () => {
           clearTimeout(extractionTimeout);
 
           if (chrome.runtime.lastError || !response?.metadata) {
+            // Extract DOI from URL if possible
+            const urlDoi = tab.url?.match(/10\.\d{4,}\/[^\s&?#]+/);
             currentMetadata = {
               title: tab.title || '',
               URL: tab.url || '',
+              DOI: urlDoi ? urlDoi[0].replace(/[.,;:)\]}>]+$/, '') : null,
               type: isPdfUrl ? 'document' : 'webpage',
             };
             populateFields(currentMetadata);
             if (isPdfUrl) {
-              showHint('sparse', 'PDF detected — cannot extract metadata directly. Paste a DOI below and click Enhance. Or right-click: DOI link → <strong>"Cite linked page"</strong>, select a DOI → <strong>"Look up selected DOI"</strong>, select multiple → <strong>"Import DOIs from selection"</strong>.');
+              showHint('sparse', 'PDF detected — limited metadata. Paste a DOI below and click Enhance. Or right-click: DOI link → <strong>"Cite linked page"</strong>.');
+            } else if (currentMetadata.DOI) {
+              showHint('enhancing', 'Extracting metadata via DOI...');
+            } else if (currentMetadata.title && currentMetadata.title.length > 15) {
+              showHint('enhancing', 'Limited extraction — searching by title...');
             } else {
-              showHint('sparse', 'Could not read this page. Fields pre-filled from tab info — review and complete manually.');
+              showHint('sparse', 'Could not read this page. Paste a DOI or ISBN below and click Enhance, or enter details manually.');
             }
           } else {
             currentMetadata = response.metadata;
@@ -1783,8 +1790,15 @@ $('#hint-dismiss')?.addEventListener('click', dismissHint);
 async function rescanPage() {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id || !tab.url?.startsWith('http')) {
+    if (!tab?.id) {
       showHint('restricted', 'Cannot rescan this page.');
+      return;
+    }
+
+    // Allow http, https, and file:// URLs
+    const isValidUrl = tab.url?.match(/^(https?|file):\/\//);
+    if (!isValidUrl) {
+      showHint('restricted', 'Cannot rescan this page (restricted URL).');
       return;
     }
 
@@ -1792,25 +1806,58 @@ async function rescanPage() {
     const cacheKey = `ibid_cache_${tab.id}`;
     await chrome.storage.session.remove([cacheKey]);
 
-    // Re-inject and re-extract
+    const isPdf = tab.url?.toLowerCase().includes('.pdf') || tab.url?.includes('pdf');
+
+    // Re-inject content scripts
     try {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         files: ['shared/identifiers.js', 'content/extractor.js'],
       });
-    } catch (e) { /* may already be injected */ }
-
-    chrome.tabs.sendMessage(tab.id, { action: 'extractMetadata' }, (response) => {
-      if (chrome.runtime.lastError || !response?.metadata) {
-        showHint('sparse', 'Could not re-extract metadata from this page.');
-        return;
+      if (isPdf) {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ['content/pdfParser.js', 'content/pdf-extractor.js'],
+        });
       }
-      currentMetadata = response.metadata;
+    } catch (e) { /* may already be injected or restricted page */ }
+
+    // Wait briefly for content script to be ready after re-injection
+    await new Promise(r => setTimeout(r, 300));
+
+    const sendExtract = () => new Promise((resolve) => {
+      chrome.tabs.sendMessage(tab.id, { action: 'extractMetadata' }, (response) => {
+        if (chrome.runtime.lastError) resolve(null);
+        else resolve(response?.metadata || null);
+      });
+    });
+
+    let metadata = await sendExtract();
+
+    // PDF pages: async extraction takes time, retry after delay
+    if (!metadata && isPdf) {
+      showHint('info', 'Rescanning PDF — this may take a moment...');
+      await new Promise(r => setTimeout(r, 3000));
+      metadata = await sendExtract();
+    }
+
+    if (metadata) {
+      currentMetadata = metadata;
       populateFields(currentMetadata);
       dismissHint();
       showEnhanceResult('success', 'Page rescanned — fields refreshed');
       tryAutoEnhance();
-    });
+    } else {
+      // Extraction failed — keep current fields, re-run auto-enhance
+      const hasDoi = $('#field-doi').value.trim();
+      if (hasDoi) {
+        dismissHint();
+        showEnhanceResult('info', 'Re-enhancing from identifier...');
+        tryAutoEnhance();
+      } else {
+        showHint('sparse', 'Could not rescan. Try reloading the page first, then click the Ibid icon again.');
+      }
+    }
   } catch (err) {
     showHint('sparse', `Rescan failed: ${err.message}`);
   }

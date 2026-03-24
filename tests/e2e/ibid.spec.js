@@ -2629,4 +2629,61 @@ test.describe('Phase 11 — Resolver & PDF Improvements', () => {
 
     await page.close();
   });
+
+  test('11.12 — Screenshot: Options page with API access', async () => {
+    const page = await ctx.context.newPage();
+    await page.goto(`chrome-extension://${ctx.extensionId}/options/options.html`);
+    await page.waitForTimeout(1000);
+    await page.setViewportSize({ width: 900, height: 700 });
+
+    await page.screenshot({ path: `${SCREENSHOT_DIR}/11-options-api-access.png`, fullPage: false });
+    log('Phase 11: Screenshots', 'Options page with API access section', 'PASS');
+
+    // Scroll to API access section
+    await page.evaluate(() => document.querySelector('#btn-grant-api')?.scrollIntoView({ behavior: 'instant', block: 'center' }));
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: `${SCREENSHOT_DIR}/11-options-api-access-focused.png`, fullPage: false });
+    log('Phase 11: Screenshots', 'Options API access section focused', 'PASS');
+
+    await page.close();
+  });
+
+  test('11.13 — Screenshot: Welcome/onboarding page', async () => {
+    const page = await ctx.context.newPage();
+    await page.goto(`chrome-extension://${ctx.extensionId}/onboarding/welcome.html`);
+    await page.waitForTimeout(1000);
+    await page.setViewportSize({ width: 600, height: 800 });
+
+    await page.screenshot({ path: `${SCREENSHOT_DIR}/11-onboarding-welcome.png`, fullPage: true });
+    log('Phase 11: Screenshots', 'Welcome/onboarding page full screenshot', 'PASS');
+
+    // Scroll to API access section
+    await page.evaluate(() => document.querySelector('#btn-grant-api')?.scrollIntoView({ behavior: 'instant', block: 'center' }));
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: `${SCREENSHOT_DIR}/11-onboarding-api-access.png`, fullPage: false });
+    log('Phase 11: Screenshots', 'Onboarding API access section', 'PASS');
+
+    await page.close();
+  });
+
+  test('11.14 — Screenshot: Help page API & privacy sections', async () => {
+    const page = await ctx.context.newPage();
+    await page.goto(`chrome-extension://${ctx.extensionId}/help/help.html`);
+    await page.waitForTimeout(1000);
+    await page.setViewportSize({ width: 1100, height: 700 });
+
+    // Scroll to API access section
+    await page.evaluate(() => document.querySelector('#api-access')?.scrollIntoView({ behavior: 'instant' }));
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: `${SCREENSHOT_DIR}/11-help-api-access.png`, fullPage: false });
+    log('Phase 11: Screenshots', 'Help page API access section', 'PASS');
+
+    // Scroll to privacy
+    await page.evaluate(() => document.querySelector('#privacy')?.scrollIntoView({ behavior: 'instant' }));
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: `${SCREENSHOT_DIR}/11-help-privacy.png`, fullPage: false });
+    log('Phase 11: Screenshots', 'Help page privacy section', 'PASS');
+
+    await page.close();
+  });
 });
