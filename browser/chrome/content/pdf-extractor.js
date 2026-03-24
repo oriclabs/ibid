@@ -130,6 +130,7 @@ if (!window.__ibidPdfExtractorLoaded) {
     }
 
     async function extractPdfMetadata() {
+      console.log('[ibid] pdf-extractor: running extractPdfMetadata');
       const meta = {
         type: 'document',
         title: null,
@@ -161,8 +162,15 @@ if (!window.__ibidPdfExtractorLoaded) {
       const urlDoi = window.location.href.match(/10\.\d{4,}\/[^\s&?#]+/);
       if (urlDoi) meta.DOI = urlDoi[0].replace(/[.,;:)\]}>]+$/, '');
 
+      // 3b. arXiv ID from URL (e.g. arxiv.org/pdf/2303.08774)
+      if (!meta.DOI) {
+        const arxivMatch = window.location.href.match(/arxiv\.org\/(?:abs|pdf)\/(\d{4}\.\d{4,5})/);
+        if (arxivMatch) meta.DOI = '10.48550/arXiv.' + arxivMatch[1];
+      }
+
       // 4. Try to fetch PDF bytes and parse metadata dictionary
       try {
+        console.log('[ibid] pdf-extractor: fetching PDF bytes from', window.location.href);
         const res = await fetch(window.location.href);
         if (res.ok) {
           const buffer = await res.arrayBuffer();
@@ -184,9 +192,87 @@ if (!window.__ibidPdfExtractorLoaded) {
           // Set type based on identifiers found
           if (meta.ISBN) meta.type = 'book';
           else if (meta.DOI) meta.type = 'article-journal';
+
+          // 5. Try Rust WASM pdf-extract for full text extraction
+          try {
+            console.log('[ibid] Sending extractPdfText to service worker for:', window.location.href);
+            const textResult = await chrome.runtime.sendMessage({
+              action: 'extractPdfText',
+              url: window.location.href,
+            });
+            console.log('[ibid] extractPdfText response:', textResult?.text ? `${textResult.text.length} chars` : textResult?.error || 'no result');
+            if (textResult?.text) {
+              const fullText = textResult.text;
+              console.log('[ibid] WASM pdf-extract text length:', fullText.length, 'preview:', fullText.substring(0, 300));
+
+              // Use only first ~2000 chars (first page header) — avoids picking up references
+              const header = fullText.substring(0, 2000);
+
+              // Extract DOI from header area only
+              if (!meta.DOI) {
+                const doiMatch = header.match(/(?:doi[:\s]*|https?:\/\/(?:dx\.)?doi\.org\/)(10\.\d{4,}\/[^\s<>"{}|\\^~\[\]`]+)/i)
+                  || header.match(/\b(10\.\d{4,}\/[^\s<>"{}|\\^~\[\]`]+)/);
+                if (doiMatch) meta.DOI = doiMatch[1].replace(/[.,;:)\]}>]+$/, '');
+              }
+
+              // Extract ISBN from header only — full text would pick up referenced books
+              if (!meta.ISBN) {
+                const isbnMatch = header.match(/ISBN(?:-1[03])?[\s:-]*(97[89][\d\s-]{10,})/i);
+                if (isbnMatch) meta.ISBN = isbnMatch[1].replace(/[\s-]/g, '');
+              }
+
+              // Extract title from first substantial line — overrides filename-derived title
+              const lines = header.split('\n').map(l => l.trim()).filter(l => l.length > 10 && l.length < 200);
+              if (lines.length > 0) {
+                const textTitle = lines[0];
+                // Prefer text-extracted title over filename-derived one (e.g. "SAMv1")
+                if (!meta.title || meta.title.length < 30) {
+                  meta.title = textTitle;
+                }
+              }
+
+              // Extract author from second line only if it looks like a name/group (not body text)
+              if (meta.author.length === 0 && lines.length > 1) {
+                const authorLine = lines[1];
+                // Must be short, no sentences (no periods mid-text), no common body-text starts
+                const isSentence = (authorLine.match(/\.\s+[A-Z]/g) || []).length > 0;
+                const isBodyText = /^(we |this |the |in |a |an |abstract|introduction|chapter|section|table of|contents|copyright|doi)/i.test(authorLine);
+                const isUrl = /^https?:\/\//i.test(authorLine);
+                if (authorLine.length < 100 && !isSentence && !isBodyText && !isUrl) {
+                  meta.author = parseAuthorsString(authorLine);
+                }
+              }
+
+              // Extract publication date from header text (more accurate than PDF CreationDate)
+              const datePatterns = [
+                /(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4})/i,
+                /((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4})/i,
+                /(\d{4}-\d{2}-\d{2})/,
+              ];
+              for (const rx of datePatterns) {
+                const dm = header.match(rx);
+                if (dm) {
+                  const dateStr = dm[1] || dm[0];
+                  const ts = Date.parse(dateStr);
+                  if (!isNaN(ts)) {
+                    const d = new Date(ts);
+                    meta.issued = { 'date-parts': [[d.getFullYear(), d.getMonth() + 1, d.getDate()]] };
+                    break;
+                  }
+                }
+              }
+
+              // Only set type from text extraction if not already determined
+              if (meta.type === 'document') {
+                if (meta.DOI) meta.type = 'article-journal';
+              }
+            }
+          } catch (wasmErr) {
+            console.log('[ibid] WASM pdf-extract failed:', wasmErr.message || wasmErr);
+          }
         }
-      } catch {
-        // Fetch failed (CORS, expired token, etc.) — continue with what we have
+      } catch (fetchErr) {
+        console.log('[ibid] pdf-extractor: fetch failed:', fetchErr.message || fetchErr);
       }
 
       return meta;

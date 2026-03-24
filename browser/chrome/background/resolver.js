@@ -1,7 +1,7 @@
 // Ibid — Identifier Resolver
 // Resolves DOI, ISBN, PMID, arXiv to CSL-JSON metadata via public APIs
 
-const REQUEST_TIMEOUT = 10000; // 10 seconds
+const REQUEST_TIMEOUT = 15000; // 15 seconds (arXiv API is slow)
 
 // ---------------------------------------------------------------------------
 // Fetch with timeout and error context
@@ -166,51 +166,64 @@ export async function resolveArxiv(arxivId) {
   arxivId = arxivId.replace(/^arxiv:\s*/i, '').trim();
   if (!arxivId.match(/^\d{4}\.\d{4,5}(v\d+)?$/)) throw new Error('Invalid arXiv ID format');
 
+  // Fetch arXiv abstract page and parse Highwire meta tags (CORS-friendly, no API needed)
   const res = await fetchWithTimeout(
-    `https://export.arxiv.org/api/query?id_list=${arxivId}`,
+    `https://arxiv.org/abs/${arxivId}`,
     {},
     'arXiv'
   );
 
-  const text = await res.text();
+  const html = await res.text();
 
-  // Simple XML parsing for arXiv Atom response
-  const getTag = (xml, tag) => {
-    const match = xml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`));
-    return match ? match[1].trim() : null;
+  // Extract citation_* meta tags
+  const getMeta = (name) => {
+    const m = html.match(new RegExp(`<meta\\s+name="${name}"\\s+content="([^"]*)"`, 'i'));
+    return m ? m[1].trim() : null;
   };
-  const getAllTags = (xml, tag) => {
-    const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, 'g');
+  const getAllMeta = (name) => {
+    const re = new RegExp(`<meta\\s+name="${name}"\\s+content="([^"]*)"`, 'gi');
     const results = [];
     let m;
-    while ((m = re.exec(xml))) results.push(m[1].trim());
+    while ((m = re.exec(html))) results.push(m[1].trim());
     return results;
   };
 
-  // Find the <entry> block
-  const entry = getTag(text, 'entry');
-  if (!entry) return null;
+  const title = getMeta('citation_title');
+  const authors = getAllMeta('citation_author');
+  const dateStr = getMeta('citation_date') || getMeta('citation_publication_date') || getMeta('citation_online_date');
+  const doi = getMeta('citation_doi');
+  const abstractMatch = html.match(/<blockquote[^>]*class="abstract[^"]*"[^>]*>[\s\S]*?<span class="descriptor">[^<]*<\/span>\s*([\s\S]*?)<\/blockquote>/i);
+  const abstract = abstractMatch ? abstractMatch[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim() : null;
 
-  const title = getTag(entry, 'title')?.replace(/\s+/g, ' ');
-  const summary = getTag(entry, 'summary')?.replace(/\s+/g, ' ');
-  const published = getTag(entry, 'published');
-  const authorNames = getAllTags(entry, 'name');
+  let issued = null;
+  if (dateStr) {
+    const parts = dateStr.split(/[/-]/);
+    if (parts.length >= 1) {
+      issued = { 'date-parts': [[
+        parseInt(parts[0]),
+        ...(parts[1] ? [parseInt(parts[1])] : []),
+        ...(parts[2] ? [parseInt(parts[2])] : []),
+      ]] };
+    }
+  }
 
   return {
     type: 'article',
     title: title || null,
-    author: authorNames.map((name) => {
+    author: authors.map((name) => {
+      // Highwire format: "Last, First"
+      if (name.includes(',')) {
+        const [family, given] = name.split(',', 2).map(s => s.trim());
+        return { family, given };
+      }
       const parts = name.split(' ');
       if (parts.length === 1) return { literal: parts[0] };
       const family = parts.pop();
       return { family, given: parts.join(' ') };
     }),
-    issued: published ? { 'date-parts': [[
-      parseInt(published.slice(0, 4)),
-      parseInt(published.slice(5, 7)),
-      parseInt(published.slice(8, 10)),
-    ]]} : null,
-    abstract: summary || null,
+    issued,
+    abstract,
+    DOI: doi || `10.48550/arXiv.${arxivId}`,
     URL: `https://arxiv.org/abs/${arxivId}`,
     number: arxivId,
     _source: 'arxiv',
@@ -224,6 +237,12 @@ export async function resolveArxiv(arxivId) {
 export async function resolveIdentifier(input) {
   input = (input || '').trim();
   if (!input) throw new Error('No identifier provided');
+
+  // arXiv DOI (10.48550/arXiv.XXXX.XXXXX) — route to arXiv API, not CrossRef
+  const arxivDoiMatch = input.match(/10\.48550\/arXiv\.(\d{4}\.\d{4,5})/i);
+  if (arxivDoiMatch) {
+    return resolveArxiv(arxivDoiMatch[1]);
+  }
 
   // DOI
   if (input.match(/^10\.\d{4,}/) || input.match(/doi\.org\/10\./i)) {

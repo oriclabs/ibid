@@ -22,6 +22,8 @@ web-sys = { version = "0.3", features = ["console"] }
 thiserror = "2"
 unicode-segmentation = "1"
 hayagriva = { version = "0.9", default-features = false }
+pdf-extract = "0.10.0"
+getrandom = { version = "0.3", features = ["wasm_js"] }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3"

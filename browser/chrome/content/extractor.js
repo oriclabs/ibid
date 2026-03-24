@@ -54,7 +54,22 @@ window.__ibidExtractorLoaded = true;
     // 8. Smart NER-based author/date detection (local, no API)
     extractWithNER(meta);
 
-    // 9. Build accessed date
+    // 9. Clean title — strip site name suffix using generic heuristic
+    if (meta.title) {
+      const siteName = document.querySelector('meta[property="og:site_name"]')?.content;
+      if (siteName) {
+        // Remove " - SiteName", " | SiteName", " : SiteName" from end
+        const escaped = siteName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        meta.title = meta.title.replace(new RegExp('\\s*[-–—|:]\\s*' + escaped + '\\s*$', 'i'), '').trim();
+      }
+      // Remove trailing " : Author : domain : Category" chains (3+ colon-separated segments at end)
+      meta.title = meta.title.replace(/(?:\s*:\s*[^:]{1,50}){2,}\s*$/, (match) => {
+        // Only strip if the last segment looks like a domain or generic category
+        return /\.\w{2,}|books|articles|blog/i.test(match) ? '' : match;
+      }).trim();
+    }
+
+    // 10. Build accessed date
     const now = new Date();
     meta.accessed = {
       'date-parts': [[now.getFullYear(), now.getMonth() + 1, now.getDate()]],
@@ -151,8 +166,9 @@ window.__ibidExtractorLoaded = true;
     }
 
     meta.DOI = meta.DOI || cleanDoi(getMeta('citation_doi'));
-    meta['container-title'] =
-      meta['container-title'] || getMeta('citation_journal_title');
+    // Highwire journal title is authoritative — overrides og:site_name
+    const hwJournal = getMeta('citation_journal_title');
+    if (hwJournal) meta['container-title'] = hwJournal;
     meta.publisher = meta.publisher || getMeta('citation_publisher');
 
     const date = getMeta('citation_publication_date') || getMeta('citation_date');
@@ -376,8 +392,9 @@ window.__ibidExtractorLoaded = true;
 
     const v = (key) => {
       const skip = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'HEAD', 'META', 'LINK', 'TITLE']);
-      // Find the smallest element whose own text contains the key
-      const xpath = `//*[text()[contains(normalize-space(.), "${key}")]]`;
+      // Find the smallest element whose own text contains the key (case-insensitive)
+      const lk = key.toLowerCase();
+      const xpath = `//*[text()[contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), "${lk}")]]`;
       const results = document.evaluate(xpath, document.body, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
       let best = null, bestLen = Infinity;
       for (let i = 0; i < results.snapshotLength; i++) {
@@ -433,49 +450,84 @@ window.__ibidExtractorLoaded = true;
       return null;
     };
 
-    if (meta.type === 'book') {
+    // --- DOM keyword lookup table ---
+    // To add/update keywords: edit this structure, no need to touch extraction logic.
+    // Each field: { keys: [...], validate?, transform? }
+    //   validate(val): return true to accept the raw value
+    //   transform(val, meta): return the value to assign (or mutate meta directly)
+    const DOM_KEYWORDS = {
+      book: {
+        publisher:          { keys: ['Publisher', 'Published by', 'Imprint', 'Publishing House'] },
+        issued:             { keys: ['Publication date', 'Published', 'Date published', 'Publish date', 'Release date', 'First published'],
+                              transform: (val) => parseDate(val) },
+        language:           { keys: ['Language'] },
+        ISBN:               { keys: ['ISBN-13', 'ISBN 13', 'EAN', 'ISBN-10', 'ISBN 10', 'ISBN'],
+                              transform: (val) => {
+                                const clean = val.replace(/[\s-]/g, '');
+                                return (clean.match(/97[89]\d{10}/) || clean.match(/\d{9}[\dXx]/) || [])[0] || null;
+                              }},
+        _asin:              { keys: ['ASIN'],
+                              transform: (val) => (val.match(/[A-Z0-9]{10}/i) || [])[0] || null },
+        'number-of-pages':  { keys: ['Print length', 'Pages', 'Page count', 'Number of pages'],
+                              transform: (val) => (val.match(/(\d+)/) || [])[1] || null },
+        edition:            { keys: ['Edition', 'Printing'] },
+        'collection-title': { keys: ['Series', 'Book series'] },
+        author:             { keys: ['Author', 'Authors', 'Written by', 'By'],
+                              transform: (val) => val.split(/\s*[,;]\s*|\s+and\s+/i).map(n => parseName(n.trim())).filter(n => n.family || n.literal),
+                              check: (meta) => !meta.author?.length },
+        editor:             { keys: ['Editor', 'Editors', 'Edited by'],
+                              transform: (val) => val.split(/\s*[,;]\s*|\s+and\s+/i).map(n => parseName(n.trim())).filter(n => n.family || n.literal) },
+      },
+      'article-journal': {
+        'container-title':  { keys: ['Journal', 'Publication', 'Published in'] },
+        volume:             { keys: ['Volume', 'Vol'],
+                              validate: (val) => /^\d{1,4}$/.test(val.trim()),
+                              transform: (val) => val.trim() },
+        issue:              { keys: ['Issue', 'Number', 'No'],
+                              validate: (val) => /^\d{1,4}$/.test(val.trim()),
+                              transform: (val) => val.trim() },
+        page:               { keys: ['Pages', 'Page range'],
+                              validate: (val) => /^[\d\s,–—-]+$/.test(val.trim()),
+                              transform: (val) => val.trim() },
+      },
+      thesis: {
+        publisher:          { keys: ['University', 'Institution', 'School'] },
+        genre:              { keys: ['Degree', 'Department'] },
+      },
+      _common: {
+        publisher:          { keys: ['Publisher', 'Published by', 'Organization'] },
+        issued:             { keys: ['Date', 'Published', 'Publication date', 'Year'],
+                              transform: (val) => parseDate(val) },
+      },
+    };
 
-      // Book-specific fields
-      if (!meta.publisher) { const p = v('Publisher'); if (p) meta.publisher = p; }
-      if (!meta.issued) { const d = v('Publication date') || v('Published'); if (d) meta.issued = parseDate(d); }
-      if (!meta.language) { const l = v('Language'); if (l) meta.language = l; }
+    // --- Generic DOM extraction using keyword table ---
+    const typeKeywords = DOM_KEYWORDS[meta.type] || {};
+    const commonKeywords = DOM_KEYWORDS._common || {};
 
-      const isbn13 = v('ISBN-13') || v('ISBN 13');
-      if (isbn13 && !meta.ISBN) meta.ISBN = isbn13.replace(/[\s-]/g, '').match(/97[89]\d{10}/)?.[0];
-
-      if (!meta.ISBN) {
-        const isbn10 = v('ISBN-10') || v('ISBN 10');
-        if (isbn10) meta.ISBN = isbn10.replace(/[\s-]/g, '').match(/\d{9}[\dXx]/)?.[0];
+    for (const [field, config] of Object.entries(typeKeywords)) {
+      // Check if field already has a value (custom check or default)
+      if (config.check ? !config.check(meta) : meta[field]) continue;
+      for (const key of config.keys) {
+        const raw = v(key);
+        if (!raw) continue;
+        if (config.validate && !config.validate(raw)) continue;
+        meta[field] = config.transform ? config.transform(raw, meta) : raw;
+        if (meta[field]) break;
       }
+    }
 
-      if (!meta.ISBN) {
-        const asin = v('ASIN');
-        if (asin) meta._asin = asin.match(/[A-Z0-9]{10}/i)?.[0];
+    // Common fields — fill remaining gaps for any type
+    for (const [field, config] of Object.entries(commonKeywords)) {
+      if (meta[field]) continue;
+      for (const key of config.keys) {
+        const raw = v(key);
+        if (!raw) continue;
+        if (config.validate && !config.validate(raw)) continue;
+        meta[field] = config.transform ? config.transform(raw, meta) : raw;
+        if (meta[field]) break;
       }
-
-      const pages = v('Print length') || v('Pages') || v('Page count');
-      if (pages) { const n = pages.match(/(\d+)/); if (n) meta['number-of-pages'] = n[1]; }
-
-      if (!meta.edition) { const e = v('Edition'); if (e) meta.edition = e; }
     }
-
-    // Journal-specific fields
-    if (meta.type === 'article-journal') {
-      if (!meta['container-title']) { const j = v('Journal') || v('Publication'); if (j) meta['container-title'] = j; }
-      if (!meta.volume) { const vol = v('Volume'); if (vol) meta.volume = vol; }
-      if (!meta.issue) { const iss = v('Issue') || v('Number'); if (iss) meta.issue = iss; }
-      if (!meta.page) { const pg = v('Pages') || v('Page range'); if (pg) meta.page = pg; }
-    }
-
-    // Thesis-specific fields
-    if (meta.type === 'thesis') {
-      if (!meta.publisher) { const u = v('University') || v('Institution') || v('School'); if (u) meta.publisher = u; }
-      if (!meta.genre) { const d = v('Degree') || v('Department'); if (d) meta.genre = d; }
-    }
-
-    // Common fields for any type — fill gaps
-    if (!meta.publisher) { const p = v('Publisher') || v('Published by') || v('Organization'); if (p) meta.publisher = p; }
-    if (!meta.issued) { const d = v('Date') || v('Published') || v('Publication date') || v('Year'); if (d) meta.issued = parseDate(d); }
   }
 
   // Site-specific extractors
@@ -660,6 +712,11 @@ window.__ibidExtractorLoaded = true;
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'extractMetadata') {
+      // On PDF pages, let pdf-extractor.js handle it
+      if (document.contentType === 'application/pdf' ||
+          window.location.href.toLowerCase().match(/\.pdf(\?|$)/)) {
+        return false; // don't handle — pdf-extractor will respond
+      }
       const metadata = extractMetadata();
       sendResponse({ metadata });
     } else if (message.action === 'saveQuote') {

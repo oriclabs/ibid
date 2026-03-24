@@ -677,14 +677,33 @@ async function handleMessage(message) {
       try {
         const xml = message.styleXml || (await loadStyleXml(message.styleId || 'apa7'));
         engine.loadStyle(xml);
-        const itemJson = JSON.stringify(message.item);
+        const item = message.item;
+        if (!item.type) item.type = 'webpage';
+        const itemJson = JSON.stringify(item);
         const bib = engine.formatBibliographyEntry(itemJson);
-        const intext = engine.formatCitation(JSON.stringify([message.item]));
+        const intext = engine.formatCitation(JSON.stringify([item]));
         console.log('[Ibid] formatBoth OK — style:', message.styleId, 'bib length:', bib?.length, 'intext:', intext?.substring(0, 40));
         return { bibliography: bib, intext };
       } catch (e) {
         console.error('[Ibid] formatBoth FAILED — style:', message.styleId, 'error:', e.message || e);
         return { error: `Render failed: ${e.message || e}` };
+      }
+    }
+
+    case 'extractPdfText': {
+      try {
+        if (!message.url) return { error: 'No URL provided' };
+        const res = await fetch(message.url);
+        if (!res.ok) return { error: `Fetch failed: ${res.status}` };
+        const buffer = await res.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        console.log('[Ibid] extractPdfText — fetched', bytes.length, 'bytes from', message.url);
+        const text = engine.extractPdfText(bytes);
+        console.log('[Ibid] extractPdfText — extracted', text.length, 'chars');
+        return { text };
+      } catch (e) {
+        console.error('[Ibid] extractPdfText FAILED:', e.message || e);
+        return { error: e.message || String(e) };
       }
     }
 

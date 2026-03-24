@@ -305,7 +305,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       try {
         await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content/extractor.js'] });
         if (tab.url?.toLowerCase().endsWith('.pdf') || tab.url?.includes('pdf')) {
-          await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content/pdf-extractor.js'] });
+          await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content/pdfParser.js', 'content/pdf-extractor.js'] });
         }
         injected = true;
       } catch {}
@@ -334,7 +334,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (tab.url?.toLowerCase().endsWith('.pdf') || tab.url?.includes('pdf')) {
           await chrome.scripting.executeScript({
             target: { tabId: tab.id },
-            files: ['content/pdf-extractor.js'],
+            files: ['content/pdfParser.js', 'content/pdf-extractor.js'],
           });
         }
       } catch (e) {
@@ -823,9 +823,12 @@ async function tryAutoEnhance() {
       }
       filled.push('date');
     }
-    if (resolved['container-title'] && missingContainer) {
-      $('#field-container').value = resolved['container-title'];
-      filled.push('journal');
+    if (resolved['container-title']) {
+      // Always overwrite — DOI-resolved journal name is more authoritative than og:site_name
+      if (missingContainer || $('#field-container').value !== resolved['container-title']) {
+        $('#field-container').value = resolved['container-title'];
+        filled.push('journal');
+      }
     }
     if (resolved.publisher && !$('#field-publisher').value.trim()) {
       $('#field-publisher').value = resolved.publisher;

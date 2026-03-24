@@ -314,4 +314,11 @@ impl IbidEngine {
             .map_err(|e| JsValue::from_str(&e.to_string()))?;
         Ok(crate::serializers::yaml::serialize_yaml(&items))
     }
+
+    /// Extract text from PDF bytes
+    #[wasm_bindgen(js_name = extractPdfText)]
+    pub fn extract_pdf_text(&self, bytes: &[u8]) -> Result<String, JsValue> {
+        pdf_extract::extract_text_from_mem(bytes)
+            .map_err(|e| JsValue::from_str(&format!("PDF extraction failed: {}", e)))
+    }
 }
