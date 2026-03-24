@@ -42,6 +42,46 @@ if (!window.__ibidPdfExtractorLoaded) {
         }
       }
 
+      // XMP metadata — richer than info dict, embedded as XML in PDF
+      const xmpChunk = new TextDecoder('utf-8', { fatal: false }).decode(bytes.slice(0, Math.min(bytes.length, 200000)));
+      const xmpStart = xmpChunk.indexOf('<x:xmpmeta');
+      const xmpEnd = xmpChunk.indexOf('</x:xmpmeta>');
+      if (xmpStart > -1 && xmpEnd > xmpStart) {
+        const xmp = xmpChunk.substring(xmpStart, xmpEnd + 13);
+        const xmpTag = (tag) => {
+          const m = xmp.match(new RegExp(`<${tag}[^>]*>([^<]+)</${tag}>`, 'i'));
+          return m ? m[1].trim() : null;
+        };
+        const xmpAll = (tag) => {
+          const re = new RegExp(`<${tag}[^>]*>([^<]+)</${tag}>`, 'gi');
+          const results = []; let m;
+          while ((m = re.exec(xmp))) results.push(m[1].trim());
+          return results;
+        };
+        // dc:title, dc:creator, dc:description, dc:date, prism:doi, prism:publicationName
+        if (!info.Title) info.Title = xmpTag('dc:title') || xmpTag('rdf:li');
+        if (!info.Author) {
+          const creators = xmpAll('dc:creator') .length ? xmpAll('dc:creator') : xmpAll('rdf:li');
+          if (creators.length) info.Author = creators.join('; ');
+        }
+        if (!info.Subject) info.Subject = xmpTag('dc:description');
+        const xmpDoi = xmpTag('prism:doi') || xmpTag('pdfx:doi') || xmpTag('pdfx:DOI');
+        if (xmpDoi) info.DOI = xmpDoi;
+        const xmpJournal = xmpTag('prism:publicationName');
+        if (xmpJournal) info._journal = xmpJournal;
+        const xmpVolume = xmpTag('prism:volume');
+        if (xmpVolume) info._volume = xmpVolume;
+        const xmpIssue = xmpTag('prism:number') || xmpTag('prism:issueIdentifier');
+        if (xmpIssue) info._issue = xmpIssue;
+        const xmpStartPage = xmpTag('prism:startingPage');
+        const xmpEndPage = xmpTag('prism:endingPage');
+        if (xmpStartPage) info._pages = xmpEndPage ? `${xmpStartPage}-${xmpEndPage}` : xmpStartPage;
+        const xmpIsbn = xmpTag('prism:isbn');
+        if (xmpIsbn) info.ISBN = xmpIsbn;
+        const xmpDate = xmpTag('prism:publicationDate') || xmpTag('prism:coverDate') || xmpTag('dc:date');
+        if (xmpDate) info._xmpDate = xmpDate;
+      }
+
       // Search first 32KB for DOI, ISBN patterns
       const textChunk = new TextDecoder('latin1').decode(bytes.slice(0, 32768));
 
@@ -158,14 +198,46 @@ if (!window.__ibidPdfExtractorLoaded) {
         } catch {}
       }
 
-      // 3. DOI from URL
-      const urlDoi = window.location.href.match(/10\.\d{4,}\/[^\s&?#]+/);
+      // 3. DOI from URL — multiple patterns
+      const url = window.location.href;
+      const urlDoi = url.match(/10\.\d{4,}\/[^\s&?#]+/);
       if (urlDoi) meta.DOI = urlDoi[0].replace(/[.,;:)\]}>]+$/, '');
 
-      // 3b. arXiv ID from URL (e.g. arxiv.org/pdf/2303.08774)
       if (!meta.DOI) {
-        const arxivMatch = window.location.href.match(/arxiv\.org\/(?:abs|pdf)\/(\d{4}\.\d{4,5})/);
+        // arXiv: arxiv.org/pdf/2303.08774
+        const arxivMatch = url.match(/arxiv\.org\/(?:abs|pdf)\/(\d{4}\.\d{4,5})/);
         if (arxivMatch) meta.DOI = '10.48550/arXiv.' + arxivMatch[1];
+      }
+      if (!meta.DOI) {
+        // Nature: nature.com/articles/s41586-024-07386-0.pdf
+        const natureMatch = url.match(/nature\.com\/articles\/([^/.]+)\.pdf/);
+        if (natureMatch) meta.DOI = '10.1038/' + natureMatch[1];
+      }
+      if (!meta.DOI) {
+        // Springer: link.springer.com/content/pdf/10.1007/...
+        const springerMatch = url.match(/springer\.com\/content\/pdf\/(10\.\d{4,}\/[^.]+)/);
+        if (springerMatch) meta.DOI = springerMatch[1];
+      }
+      if (!meta.DOI) {
+        // ScienceDirect: sciencedirect.com/science/article/pii/S0123456789 → need DOI from page
+        // Wiley: onlinelibrary.wiley.com/doi/pdfdirect/10.1002/...
+        const wileyMatch = url.match(/wiley\.com\/doi\/(?:pdfdirect|epdf)\/(10\.\d{4,}\/[^?#]+)/);
+        if (wileyMatch) meta.DOI = decodeURIComponent(wileyMatch[1]);
+      }
+      if (!meta.DOI) {
+        // Taylor & Francis: tandfonline.com/doi/pdf/10.4161/rna.22269
+        const tfMatch = url.match(/tandfonline\.com\/doi\/(?:pdf|epdf)\/(10\.\d{4,}\/[^?#]+)/);
+        if (tfMatch) meta.DOI = decodeURIComponent(tfMatch[1]);
+      }
+      if (!meta.DOI) {
+        // SAGE, ACS, generic /doi/pdf/ pattern
+        const genericDoiPdf = url.match(/\/doi\/(?:pdf|epdf|pdfdirect|full)\/(10\.\d{4,}\/[^?#]+)/);
+        if (genericDoiPdf) meta.DOI = decodeURIComponent(genericDoiPdf[1]);
+      }
+      if (!meta.DOI) {
+        // PMC: ncbi.nlm.nih.gov/pmc/articles/PMC1234567/pdf/
+        const pmcMatch = url.match(/\/pmc\/articles\/(PMC\d+)/);
+        if (pmcMatch) meta._pmcId = pmcMatch[1];
       }
 
       // 4. Try to fetch PDF bytes and parse metadata dictionary
@@ -189,6 +261,16 @@ if (!window.__ibidPdfExtractorLoaded) {
           if (info.Subject) meta.abstract = info.Subject;
           if (info.Keywords) meta.keyword = info.Keywords;
 
+          // XMP-derived fields
+          if (info._journal && !meta['container-title']) meta['container-title'] = info._journal;
+          if (info._volume && !meta.volume) meta.volume = info._volume;
+          if (info._issue && !meta.issue) meta.issue = info._issue;
+          if (info._pages && !meta.page) meta.page = info._pages;
+          if (info._xmpDate) {
+            const xmpParsed = parsePdfDate(info._xmpDate);
+            if (xmpParsed) meta.issued = xmpParsed; // XMP date overrides CreationDate
+          }
+
           // Set type based on identifiers found
           if (meta.ISBN) meta.type = 'book';
           else if (meta.DOI) meta.type = 'article-journal';
@@ -205,8 +287,12 @@ if (!window.__ibidPdfExtractorLoaded) {
               const fullText = textResult.text;
               console.log('[ibid] WASM pdf-extract text length:', fullText.length, 'preview:', fullText.substring(0, 300));
 
-              // Use only first ~2000 chars (first page header) — avoids picking up references
-              const header = fullText.substring(0, 2000);
+              // Smart header detection — find content before references/bibliography
+              const refIndex = fullText.search(/\n\s*(References|Bibliography|Works Cited|Literature Cited|Notes)\s*\n/i);
+              const abstractIndex = fullText.search(/\n\s*(Abstract|Summary)\s*\n/i);
+              // Header = before abstract or first 3000 chars, whichever is shorter
+              const headerEnd = abstractIndex > 100 ? abstractIndex : Math.min(fullText.length, 3000);
+              const header = fullText.substring(0, headerEnd);
 
               // Extract DOI from header area only
               if (!meta.DOI) {
@@ -273,6 +359,34 @@ if (!window.__ibidPdfExtractorLoaded) {
         }
       } catch (fetchErr) {
         console.log('[ibid] pdf-extractor: fetch failed:', fetchErr.message || fetchErr);
+      }
+
+      // 6. Linked article page — fetch HTML article page for Highwire/DC meta tags
+      // Only if we have a DOI but still missing key fields
+      if (meta.DOI && (!meta.author?.length || !meta.volume || !meta['container-title'])) {
+        try {
+          const doiUrl = meta.DOI.startsWith('http') ? meta.DOI : `https://doi.org/${meta.DOI}`;
+          const articleResult = await chrome.runtime.sendMessage({
+            action: 'fetchArticleMeta',
+            url: doiUrl,
+          });
+          if (articleResult?.meta) {
+            const am = articleResult.meta;
+            if (am.title && (!meta.title || meta.title.length < 30)) meta.title = am.title;
+            if (am.authors?.length > (meta.author?.length || 0)) {
+              meta.author = am.authors.map(n => parseAuthorsString(n)[0] || { literal: n });
+            }
+            if (am.journal) meta['container-title'] = am.journal;
+            if (am.volume) meta.volume = am.volume;
+            if (am.issue) meta.issue = am.issue;
+            if (am.pages) meta.page = am.pages;
+            if (am.date && !meta.issued) meta.issued = parsePdfDate(am.date);
+            if (am.publisher && !meta.publisher) meta.publisher = am.publisher;
+            if (am.issn && !meta.ISSN) meta.ISSN = am.issn;
+          }
+        } catch {
+          // Article page fetch failed — continue with what we have
+        }
       }
 
       return meta;

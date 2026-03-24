@@ -690,6 +690,45 @@ async function handleMessage(message) {
       }
     }
 
+    case 'fetchArticleMeta': {
+      // Fetch article HTML page and extract Highwire/DC meta tags
+      try {
+        if (!message.url) return { error: 'No URL' };
+        const res = await fetch(message.url, { redirect: 'follow' });
+        if (!res.ok) return { error: `Fetch failed: ${res.status}` };
+        const html = await res.text();
+
+        const getMeta = (name, attr = 'name') => {
+          const m = html.match(new RegExp(`<meta\\s+${attr}="${name}"\\s+content="([^"]*)"`, 'i'));
+          return m ? m[1].trim() : null;
+        };
+        const getAllMeta = (name, attr = 'name') => {
+          const re = new RegExp(`<meta\\s+${attr}="${name}"\\s+content="([^"]*)"`, 'gi');
+          const results = []; let m;
+          while ((m = re.exec(html))) results.push(m[1].trim());
+          return results;
+        };
+
+        const meta = {};
+        meta.title = getMeta('citation_title') || getMeta('DC.title') || getMeta('dc.title');
+        meta.authors = getAllMeta('citation_author').length ? getAllMeta('citation_author') :
+                       getAllMeta('DC.creator').length ? getAllMeta('DC.creator') : getAllMeta('dc.creator');
+        meta.journal = getMeta('citation_journal_title') || getMeta('prism.publicationName');
+        meta.volume = getMeta('citation_volume') || getMeta('prism.volume');
+        meta.issue = getMeta('citation_issue') || getMeta('prism.number');
+        const fp = getMeta('citation_firstpage') || getMeta('prism.startingPage');
+        const lp = getMeta('citation_lastpage') || getMeta('prism.endingPage');
+        meta.pages = fp ? (lp ? `${fp}-${lp}` : fp) : null;
+        meta.date = getMeta('citation_publication_date') || getMeta('citation_date') || getMeta('DC.date') || getMeta('dc.date');
+        meta.publisher = getMeta('citation_publisher') || getMeta('DC.publisher') || getMeta('dc.publisher');
+        meta.issn = getMeta('citation_issn') || getMeta('prism.issn');
+
+        return { meta };
+      } catch (e) {
+        return { error: e.message || String(e) };
+      }
+    }
+
     case 'extractPdfText': {
       try {
         if (!message.url) return { error: 'No URL provided' };
