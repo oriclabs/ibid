@@ -22,14 +22,29 @@ const VERSION = manifest.version;
 console.log(`Building store packages for Ibid v${VERSION}\n`);
 
 // Files/dirs to exclude from ZIP
-const EXCLUDE_PATTERNS = [
-  'storelisting.txt',
-  '.DS_Store',
-  'Thumbs.db',
-  '*.map',
-];
-
-const excludeArgs = EXCLUDE_PATTERNS.map(p => `-x "${p}"`).join(' ');
+// Create ZIP with forward-slash paths (required by Firefox AMO)
+function createZip(sourceDir, zipPath) {
+  if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
+  const absZip = path.resolve(zipPath).replace(/\\/g, '/');
+  const absSrc = path.resolve(sourceDir).replace(/\\/g, '/');
+  const pyFile = path.join(DIST, '_mkzip.py');
+  fs.writeFileSync(pyFile, [
+    'import zipfile, os, sys',
+    `src = "${absSrc}"`,
+    `dst = "${absZip}"`,
+    'exclude = {"storelisting.txt", ".DS_Store", "Thumbs.db"}',
+    'with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zf:',
+    '    for root, dirs, files in os.walk(src):',
+    '        for f in files:',
+    '            if f in exclude or f.endswith(".map"): continue',
+    '            full = os.path.join(root, f)',
+    '            arc = os.path.relpath(full, src).replace(chr(92), "/")',
+    '            zf.write(full, arc)',
+  ].join('\n'));
+  try { execSync(`python3 "${pyFile}"`, { stdio: 'pipe' }); }
+  catch { execSync(`python "${pyFile}"`, { stdio: 'pipe' }); }
+  fs.unlinkSync(pyFile);
+}
 
 // ---------------------------------------------------------------------------
 // 1. Chrome Web Store
@@ -40,15 +55,8 @@ function buildChrome() {
   const zipName = `ibid-chrome-v${VERSION}.zip`;
   const zipPath = path.join(outDir, zipName);
 
-  // Remove old zip
-  if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
-
-  // Create zip from chrome source
   console.log(`[Chrome] Building ${zipName}...`);
-  execSync(
-    `cd "${CHROME_SRC}" && powershell -Command "Compress-Archive -Path * -DestinationPath '${zipPath}' -Force"`,
-    { stdio: 'pipe' }
-  );
+  createZip(CHROME_SRC, zipPath);
 
   const size = (fs.statSync(zipPath).size / 1024 / 1024).toFixed(2);
   console.log(`[Chrome] ${zipPath} (${size} MB)`);
@@ -64,14 +72,8 @@ function buildEdge() {
   const zipName = `ibid-edge-v${VERSION}.zip`;
   const zipPath = path.join(outDir, zipName);
 
-  if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
-
-  // Edge uses the same package as Chrome
   console.log(`[Edge] Building ${zipName}...`);
-  execSync(
-    `cd "${CHROME_SRC}" && powershell -Command "Compress-Archive -Path * -DestinationPath '${zipPath}' -Force"`,
-    { stdio: 'pipe' }
-  );
+  createZip(CHROME_SRC, zipPath);
 
   const size = (fs.statSync(zipPath).size / 1024 / 1024).toFixed(2);
   console.log(`[Edge] ${zipPath} (${size} MB)`);
@@ -105,12 +107,9 @@ function buildFirefox() {
   const firefoxManifest = path.join(ROOT, 'browser', 'firefox', 'manifest.json');
   fs.copyFileSync(firefoxManifest, path.join(tmpDir, 'manifest.json'));
 
-  // Create zip
+  // Create zip with forward-slash paths (Firefox AMO requires this)
   console.log(`[Firefox] Building ${zipName}...`);
-  execSync(
-    `cd "${tmpDir}" && powershell -Command "Compress-Archive -Path * -DestinationPath '${zipPath}' -Force"`,
-    { stdio: 'pipe' }
-  );
+  createZip(tmpDir, zipPath);
 
   // Cleanup temp dir
   fs.rmSync(tmpDir, { recursive: true });
