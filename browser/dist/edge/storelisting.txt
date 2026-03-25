@@ -8,6 +8,15 @@ One-click citations in APA, MLA, Chicago, Harvard & 2,600+ styles. Privacy-first
 
 Category: Productivity
 
+Search Terms (7 terms, 18 words total):
+  1. citation manager
+  2. APA MLA Chicago citation
+  3. bibliography generator
+  4. academic reference tool
+  5. DOI lookup
+  6. BibTeX RIS export
+  7. cite webpage
+
 Language: English
 
 ---
@@ -104,3 +113,26 @@ Optional permissions are never granted automatically. The user is prompted only 
 No broad permissions (<all_urls>, tabs, webRequest) are requested.
 
 Content Security Policy includes wasm-unsafe-eval for WebAssembly execution only.
+
+---
+
+NOTES FOR CERTIFICATION (paste into submission form, <2000 chars):
+
+Ibid is a citation manager that formats academic references. To test:
+
+1. Navigate to any webpage (e.g. https://www.nature.com/articles/s41586-024-07386-0)
+2. Click the Ibid icon in the toolbar
+3. Citation metadata is extracted automatically and displayed in the popup
+4. Select a citation style (APA, MLA, etc.) and click "Copy Bib"
+5. Click "Library" to open the side panel for managing saved citations
+
+Permissions:
+- activeTab + scripting: reads page metadata only when user clicks the icon
+- storage: saves citations locally (no server)
+- sidePanel: library management panel
+- contextMenus: right-click "Cite this page", "Look up DOI", etc.
+- optional_host_permissions: arxiv.org, doi.org, semanticscholar.org, wikipedia.org — requested at runtime only when citing arXiv papers or resolving DOIs. User is prompted. If denied, falls back to CrossRef/OpenAlex which work without extra permissions.
+
+CSP wasm-unsafe-eval: required for the Rust/WebAssembly citation engine (Hayagriva). No arbitrary code execution — only bundled WASM modules.
+
+No remote code. No data collection. No background network activity. All processing local. Source: https://github.com/oriclabs/ibid

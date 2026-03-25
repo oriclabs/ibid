@@ -1,16 +1,17 @@
-CHROME WEB STORE LISTING
-========================
+CHROME WEB STORE SUBMISSION GUIDE
+===================================
+
+LISTING TAB
+-----------
 
 Name: Ibid — Citation Manager
 
 Short Description (132 chars max):
-One-click citations in APA, MLA, Chicago, Harvard & 2,600+ styles. Privacy-first, Rust/WASM powered. No account needed.
+Privacy-first citation manager. One-click citations in APA, MLA, Chicago, Harvard & 2,600+ styles. No account needed.
 
-Category: Productivity
+Category: Productivity > Tools
 
-Language: English
-
----
+Language: English (United States)
 
 Detailed Description:
 
@@ -80,26 +81,64 @@ For questions, feedback, or bug reports:
   Support: support@ibid.tools
   Privacy Policy: https://ibid.tools/privacy
 
----
+PRIVACY TAB
+-----------
 
-NOTES FOR CHROME REVIEW
+Privacy Policy URL: https://ibid.tools/privacy
 
-Required permissions justification:
-  - activeTab: Required to extract metadata from the current page when the user clicks the extension icon. No background page access.
-  - scripting: Required to inject the metadata extractor content script into the active tab on demand. Only injected when the user clicks the icon or uses the context menu.
-  - storage: Required to save the user's citation library, projects, tags, and preferences locally on the user's device.
-  - sidePanel: Required to display the library management panel alongside the user's research.
-  - contextMenus: Required to add "Cite this page", "Cite linked page", "Look up DOI/ISBN", and "Import DOIs from selection" to the right-click menu.
+Single purpose description:
+Ibid is a citation manager that extracts bibliographic metadata from webpages and formats citations in academic styles (APA, MLA, Chicago, etc.). It runs entirely in the browser using WebAssembly.
 
-Optional host permissions justification:
-  - https://arxiv.org/*: Fetch complete author lists and paper metadata from arXiv abstract pages. Many academic papers are hosted on arXiv and lack metadata in their PDF files. This permission allows Ibid to fetch the HTML abstract page which contains structured Highwire/citation meta tags with accurate author, title, and date information.
-  - https://export.arxiv.org/*: Alternative arXiv API endpoint for metadata retrieval when the main arxiv.org is unavailable.
-  - https://api.semanticscholar.org/*: Fallback metadata source for arXiv papers. Semantic Scholar provides structured author and citation data for computer science and biomedical papers.
-  - https://en.wikipedia.org/*: Access to Wikipedia's Citoid citation service, which uses Zotero translation servers to resolve any URL into structured citation metadata. Only the page URL is sent, no personal data.
-  - https://doi.org/*: Follow DOI redirect links to publisher article pages. Many PDFs contain DOIs that resolve to publisher pages with rich Highwire/Dublin Core metadata. This permission allows Ibid to fetch that page and extract complete citation fields.
+Data usage:
+  - Does NOT collect: personally identifiable information, health information, financial information, authentication information, personal communications, location, web history, user activity, website content
+  - Does NOT sell user data
+  - Does NOT use data for purposes unrelated to the extension's functionality
+  - Does NOT use data for creditworthiness or lending purposes
 
-These optional permissions are NEVER granted automatically. The user is prompted only when a specific citation requires access to one of these services (e.g., citing an arXiv paper). If denied, the extension falls back to CORS-friendly APIs (OpenAlex, CrossRef, Open Library, Google Books, NCBI) that work without extra permissions.
+Permission justifications (copy these into the form fields):
 
-No <all_urls>, tabs, webRequest, identity, or other broad permissions are requested. The extension does not access any pages in the background.
+activeTab:
+Ibid needs to read the current page's metadata (title, author, date, DOI) when the user clicks the extension icon. This permission limits access to only the active tab and only when the user clicks — no background access.
 
-Content Security Policy includes wasm-unsafe-eval for WebAssembly execution only (Rust/WASM citation engine).
+scripting:
+Required to inject the metadata extraction content script into the active tab. The script reads structured data (meta tags, JSON-LD, Dublin Core) from the page to build the citation. Only injected on user action (clicking the icon or using the context menu).
+
+storage:
+Stores the user's citation library, projects, tags, and preferences locally on the device using chrome.storage.local. No data is transmitted to any server.
+
+sidePanel:
+Displays the library management panel alongside the browser window. Users can browse, search, edit, import, and export their citations in the side panel while continuing to research.
+
+contextMenus:
+Adds right-click options for citation workflows:
+  - "Cite this page" — extract metadata from the current page
+  - "Cite linked page" — resolve a DOI or ISBN link to full metadata
+  - "Look up selected DOI/ISBN" — resolve selected identifier text
+  - "Import DOIs from selection" — bulk import multiple DOIs from selected text
+
+Host permissions (optional_host_permissions — requested at runtime, not at install):
+
+https://arxiv.org/* and https://export.arxiv.org/*:
+Fetches complete author lists and paper metadata from arXiv abstract pages. Academic papers on arXiv often lack metadata in their PDF files. This allows Ibid to fetch the HTML abstract page which contains Highwire citation meta tags with accurate author, title, and date information. Only the arXiv paper ID is used. Requested only when the user cites an arXiv paper.
+
+https://api.semanticscholar.org/*:
+Fallback metadata source for arXiv papers when the arXiv abstract page is unavailable. Semantic Scholar provides structured author and citation data. Only the arXiv paper ID is sent.
+
+https://en.wikipedia.org/*:
+Access to Wikipedia's Citoid citation service, which resolves any URL into structured citation metadata using Zotero translation servers. Only the page URL is sent, no personal data. Requested only when the user clicks Enhance with a URL.
+
+https://doi.org/*:
+Follows DOI redirect links to publisher article pages. Many PDFs contain DOIs that resolve to publisher pages with rich metadata. This permission allows Ibid to fetch that page and extract complete citation fields. Only the DOI is used.
+
+Content Security Policy justification:
+The extension uses wasm-unsafe-eval in its Content Security Policy. This is required to execute the Rust/WebAssembly citation engine (Hayagriva). It does not enable arbitrary JavaScript execution — only compiled WASM modules bundled with the extension.
+
+ADDITIONAL NOTES FOR REVIEWER
+------------------------------
+
+- No <all_urls>, tabs, webRequest, webNavigation, identity, or other broad permissions
+- Optional host permissions are NEVER granted automatically — the user is prompted at runtime
+- If optional permissions are denied, the extension falls back to CORS-friendly APIs (OpenAlex, CrossRef, Open Library, Google Books, NCBI)
+- No background network activity — all requests triggered by user action only
+- No remote code execution — all JavaScript and WASM are bundled with the extension
+- Source code: https://github.com/oriclabs/ibid
