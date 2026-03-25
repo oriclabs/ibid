@@ -51,6 +51,7 @@ function hideActionCard() {
 // ---------------------------------------------------------------------------
 // Progress box — centered overlay during HTTP operations
 // ---------------------------------------------------------------------------
+let _progressTimer = null;
 function showProgress(text, detail) {
   const overlay = $('#progress-overlay');
   $('#progress-text').textContent = text || 'Processing...';
@@ -58,6 +59,9 @@ function showProgress(text, detail) {
   const isDark = document.documentElement.classList.contains('dark');
   overlay.style.background = isDark ? 'rgba(24,24,27,0.5)' : 'rgba(255,255,255,0.5)';
   overlay.classList.remove('hidden');
+  // Safety: force hide after 20s to prevent stuck progress
+  clearTimeout(_progressTimer);
+  _progressTimer = setTimeout(() => hideProgress(), 20000);
 }
 
 function updateProgress(text, detail) {
@@ -67,6 +71,7 @@ function updateProgress(text, detail) {
 }
 
 function hideProgress() {
+  clearTimeout(_progressTimer);
   $('#progress-overlay').classList.add('hidden');
 }
 
@@ -90,6 +95,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       showHint('restricted', `Citation engine failed to load. Citations will use basic formatting. Try reloading the extension.`);
     }
   });
+
+  // Show progress while loading
+  showProgress('Reading page metadata...');
 
   // Load saved preferences
   const prefs = await chrome.storage.local.get(['defaultStyle', 'lastProject']);
@@ -350,6 +358,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (isRestricted) {
       currentMetadata = { URL: tab?.url || '', type: 'webpage' };
       showState('ready');
+      hideProgress();
       showHint('restricted', 'This page can\'t be auto-cited. Enter details manually or paste a DOI/ISBN below and click Enhance.');
     } else if (isFileUrl) {
       // Local file — try to extract what we can from the filename/title
@@ -387,10 +396,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         // For non-PDF pages: await injection (fast, needed before sendMessage)
         // For PDF pages: skip injection (may hang on Firefox pdf.js viewer)
         if (!isPdfPage) {
-          await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            files: ['shared/identifiers.js', 'content/extractor.js'],
-          });
+          const scripting = chrome.scripting || (typeof browser !== 'undefined' && browser.scripting);
+          if (scripting) {
+            await scripting.executeScript({
+              target: { tabId: tab.id },
+              files: ['shared/identifiers.js', 'content/extractor.js'],
+            });
+            // Brief delay for content script listener registration
+            await new Promise(r => setTimeout(r, 200));
+          }
         }
       } catch {}
 
@@ -403,6 +417,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Restore cached fields — user reopened popup on same page
         currentMetadata = cachedData.metadata;
         populateFields(currentMetadata);
+        hideProgress();
         showState('ready');
         showHint('info', 'Restored from previous session. Click "Rescan Page" for fresh extraction.');
       } else {
@@ -451,9 +466,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             hideProgress();
           }});
           pdfButtons.push({ label: 'Enter manually', action: () => {
+            hideProgress();
             showHint('info', 'Fill in the fields below. Paste a DOI and click Enhance for auto-fill.');
           }});
 
+          // Hide initial progress before showing action card
+          hideProgress();
           showActionCard({
             icon: '📄',
             title: 'PDF Detected',
@@ -470,23 +488,43 @@ document.addEventListener('DOMContentLoaded', async () => {
         const extractionTimeout = setTimeout(() => {
           if (responded) return;
           responded = true;
+          // Extract DOI from URL as fallback
+          let doi = null;
+          const pageUrl = tab.url || '';
+          const urlDoi = pageUrl.match(/10\.\d{4,}\/[^\s&?#]+/);
+          if (urlDoi) doi = urlDoi[0].replace(/[.,;:)\]}>]+$/, '');
           currentMetadata = {
             title: tab.title?.replace(/\.pdf$/i, '').trim() || '',
-            URL: tab.url || '',
+            URL: pageUrl,
+            DOI: doi,
             type: 'webpage',
           };
           populateFields(currentMetadata);
           showState('ready');
-          showHint('sparse', 'Extraction timed out. Fields pre-filled from tab info — review and complete manually.');
-          tryAutoEnhance().then(() => hideProgress());
-        }, 8000);
+          if (doi) {
+            showProgress('Resolving metadata via DOI...');
+          } else if (currentMetadata.title && currentMetadata.title.length > 15) {
+            showProgress('Searching by title...');
+          } else {
+            showHint('sparse', 'Extraction timed out. Paste a DOI or ISBN below and click Enhance.');
+          }
+          tryAutoEnhance().then(() => { hideProgress(); cacheCurrentFields(); }).catch(() => hideProgress());
+        }, 3000); // 3s timeout — Firefox content scripts may not respond via sendMessage
 
-        chrome.tabs.sendMessage(tab.id, { action: 'extractMetadata' }, (response) => {
+        // Send extraction request — retry once if no response (Firefox timing)
+        const sendExtract = () => chrome.tabs.sendMessage(tab.id, { action: 'extractMetadata' });
+        sendExtract().then(response => {
+          if (!response?.metadata) {
+            // No response — retry once after delay (content script may not be ready)
+            return new Promise(r => setTimeout(r, 500)).then(() => sendExtract());
+          }
+          return response;
+        }).then(response => {
           if (responded) return;
           responded = true;
           clearTimeout(extractionTimeout);
 
-          if (chrome.runtime.lastError || !response?.metadata) {
+          if (!response?.metadata) {
             let doi = null;
             const pageUrl = tab.url || '';
             const urlDoi = pageUrl.match(/10\.\d{4,}\/[^\s&?#]+/);
@@ -498,11 +536,13 @@ document.addEventListener('DOMContentLoaded', async () => {
               type: 'webpage',
             };
             populateFields(currentMetadata);
+            showState('ready');
             if (doi) {
               showProgress('Resolving metadata via DOI...');
             } else if (currentMetadata.title && currentMetadata.title.length > 15) {
               showProgress('Searching by title...');
             } else {
+              hideProgress();
               showHint('sparse', 'Could not read this page. Paste a DOI or ISBN below and click Enhance, or enter details manually.');
             }
           } else {
@@ -531,16 +571,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
           }
           showState('ready');
-          tryAutoEnhance().then(() => hideProgress());
+          cacheCurrentFields();
+          tryAutoEnhance().then(() => { hideProgress(); cacheCurrentFields(); }).catch(() => hideProgress());
+        }).catch(() => {
+          // sendMessage failed — treat same as no response, let timeout handle it
         });
         } // end HTML path else
       }
     } else {
       showState('ready');
+      hideProgress();
       showHint('restricted', 'No active tab found. Enter citation details manually.');
     }
   } catch (err) {
     currentMetadata = { type: 'webpage' };
+    hideProgress();
     showState('ready');
     showHint('restricted', 'Enter citation details manually or paste a DOI/ISBN below.');
   }
@@ -744,6 +789,7 @@ async function enhanceMetadata() {
   $('#enhance-icon').classList.add('hidden');
   $('#enhance-spinner').classList.remove('hidden');
   $('#btn-enhance').disabled = true;
+  showProgress('Resolving identifier...', identifier.substring(0, 40));
 
   try {
     const res = await chrome.runtime.sendMessage({
@@ -842,6 +888,7 @@ async function enhanceMetadata() {
   } catch (err) {
     showEnhanceResult('error', `Lookup failed: ${err.message}`);
   } finally {
+    hideProgress();
     $('#enhance-icon').classList.remove('hidden');
     $('#enhance-spinner').classList.add('hidden');
     $('#btn-enhance').disabled = false;
@@ -1942,18 +1989,65 @@ async function rescanPage() {
       return;
     }
 
-    // Allow http, https, and file:// URLs
     const isValidUrl = tab.url?.match(/^(https?|file):\/\//);
     if (!isValidUrl) {
       showHint('restricted', 'Cannot rescan this page (restricted URL).');
       return;
     }
 
-    // Clear cache for this tab — force fresh extraction
+    // Clear cache
     const cacheKey = `ibid_cache_${tab.id}`;
     await chrome.storage.session.remove([cacheKey]);
 
     const isPdf = tab.url?.toLowerCase().match(/\.pdf(\?|#|$)/) || tab.url?.match(/\/pdf\/[\d.]/) || tab.url?.includes('application/pdf');
+
+    // For PDFs: show action card again
+    if (isPdf) {
+      _permissionHintLocked = false;
+      dismissHint();
+      const pageUrl = tab.url || '';
+      let doi = null;
+      const urlDoi = pageUrl.match(/10\.\d{4,}\/[^\s&?#]+/);
+      if (urlDoi) doi = urlDoi[0].replace(/[.,;:)\]}>]+$/, '');
+      else {
+        const am = pageUrl.match(/arxiv\.org\/(?:abs|pdf)\/(\d{4}\.\d{4,5})/);
+        if (am) doi = '10.48550/arXiv.' + am[1];
+      }
+      if (doi) { currentMetadata.DOI = doi; $('#field-doi').value = doi; }
+
+      const pdfButtons = [];
+      if (doi) {
+        pdfButtons.push({ label: 'Enhance via DOI', primary: true, action: async () => {
+          showProgress('Resolving DOI...', doi);
+          await tryAutoEnhance();
+          hideProgress();
+          cacheCurrentFields();
+        }});
+      }
+      pdfButtons.push({ label: 'Scan PDF Text', primary: !doi, action: async () => {
+        _permissionHintLocked = false;
+        showProgress('Scanning PDF for metadata...');
+        await extractPdfViaServiceWorker(pageUrl);
+        hideProgress();
+        cacheCurrentFields();
+      }});
+      pdfButtons.push({ label: 'Enter manually', action: () => {
+        hideProgress();
+        showHint('info', 'Fill in the fields below. Paste a DOI and click Enhance for auto-fill.');
+        cacheCurrentFields();
+      }});
+
+      showActionCard({
+        icon: '📄',
+        title: 'Rescan PDF',
+        message: doi ? `DOI: <code class="text-[10px] bg-zinc-100 dark:bg-zinc-700 px-1 rounded">${doi}</code>` : 'Choose how to extract metadata.',
+        buttons: pdfButtons,
+      });
+      return;
+    }
+
+    // HTML page rescan
+    showProgress('Rescanning page...');
 
     // Re-inject content scripts
     try {
@@ -1988,24 +2082,26 @@ async function rescanPage() {
       metadata = await sendExtract();
     }
 
+    hideProgress();
     if (metadata) {
       currentMetadata = metadata;
       populateFields(currentMetadata);
       dismissHint();
       showEnhanceResult('success', 'Page rescanned — fields refreshed');
-      tryAutoEnhance();
+      cacheCurrentFields();
+      tryAutoEnhance().then(() => { hideProgress(); cacheCurrentFields(); });
     } else {
-      // Extraction failed — keep current fields, re-run auto-enhance
       const hasDoi = $('#field-doi').value.trim();
       if (hasDoi) {
         dismissHint();
-        showEnhanceResult('info', 'Re-enhancing from identifier...');
-        tryAutoEnhance();
+        showProgress('Re-enhancing from identifier...');
+        tryAutoEnhance().then(() => { hideProgress(); cacheCurrentFields(); }).catch(() => hideProgress());
       } else {
         showHint('sparse', 'Could not rescan. Try reloading the page first, then click the Ibid icon again.');
       }
     }
   } catch (err) {
+    hideProgress();
     showHint('sparse', `Rescan failed: ${err.message}`);
   }
 }

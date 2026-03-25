@@ -64,6 +64,15 @@ firefoxManifest.permissions = (firefoxManifest.permissions || []).filter(
   p => !['sidePanel'].includes(p)
 );
 
+// 4b. Firefox: declare content scripts in manifest (programmatic injection unreliable)
+firefoxManifest.content_scripts = [
+  {
+    matches: ['<all_urls>'],
+    js: ['shared/identifiers.js', 'content/extractor.js'],
+    run_at: 'document_idle',
+  },
+];
+
 // 5. Add Firefox addon ID
 firefoxManifest.browser_specific_settings = {
   gecko: {

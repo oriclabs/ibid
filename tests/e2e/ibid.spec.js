@@ -2687,3 +2687,158 @@ test.describe('Phase 11 — Resolver & PDF Improvements', () => {
     await page.close();
   });
 });
+
+// =============================================================================
+// Phase 12 — Action Cards, Progress Box, Firefox Compatibility
+// =============================================================================
+
+test.describe('Phase 12 — UI Overlays & Cross-Browser', () => {
+
+  test('12.1 — Popup has action card and progress overlay elements', async () => {
+    const page = await ctx.context.newPage();
+    await page.goto(ctx.popupUrl);
+    await page.waitForTimeout(500);
+    expect(await page.$('#action-overlay')).toBeTruthy();
+    expect(await page.$('#action-card')).toBeTruthy();
+    expect(await page.$('#action-buttons')).toBeTruthy();
+    expect(await page.$('#progress-overlay')).toBeTruthy();
+    expect(await page.$('#progress-text')).toBeTruthy();
+    log('Phase 12: UI', 'Action card and progress overlay elements exist', 'PASS');
+    await page.close();
+  });
+
+  test('12.2 — Form visible by default, no blank loading state', async () => {
+    const page = await ctx.context.newPage();
+    await page.goto(ctx.popupUrl);
+    await page.waitForTimeout(300);
+    const readyHidden = await page.$eval('#state-ready', el => el.classList.contains('hidden'));
+    expect(readyHidden).toBe(false);
+    const loadingHidden = await page.$eval('#state-loading', el => el.classList.contains('hidden'));
+    expect(loadingHidden).toBe(true);
+    log('Phase 12: UI', 'Form visible, loading hidden by default', 'PASS');
+    await page.close();
+  });
+
+  test('12.3 — Progress overlay structure and spinner', async () => {
+    const page = await ctx.context.newPage();
+    await page.goto(`chrome-extension://${ctx.extensionId}/popup/popup.html`);
+    await page.waitForTimeout(500);
+    const spinner = await page.$('#progress-overlay div[style*="animation"]');
+    expect(spinner).toBeTruthy();
+    expect(await page.$('#progress-text')).toBeTruthy();
+    expect(await page.$('#progress-detail')).toBeTruthy();
+    log('Phase 12: UI', 'Progress overlay has spinner, text, detail', 'PASS');
+    await page.close();
+  });
+
+  test('12.4 — Action card structure', async () => {
+    const page = await ctx.context.newPage();
+    await page.goto(`chrome-extension://${ctx.extensionId}/popup/popup.html`);
+    await page.waitForTimeout(500);
+    expect(await page.$('#action-icon')).toBeTruthy();
+    expect(await page.$('#action-title')).toBeTruthy();
+    expect(await page.$('#action-message')).toBeTruthy();
+    expect(await page.$('#action-buttons')).toBeTruthy();
+    log('Phase 12: UI', 'Action card has icon, title, message, buttons', 'PASS');
+    await page.close();
+  });
+
+  test('12.5 — Spinner has inline @keyframes animation', async () => {
+    const page = await ctx.context.newPage();
+    await page.goto(ctx.popupUrl);
+    await page.waitForTimeout(500);
+    const hasSpin = await page.evaluate(() => {
+      for (const s of document.querySelectorAll('style')) if (s.textContent.includes('@keyframes spin')) return true;
+      return false;
+    });
+    expect(hasSpin).toBe(true);
+    log('Phase 12: UI', 'Inline @keyframes spin animation exists', 'PASS');
+    await page.close();
+  });
+
+  test('12.6 — Permission hint lock logic exists in popup.js', async () => {
+    const fs = require('fs');
+    const path = require('path');
+    const popup = fs.readFileSync(path.resolve(__dirname, '../../browser/chrome/popup/popup.js'), 'utf-8');
+    expect(popup).toContain('_permissionHintLocked');
+    expect(popup).toContain('if (_permissionHintLocked) return');
+    log('Phase 12: Permissions', 'Permission hint lock code exists', 'PASS');
+  });
+
+  test('12.7 — Firefox manifest has content_scripts', async () => {
+    const fs = require('fs');
+    const path = require('path');
+    const manifestPath = path.resolve(__dirname, '../../browser/firefox/manifest.json');
+    if (fs.existsSync(manifestPath)) {
+      const m = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+      expect(m.content_scripts).toBeTruthy();
+      expect(m.content_scripts[0].js).toContain('content/extractor.js');
+      log('Phase 12: Firefox', 'content_scripts declared for auto-injection', 'PASS');
+    } else {
+      log('Phase 12: Firefox', 'Firefox manifest not found', 'WARN');
+    }
+  });
+
+  test('12.8 — Context menu uses removeAll before create', async () => {
+    const fs = require('fs');
+    const path = require('path');
+    const sw = fs.readFileSync(path.resolve(__dirname, '../../browser/chrome/background/service-worker.js'), 'utf-8');
+    expect(sw.indexOf('contextMenus.removeAll')).toBeLessThan(sw.indexOf("id: 'ibid-cite-page'"));
+    log('Phase 12: Service Worker', 'removeAll before contextMenus.create', 'PASS');
+  });
+
+  test('12.9 — Screenshot: PDF action card', async () => {
+    const page = await ctx.context.newPage();
+    await page.goto(`chrome-extension://${ctx.extensionId}/popup/popup.html`);
+    await page.waitForTimeout(2000);
+    try {
+      await page.evaluate(() => {
+        showActionCard({
+          icon: '📄', title: 'PDF Detected',
+          message: 'DOI: <code style="font-size:10px;background:#f4f4f5;padding:2px 4px;border-radius:3px;">10.1038/s41586-024-07386-0</code>',
+          buttons: [
+            { label: 'Enhance via DOI', primary: true, action: () => {} },
+            { label: 'Scan PDF Text', action: () => {} },
+            { label: 'Enter manually', action: () => {} },
+          ],
+        });
+      });
+      await page.waitForTimeout(300);
+      await page.screenshot({ path: `${SCREENSHOT_DIR}/12-action-card-pdf.png`, fullPage: false });
+      log('Phase 12: Screenshots', 'PDF action card', 'PASS');
+    } catch { log('Phase 12: Screenshots', 'PDF action card (popup init error)', 'WARN'); }
+    await page.close();
+  });
+
+  test('12.10 — Screenshot: Progress box', async () => {
+    const page = await ctx.context.newPage();
+    await page.goto(`chrome-extension://${ctx.extensionId}/popup/popup.html`);
+    await page.waitForTimeout(2000);
+    try {
+      await page.evaluate(() => showProgress('Scanning PDF for metadata...'));
+      await page.waitForTimeout(300);
+      await page.screenshot({ path: `${SCREENSHOT_DIR}/12-progress-box.png`, fullPage: false });
+      log('Phase 12: Screenshots', 'Progress box', 'PASS');
+    } catch { log('Phase 12: Screenshots', 'Progress box (popup init error)', 'WARN'); }
+    await page.close();
+  });
+
+  test('12.11 — Screenshot: Permission action card', async () => {
+    const page = await ctx.context.newPage();
+    await page.goto(`chrome-extension://${ctx.extensionId}/popup/popup.html`);
+    await page.waitForTimeout(2000);
+    try {
+      await page.evaluate(() => {
+        showActionCard({
+          icon: '🔑', title: 'Scholarly API Access',
+          message: 'Grant access to fetch metadata from arXiv and other scholarly APIs.',
+          buttons: [{ label: 'Open Settings', primary: true, action: () => {} }, { label: 'Skip', action: () => {} }],
+        });
+      });
+      await page.waitForTimeout(300);
+      await page.screenshot({ path: `${SCREENSHOT_DIR}/12-action-card-permissions.png`, fullPage: false });
+      log('Phase 12: Screenshots', 'Permission action card', 'PASS');
+    } catch { log('Phase 12: Screenshots', 'Permission action card (popup init error)', 'WARN'); }
+    await page.close();
+  });
+});
