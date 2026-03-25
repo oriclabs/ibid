@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Ibid — Citation Manager",
   "version": "0.1.0",
-  "description": "Privacy-first citation manager. One-click accurate citations in 74 styles: APA, MLA, Chicago, Harvard, IEEE, Vancouver, Nature, Lancet & more. Powered by Rust/WASM.",
+  "description": "Privacy-first citation manager. One-click citations in APA, MLA, Chicago, Harvard & 2,600+ styles. No account needed.",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
