@@ -109,4 +109,7 @@ These are in optional_permissions and are only requested at runtime when the use
 
 Content Security Policy includes wasm-unsafe-eval for the Rust/WASM citation engine. No arbitrary code execution.
 
+Data collection permissions (per https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/browser_specific_settings):
+  required: ["none"] — Ibid does not collect any user data. All citation processing happens locally. Network requests are made only for identifier lookups (DOI, ISBN) and optional style downloads.
+
 Source code is available at: https://github.com/oriclabs/ibid

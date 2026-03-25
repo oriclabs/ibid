@@ -78,6 +78,10 @@ firefoxManifest.browser_specific_settings = {
   gecko: {
     id: 'ibid@ibid.tools',
     strict_min_version: '109.0', // MV3 support in Firefox
+    data_collection_permissions: {
+      required: ['none'],
+      description: 'Ibid does not collect any user data. All citation processing happens locally. Network requests are made only for identifier lookups (DOI, ISBN) and optional style downloads.',
+    },
   },
 };
 
