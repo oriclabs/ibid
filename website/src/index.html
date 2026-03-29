@@ -375,8 +375,31 @@
           if (json.results?.[0]) data = openAlexToCSL(json.results[0]);
           else throw new Error('arXiv paper not found');
         } else if (isUrl) {
-          // Try OpenAlex search by URL
-          throw new Error('URL lookup requires the extension. Install Ibid for one-click URL citations.');
+          // Extract DOI from URL patterns
+          const urlDoi = input.match(/10\.\d{4,}\/[^\s&?#]+/) || input.match(/\/doi\/(?:full|abs|pdf)\/(10\.\d{4,}\/[^?#]+)/);
+          const urlArxiv = input.match(/arxiv\.org\/(?:abs|pdf)\/(\d{4}\.\d{4,5})/);
+          const urlNature = input.match(/nature\.com\/articles\/([^/.?#]+)/);
+          if (urlDoi) {
+            const doi = decodeURIComponent(urlDoi[1] || urlDoi[0]).replace(/[.,;:)\]}>]+$/, '');
+            const res = await fetch(`https://api.openalex.org/works/doi:${encodeURIComponent(doi)}`);
+            if (res.ok) data = openAlexToCSL(await res.json());
+            else throw new Error('DOI not found in database');
+          } else if (urlArxiv) {
+            const res = await fetch(`https://api.openalex.org/works?search=${encodeURIComponent('arXiv:' + urlArxiv[1])}&per_page=1`);
+            const json = await res.json();
+            if (json.results?.[0]) data = openAlexToCSL(json.results[0]);
+            else throw new Error('arXiv paper not found');
+          } else if (urlNature) {
+            const res = await fetch(`https://api.openalex.org/works/doi:10.1038/${urlNature[1]}`);
+            if (res.ok) data = openAlexToCSL(await res.json());
+            else throw new Error('Article not found');
+          } else {
+            // Try OpenAlex search by URL
+            const res = await fetch(`https://api.openalex.org/works?search=${encodeURIComponent(input)}&per_page=1`);
+            const json = await res.json();
+            if (json.results?.[0]) data = openAlexToCSL(json.results[0]);
+            else throw new Error('No results. Try pasting a DOI or ISBN for exact matches.');
+          }
         } else {
           // Try as search query
           const res = await fetch(`https://api.openalex.org/works?search=${encodeURIComponent(input)}&per_page=1`);
