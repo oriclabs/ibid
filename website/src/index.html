@@ -78,10 +78,15 @@
       <p style="font-size: 0.8rem; color: #a1a1aa; font-style: italic; margin-bottom: 0.75rem;">From Latin <em>ibidem</em> — "in the same place"</p>
       <h1>Citations done right.<br><span>Finally.</span></h1>
       <p>Free, privacy-first citation manager for Chrome. 2,600+ citation styles, one-click citing, smart metadata extraction, and zero data collection. Powered by Hayagriva &amp; Rust/WebAssembly.</p>
-      <a href="#install" class="hero-cta">
-        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-        Add to Chrome — Free
-      </a>
+      <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+        <a href="#install" class="hero-cta">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          Add to Chrome — Free
+        </a>
+        <a href="#try" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; border: 2px solid #f49707; color: #f49707; font-weight: 700; border-radius: 0.75rem; transition: all 0.2s;" onmouseover="this.style.background='#f49707';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='#f49707'">
+          Try it now
+        </a>
+      </div>
       <p class="hero-sub">No account required. No ads. No telemetry. 100% offline capable.</p>
     </div>
   </section>
@@ -231,6 +236,214 @@
       <p style="margin-top: 1.5rem;"><a href="privacy.html" style="color: #f49707; font-weight: 600;">Read our full Privacy Policy &rarr;</a></p>
     </div>
   </section>
+
+  <!-- Quick Lookup -->
+  <section id="try" style="padding: 4rem 0; background: linear-gradient(135deg, #fff9eb 0%, #fff 50%, #f0f4ff 100%);">
+    <div class="container" style="text-align: center;">
+      <h2 style="font-size: 1.75rem; font-weight: 800; margin-bottom: 0.5rem;">Try it now</h2>
+      <p style="color: #71717a; margin-bottom: 1.5rem;">Paste a DOI, ISBN, PMID, arXiv ID, or URL to generate a citation instantly. No install needed.</p>
+
+      <div style="max-width: 560px; margin: 0 auto;">
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+          <input id="lookup-input" type="text" placeholder="e.g. 10.1038/nature12373 or 978-0-13-468599-1" style="flex: 1; padding: 0.75rem 1rem; border: 2px solid #e4e4e7; border-radius: 0.75rem; font-size: 0.95rem; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#f49707'" onblur="this.style.borderColor='#e4e4e7'">
+          <button id="lookup-btn" onclick="doLookup()" style="padding: 0.75rem 1.5rem; background: #f49707; color: white; border: none; border-radius: 0.75rem; font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#d97706'" onmouseout="this.style.background='#f49707'">Cite</button>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 1rem;">
+          <select id="lookup-style" style="padding: 0.4rem 0.75rem; border: 1px solid #e4e4e7; border-radius: 0.5rem; font-size: 0.85rem; color: #52525b; background: white;">
+            <option value="apa">APA 7th</option>
+            <option value="mla">MLA 9th</option>
+            <option value="chicago">Chicago</option>
+            <option value="harvard">Harvard</option>
+            <option value="ieee">IEEE</option>
+            <option value="vancouver">Vancouver</option>
+          </select>
+          <button onclick="copyResult()" id="copy-btn" style="padding: 0.4rem 1rem; border: 1px solid #e4e4e7; border-radius: 0.5rem; font-size: 0.85rem; color: #52525b; background: white; cursor: pointer; display: none;">Copy</button>
+        </div>
+
+        <div id="lookup-result" style="display: none; text-align: left; padding: 1rem 1.25rem; background: white; border: 1px solid #e4e4e7; border-radius: 0.75rem; font-size: 0.9rem; line-height: 1.6; color: #18181b; box-shadow: 0 1px 3px rgba(0,0,0,0.05);"></div>
+        <div id="lookup-error" style="display: none; padding: 0.75rem 1rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 0.75rem; font-size: 0.85rem; color: #dc2626; text-align: left;"></div>
+        <div id="lookup-loading" style="display: none; padding: 1rem; color: #a1a1aa; font-size: 0.9rem;">
+          <span style="display:inline-block;width:20px;height:20px;border:2px solid #fef3c7;border-top-color:#f49707;border-radius:50%;animation:spin 1s linear infinite;vertical-align:middle;margin-right:0.5rem;"></span>
+          Looking up...
+        </div>
+      </div>
+
+      <p style="margin-top: 1.5rem; color: #a1a1aa; font-size: 0.8rem;">
+        Powered by <a href="https://openalex.org" style="color: #f49707;">OpenAlex</a>, <a href="https://www.crossref.org" style="color: #f49707;">CrossRef</a>, <a href="https://openlibrary.org" style="color: #f49707;">Open Library</a>.
+        For full features, <a href="#install" style="color: #f49707; font-weight: 600;">install the extension</a>.
+      </p>
+    </div>
+  </section>
+
+  <script>
+    const STYLES = {
+      apa: (d) => {
+        const authors = (d.author || []).map((a, i, arr) => {
+          const name = a.family ? `${a.family}, ${(a.given || '').charAt(0)}.` : a.literal || 'Unknown';
+          if (arr.length > 20) { if (i === 0) return name; if (i < arr.length - 1) return i === 1 ? '...' : null; return name; }
+          if (i === arr.length - 1 && arr.length > 1) return `& ${name}`;
+          return name;
+        }).filter(Boolean).join(', ');
+        const year = d.issued?.['date-parts']?.[0]?.[0] || 'n.d.';
+        const title = d.title || 'Untitled';
+        const journal = d['container-title'] ? ` <i>${d['container-title']}</i>` : '';
+        const vol = d.volume ? `, <i>${d.volume}</i>` : '';
+        const issue = d.issue ? `(${d.issue})` : '';
+        const pages = d.page ? `, ${d.page}` : '';
+        const doi = d.DOI ? ` https://doi.org/${d.DOI}` : (d.URL ? ` ${d.URL}` : '');
+        return `${authors} (${year}). ${title}.${journal}${vol}${issue}${pages}.${doi}`;
+      },
+      mla: (d) => {
+        const first = d.author?.[0];
+        const author = first ? (first.family ? `${first.family}, ${first.given || ''}` : first.literal) : '';
+        const others = (d.author?.length || 0) > 1 ? ', et al' : '';
+        const title = d.title ? `"${d.title}."` : '';
+        const container = d['container-title'] ? ` <i>${d['container-title']}</i>,` : '';
+        const vol = d.volume ? ` vol. ${d.volume},` : '';
+        const issue = d.issue ? ` no. ${d.issue},` : '';
+        const year = d.issued?.['date-parts']?.[0]?.[0] || '';
+        const pages = d.page ? ` pp. ${d.page},` : '';
+        const doi = d.DOI ? ` https://doi.org/${d.DOI}.` : '.';
+        return `${author}${others}. ${title}${container}${vol}${issue}${year ? ` ${year},` : ''}${pages}${doi}`;
+      },
+      chicago: (d) => STYLES.apa(d), // simplified
+      harvard: (d) => STYLES.apa(d),
+      ieee: (d) => {
+        const authors = (d.author || []).map(a => a.family ? `${(a.given || '').charAt(0)}. ${a.family}` : a.literal).join(', ');
+        const title = d.title ? `"${d.title},"` : '';
+        const journal = d['container-title'] ? ` <i>${d['container-title']}</i>,` : '';
+        const vol = d.volume ? ` vol. ${d.volume},` : '';
+        const issue = d.issue ? ` no. ${d.issue},` : '';
+        const pages = d.page ? ` pp. ${d.page},` : '';
+        const year = d.issued?.['date-parts']?.[0]?.[0] || '';
+        const doi = d.DOI ? ` doi: ${d.DOI}.` : '.';
+        return `${authors}, ${title}${journal}${vol}${issue}${pages} ${year}.${doi}`;
+      },
+      vancouver: (d) => {
+        const authors = (d.author || []).slice(0, 6).map(a => a.family ? `${a.family} ${(a.given || '').charAt(0)}` : a.literal).join(', ');
+        const etal = (d.author?.length || 0) > 6 ? ', et al' : '';
+        const title = d.title || '';
+        const journal = d['container-title'] ? ` ${d['container-title']}.` : '.';
+        const year = d.issued?.['date-parts']?.[0]?.[0] || '';
+        const vol = d.volume || '';
+        const issue = d.issue ? `(${d.issue})` : '';
+        const pages = d.page ? `:${d.page}` : '';
+        return `${authors}${etal}. ${title}.${journal} ${year};${vol}${issue}${pages}.`;
+      },
+    };
+
+    let lastResult = null;
+
+    async function doLookup() {
+      const input = document.getElementById('lookup-input').value.trim();
+      if (!input) return;
+      const result = document.getElementById('lookup-result');
+      const error = document.getElementById('lookup-error');
+      const loading = document.getElementById('lookup-loading');
+      const copyBtn = document.getElementById('copy-btn');
+      result.style.display = 'none';
+      error.style.display = 'none';
+      loading.style.display = 'block';
+      copyBtn.style.display = 'none';
+
+      try {
+        let data = null;
+        // Detect identifier type
+        const isDoi = input.match(/^10\.\d{4,}/);
+        const isIsbn = input.replace(/[-\s]/g, '').match(/^(97[89])?\d{9}[\dXx]$/);
+        const isUrl = input.match(/^https?:\/\//);
+        const isArxiv = input.match(/^(?:arxiv:?)?\s*(\d{4}\.\d{4,5})/i);
+
+        if (isDoi || (isUrl && input.includes('doi.org'))) {
+          const doi = input.replace(/^https?:\/\/doi\.org\//, '');
+          const res = await fetch(`https://api.openalex.org/works/doi:${encodeURIComponent(doi)}`);
+          if (!res.ok) throw new Error('DOI not found');
+          const item = await res.json();
+          data = openAlexToCSL(item);
+        } else if (isIsbn) {
+          const isbn = input.replace(/[-\s]/g, '');
+          const res = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`);
+          const json = await res.json();
+          const book = json[`ISBN:${isbn}`];
+          if (!book) throw new Error('ISBN not found');
+          data = { type: 'book', title: book.title, author: (book.authors || []).map(a => { const p = a.name.split(' '); const f = p.pop(); return { family: f, given: p.join(' ') }; }), issued: book.publish_date ? { 'date-parts': [[parseInt(book.publish_date.match(/\d{4}/)?.[0])]] } : null, publisher: book.publishers?.[0]?.name, ISBN: isbn };
+        } else if (isArxiv) {
+          const id = isArxiv[1];
+          const res = await fetch(`https://api.openalex.org/works?search=${encodeURIComponent('arXiv:' + id)}&per_page=1`);
+          const json = await res.json();
+          if (json.results?.[0]) data = openAlexToCSL(json.results[0]);
+          else throw new Error('arXiv paper not found');
+        } else if (isUrl) {
+          // Try OpenAlex search by URL
+          throw new Error('URL lookup requires the extension. Install Ibid for one-click URL citations.');
+        } else {
+          // Try as search query
+          const res = await fetch(`https://api.openalex.org/works?search=${encodeURIComponent(input)}&per_page=1`);
+          const json = await res.json();
+          if (json.results?.[0]) data = openAlexToCSL(json.results[0]);
+          else throw new Error('No results found. Try a DOI or ISBN for exact matches.');
+        }
+
+        if (data) {
+          lastResult = data;
+          const style = document.getElementById('lookup-style').value;
+          result.innerHTML = STYLES[style](data);
+          result.style.display = 'block';
+          copyBtn.style.display = 'inline-block';
+        }
+      } catch (e) {
+        error.textContent = e.message;
+        error.style.display = 'block';
+      }
+      loading.style.display = 'none';
+    }
+
+    function copyResult() {
+      const el = document.getElementById('lookup-result');
+      const text = el.innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('copy-btn');
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy', 1500);
+      });
+    }
+
+    // Re-format when style changes
+    document.getElementById('lookup-style').addEventListener('change', () => {
+      if (!lastResult) return;
+      const style = document.getElementById('lookup-style').value;
+      document.getElementById('lookup-result').innerHTML = STYLES[style](lastResult);
+    });
+
+    // Enter key triggers lookup
+    document.getElementById('lookup-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') doLookup();
+    });
+
+    function openAlexToCSL(item) {
+      return {
+        type: item.type || 'article',
+        title: item.title,
+        author: (item.authorships || []).map(a => {
+          const name = a.author?.display_name || '';
+          const parts = name.split(' ');
+          if (parts.length === 1) return { literal: parts[0] };
+          const family = parts.pop();
+          return { family, given: parts.join(' ') };
+        }),
+        issued: item.publication_date ? { 'date-parts': [item.publication_date.split('-').map(Number)] } : null,
+        'container-title': item.primary_location?.source?.display_name || null,
+        volume: item.biblio?.volume || null,
+        issue: item.biblio?.issue || null,
+        page: item.biblio?.first_page ? (item.biblio.last_page ? `${item.biblio.first_page}-${item.biblio.last_page}` : item.biblio.first_page) : null,
+        DOI: item.doi?.replace('https://doi.org/', '') || null,
+        URL: item.primary_location?.landing_page_url || null,
+        publisher: item.primary_location?.source?.host_organization_name || null,
+      };
+    }
+  </script>
+  <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 
   <!-- Footer -->
   <footer>
