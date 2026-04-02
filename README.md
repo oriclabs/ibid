@@ -73,7 +73,7 @@ Ibid fixes all of these. All processing happens locally in your browser via Rust
 - **Embedded help** — full documentation with sidebar navigation
 - **Custom dialogs** — non-blocking confirm/alert (no browser-blocking popups)
 - **Backup/restore** — export and import your entire library as JSON
-- **PDF detection** — extracts metadata from PDF pages viewed in browser
+- **PDF detection** — extracts metadata from PDF pages viewed in browser (experimental — results vary by PDF; some extract perfectly, others may give partial or unexpected results due to inconsistent metadata across publishers)
 
 ## Tech Stack
 

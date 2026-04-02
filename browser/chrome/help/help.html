@@ -304,6 +304,9 @@
           <li><strong>Scan PDF Text</strong> &mdash; downloads and scans the PDF to extract title, DOI, authors, and dates from the document text</li>
           <li><strong>Enter manually</strong> &mdash; fill fields yourself or paste a DOI and click Enhance</li>
         </ul>
+        <div class="text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded px-3 py-2 mb-2">
+          <strong>Note:</strong> PDF extraction is experimental. PDFs vary widely in how they store metadata — some embed rich info (DOI, authors, title), others have almost nothing. Results may be partial or unexpected depending on the publisher and PDF format. If a scan doesn't work well, try pasting the DOI manually and clicking Enhance.
+        </div>
         <h3 class="text-sm font-medium mb-1">How PDF scanning works</h3>
         <ul class="text-sm text-zinc-600 dark:text-zinc-400 space-y-1 list-disc list-inside mb-2">
           <li><strong>PDF info dictionary</strong> &mdash; title, author, date, keywords from binary metadata</li>
