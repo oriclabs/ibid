@@ -87,8 +87,11 @@ Ibid fixes all of these. All processing happens locally in your browser via Rust
 
 ## Installation
 
-### From Chrome Web Store
-*(Coming soon)*
+### Browser Stores
+
+- **Chrome / Brave**: [Chrome Web Store](https://chromewebstore.google.com/detail/ldfpipkkpgknnfidnnflpdcdkjbjlbch)
+- **Edge**: [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/ibid-%E2%80%94-citation-manager/hiocfefpndjnicfcchahjdighckanhmj)
+- **Firefox**: [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/ibid-citation-manager/)
 
 ### From Source (Developer Mode)
 

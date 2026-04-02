@@ -31,11 +31,35 @@ The name comes from Latin *ibidem* — "in the same place."
 - Multi-source resolver: tries multiple APIs with automatic fallback for reliable results
 
 **Available on:**
-- Chrome: https://chrome.google.com/webstore/detail/ibid
-- Edge: https://microsoftedge.microsoft.com/addons/detail/ibid
-- Firefox: https://addons.mozilla.org/en-US/firefox/addon/ibid
+- Chrome / Brave: https://chromewebstore.google.com/detail/ldfpipkkpgknnfidnnflpdcdkjbjlbch
+- Edge: https://microsoftedge.microsoft.com/addons/detail/ibid-%E2%80%94-citation-manager/hiocfefpndjnicfcchahjdighckanhmj
+- Firefox: https://addons.mozilla.org/en-US/firefox/addon/ibid-citation-manager/
 - Website: https://ibid.tools
 - GitHub: https://github.com/oriclabs/ibid
+
+**Your library, your data:**
+- Every citation you save is stored **locally in your browser** — nothing leaves your machine
+- Organize with **projects** (one per class, paper, or assignment) and **color-coded tags**
+- Star favorites, add notes and quotes, search across all fields
+- **Import** from BibTeX, RIS, CSL-JSON, EndNote XML, MEDLINE, CSV, or TSV — paste text or upload a file, preview entries with checkboxes before importing
+- **Export** to 10 formats: BibTeX, RIS, CSL-JSON, CSV, TSV, YAML, Word XML, Formatted Text, HTML, Markdown
+- **Backup & restore** your entire library as JSON — switch browsers or keep a safe copy
+- Built-in **migration wizard** for moving from Zotero, Mendeley, or EndNote
+
+**Is this for you?** If you've ever thought:
+- "I just need a quick APA citation for this webpage, why do I need an account?"
+- "My citation extension gave me the wrong author order... again"
+- "I don't want to pay $3/month just to export BibTeX"
+- "Why is this extension tracking my browsing history?"
+- "Where is my data actually stored? Can I export it if the tool disappears?"
+- "I'm switching between APA for one class and Chicago for another — can I just pick per project?"
+- "I have 200 citations in Zotero/Mendeley — can I bring them over without starting from scratch?"
+- "I need my references in BibTeX for LaTeX but also in Word format for a group project"
+- "I found a PDF online but the citation tool can't extract anything from it"
+- "I pasted a DOI and got nothing back"
+- "I want to keep my research organized by project but everything ends up in one big list"
+
+...then Ibid was built for exactly these frustrations.
 
 I'd love feedback from actual researchers and students. What citation styles do you use most? What features are missing from your current tool?
 
@@ -59,9 +83,9 @@ Just released Ibid, a citation manager extension that processes everything local
 
 Built with Rust/WASM core + Tailwind CSS + vanilla JS. Minimal permissions with optional scholarly API access.
 
-- Chrome: https://chrome.google.com/webstore/detail/ibid
-- Edge: https://microsoftedge.microsoft.com/addons/detail/ibid
-- Firefox: https://addons.mozilla.org/en-US/firefox/addon/ibid
+- Chrome / Brave: https://chromewebstore.google.com/detail/ldfpipkkpgknnfidnnflpdcdkjbjlbch
+- Edge: https://microsoftedge.microsoft.com/addons/detail/ibid-%E2%80%94-citation-manager/hiocfefpndjnicfcchahjdighckanhmj
+- Firefox: https://addons.mozilla.org/en-US/firefox/addon/ibid-citation-manager/
 - GitHub: https://github.com/oriclabs/ibid
 
 ---
@@ -96,5 +120,6 @@ Sharing a project where Rust compiled to WebAssembly powers the core engine of a
 WASM binary is 2.8MB (Hayagriva + pdf-extract + parsers + serializers + locale).
 
 - GitHub: https://github.com/oriclabs/ibid
-- Chrome: https://chrome.google.com/webstore/detail/ibid
-- Firefox: https://addons.mozilla.org/en-US/firefox/addon/ibid
+- Chrome / Brave: https://chromewebstore.google.com/detail/ldfpipkkpgknnfidnnflpdcdkjbjlbch
+- Edge: https://microsoftedge.microsoft.com/addons/detail/ibid-%E2%80%94-citation-manager/hiocfefpndjnicfcchahjdighckanhmj
+- Firefox: https://addons.mozilla.org/en-US/firefox/addon/ibid-citation-manager/
